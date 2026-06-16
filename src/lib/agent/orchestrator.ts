@@ -2,7 +2,7 @@ import { EventEmitter } from "events";
 import { AgentConfig, AgentEvent, AgentTool, OrchestrationMode } from "./types";
 import { getEffectivePersonality } from "./roles";
 import { runReflectionLoop, ReflectionConfig } from "./reflection";
-import { addEventListener, emitEvent, isRunActive } from "./agent";
+import { addEventListener, emitEvent, isRunActive, registerActiveRun, cleanupRun } from "./agent";
 import { plan } from "./planner";
 import { execute } from "./tools";
 import { evaluate } from "./evaluator";
@@ -79,6 +79,8 @@ export class AgentOrchestrator extends EventEmitter {
     const controller = new AbortController();
     this.activeOrchestrations.set(team.id, controller);
 
+    registerActiveRun(runId);
+
     try {
       switch (team.mode) {
         case "single":
@@ -96,6 +98,7 @@ export class AgentOrchestrator extends EventEmitter {
       }
     } finally {
       this.activeOrchestrations.delete(team.id);
+      cleanupRun(runId);
     }
   }
 

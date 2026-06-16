@@ -66,9 +66,13 @@ export function isRunActive(runId: string): boolean {
   return activeRuns.has(runId);
 }
 
+export function registerActiveRun(runId: string): void {
+  activeRuns.add(runId);
+}
+
 // ============ Run Cleanup (fixes memory leaks) ============
 
-function cleanupRun(runId: string): void {
+export function cleanupRun(runId: string): void {
   activeRuns.delete(runId);
   eventListeners.delete(runId); // FIX C01: Clean up event listeners
   clearMemory(runId);           // FIX C03: Clean up run memory
