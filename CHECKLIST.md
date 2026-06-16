@@ -80,25 +80,25 @@
 
 ## Phase 3: Testing Foundation (Days 4-5) 🧪
 
-- [ ] **3.1:** Setup testing infrastructure
-  - [ ] Install: `bun add -D vitest @vitest/ui @testing-library/react`
-  - [ ] Create: `vitest.config.ts`
-  - [ ] Create: `test/setup.ts`
-  - [ ] Add test script to `package.json`
+- [x] **3.1:** Setup testing infrastructure
+  - [x] Install: `bun add -D vitest @vitest/ui @testing-library/react`
+  - [x] Create: `vitest.config.ts`
+  - [x] Create: `test/setup.ts`
+  - [x] Add test script to `package.json`
 
-- [ ] **3.2:** Test Hermes kernel invariants
-  - [ ] 3 tests: kernel inversion, causal ordering, determinism
+- [x] **3.2:** Test Hermes kernel invariants
+  - [x] 3 tests: kernel inversion, causal ordering, determinism
 
-- [ ] **3.3:** Test orchestration modes
-  - [ ] 2 tests: single-agent, sequential handoffs
+- [x] **3.3:** Test orchestration modes
+  - [x] 2 tests: single-agent, sequential handoffs
 
-- [ ] **3.4:** Test policy engine
-  - [ ] 2 tests: block high-risk, allow low-risk
+- [x] **3.4:** Test policy engine
+  - [x] 2 tests: block high-risk, allow low-risk
 
-- [ ] **3.5:** Test API routes (smoke tests)
-  - [ ] 2 tests: create agent, list agents
+- [x] **3.5:** Test API routes (smoke tests)
+  - [x] 2 tests: create agent, list agents
 
-- [ ] Verify: `bun run test` passes (15+ tests)
+- [x] Verify: `bun run test` passes (15+ tests)
 
 ✅ **Phase 3 Complete:** Test suite passing with >50% coverage
 
@@ -283,7 +283,7 @@ bun scripts/load-test.ts
 - Phase 0: ✅ Emergency Fixes
 - Phase 1: ✅ Code Cleanup
 - Phase 2: ✅ Meridian UI Decision
-- Phase 3: ⬜ Testing Foundation
+- Phase 3: ✅ Testing Foundation
 - Phase 4: ⬜ Security Hardening
 - Phase 5: ⬜ Production Readiness
 - Phase 6: ⬜ Database Migration (Optional)
