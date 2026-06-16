@@ -9,8 +9,8 @@
 - Production: `https://your-domain.com/api`
 
 ## Authentication
-⚠️ Currently: No authentication (all routes public)  
-🔜 Planned: NextAuth.js session-based auth
+✅ Session-based authentication integrated via NextAuth.js.
+Protected routes require a valid session; public routes include `/api/auth/*` and `/api/health`.
 
 ---
 
@@ -1221,9 +1221,9 @@ All endpoints return consistent error responses:
 ---
 
 ## Rate Limiting
-🔜 Planned: Rate limiting middleware (Phase 4)
-- Default: 100 requests/minute per IP
-- High-traffic routes: 10 requests/minute
+✅ Rate limiting active via Upstash Redis (with in-memory fallback for local development).
+- API routes: 100 requests/minute per IP
+- Agent execution/high-traffic routes: 10 requests/minute
 
 ---
 
