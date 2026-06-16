@@ -1,0 +1,948 @@
+     1→# Agent Studio OS — V2.0 Upgrade Plan
+     2→
+     3→> **Status:** Draft — Ready for Review & Implementation  
+     4→> **Date:** March 4, 2026  
+     5→> **Based on:** AGENTIC_OS_V2_PLAN.md, agenticNotebooklm.md, agentsNotebooklm.md, and V1 codebase analysis
+     6→
+     7→---
+     8→
+     9→## Executive Summary
+    10→
+    11→Agent Studio OS V1 established a solid foundation: visual canvas, single-agent execution with Plan→Execute→Evaluate, SSE streaming, kill switch, and an AI Builder wizard. V2 transforms this from a **task-orchestration UI** into a full **Agent Runtime OS** — a platform where specialized agents collaborate through structured orchestration patterns, govern themselves with policies, persist knowledge across runs, and operate within verifiable safety boundaries.
+    12→
+    13→The upgrade is organized into **4 phases** across **12 major workstreams**, informed by current research on multi-agent orchestration (AutoGen), the Evaluator-Optimizer reflection pattern, OS-level resource management (AgentCgroup), and production-grade security (SEAgent).
+    14→
+    15→---
+    16→
+    17→## Current V1 State (What We Have)
+    18→
+    19→| Feature | Status |
+    20→|---------|--------|
+    21→| Agent CRUD (create, list, update) | ✅ Working |
+    22→| AI Agent Builder (NL → config) | ✅ Working |
+    23→| Quick Templates (4 presets) | ✅ Working |
+    24→| Visual Canvas (React Flow) | ✅ Working |
+    25→| Single-Agent Execution Loop | ✅ Working |
+    26→| SSE Live Streaming | ✅ Working |
+    27→| Kill Switch | ✅ Working |
+    28→| Inspector Panel | ✅ Working |
+    29→| Run History | ✅ Working |
+    30→| Step Persistence (SQLite) | ✅ Working |
+    31→| **Tool implementations** | ❌ All simulated |
+    32→| **Multi-agent orchestration** | ❌ Not built |
+    33→| **Reflection / self-critique** | ❌ Not built |
+    34→| **Role system** | ❌ Not built |
+    35→| **Persistent memory** | ❌ Not built |
+    36→| **Policy / approval gates** | ❌ Not built |
+    37→| **Observability / metrics** | ❌ Not built |
+    38→| **Parallel execution** | ❌ Not built |
+    39→| **Task graph decomposition** | ❌ Not built |
+    40→| **Artifact storage** | ❌ Not built |
+    41→| **Canvas persistence on reload** | ❌ Not built |
+    42→| **Agent deletion endpoint** | ❌ Not built |
+    43→| **User authentication** | ❌ Model exists, no routes |
+    44→
+    45→---
+    46→
+    47→## Phase 0: Foundation Fixes (Pre-V2 Prerequisites)
+    48→
+    49→*These are V1 gaps that must be resolved before any V2 work begins.*
+    50→
+    51→### 0.1 — Real Tool Implementations
+    52→**Problem:** All 5 tools (search, write, code, browser, finish) return simulated data.  
+    53→**Solution:** Wire each tool to actual capabilities via `z-ai-web-dev-sdk` and platform services.
+    54→
+    55→| Tool | V2 Implementation |
+    56→|------|-------------------|
+    57→| `search` | Call `z-ai-web-dev-sdk` web-search skill |
+    58→| `write` | Persist output as an Artifact (new model) |
+    59→| `code` | Execute in sandboxed subprocess with timeout |
+    60→| `browser` | Call `z-ai-web-dev-sdk` web-reader skill |
+    61→| `finish` | Return final result + mark run complete |
+    62→
+    63→**Files to modify:** `src/lib/agent/tools.ts`
+    64→
+    65→### 0.2 — Canvas Persistence
+    66→**Problem:** `graphData` is saved but never loaded back on page refresh.  
+    67→**Solution:** In `agent-store.ts` `fetchAgents()`, parse each agent's `graphData` and restore canvas nodes/edges.
+    68→
+    69→**Files to modify:** `src/store/agent-store.ts`
+    70→
+    71→### 0.3 — Agent Deletion
+    72→**Problem:** No DELETE endpoint exists.  
+    73→**Solution:** Add `DELETE /api/agent/delete` route, cascade delete runs + steps.
+    74→
+    75→**Files to add:** `src/app/api/agent/delete/route.ts`
+    76→
+    77→### 0.4 — Legacy Component Cleanup
+    78→**Problem:** 5 stale component files exist at `src/components/` root (outside `agent/` subfolder).  
+    79→**Solution:** Remove `agent-canvas.tsx`, `agent-node.tsx`, `agent-sidebar.tsx`, `agent-inspector.tsx`, `agent-run-view.tsx` from `src/components/`.
+    80→
+    81→### 0.5 — Model Configuration
+    82→**Problem:** Model is hardcoded in planner/evaluator.  
+    83→**Solution:** Add `model` field to `AgentConfig` type and Prisma schema. Allow per-agent model selection. Default to `gemini-2.5-pro` as specified in V2 plan.
+    84→
+    85→**Files to modify:** `prisma/schema.prisma`, `src/lib/agent/types.ts`, `src/lib/agent/planner.ts`, `src/lib/agent/evaluator.ts`, `src/components/agent/agent-inspector.tsx`
+    86→
+    87→---
+    88→
+    89→## Phase 1: Multi-Agent Orchestration Engine (Core V2)
+    90→
+    91→*This is the centerpiece of V2 — transforming from single-agent execution to multi-agent collaboration.*
+    92→
+    93→### 1.1 — Orchestration Mode Engine
+    94→
+    95→**Research basis:** AutoGen defines 3 core patterns — Sequential Pipeline, Group Chat, and Hierarchical Chat. Our V2 plan adds Parallel as a fourth mode.
+    96→
+    97→**Implementation:**
+    98→
+    99→```
+   100→OrchestrationMode = 'single' | 'sequential' | 'group' | 'hierarchical' | 'parallel'
+   101→```
+   102→
+   103→| Mode | Description | Best For |
+   104→|------|-------------|----------|
+   105→| `single` | Current V1 behavior — one agent loops | Simple tasks, backward compat |
+   106→| `sequential` | Pipeline A→B→C with output handoff | Content workflows, ETL |
+   107→| `group` | Shared scratchpad, turn-taking manager | Deliberation, writer-editor-reviewer |
+   108→| `hierarchical` | Manager delegates to sub-agents | Complex projects with sub-tasking |
+   109→| `parallel` | Fan-out to N agents simultaneously | Speed-optimized research |
+   110→
+   111→**Database changes:**
+   112→```prisma
+   113→model Agent {
+   114→  // ... existing fields
+   115→  orchestrationMode  String   @default("single")   // single|sequential|group|hierarchical|parallel
+   116→  maxConcurrency     Int      @default(3)           // for parallel mode
+   117→  teamId             String?                        // group agents by team
+   118→}
+   119→```
+   120→
+   121→**New types** (`src/lib/agent/types.ts`):
+   122→```typescript
+   123→export interface TeamConfig {
+   124→  id: string
+   125→  name: string
+   126→  mode: OrchestrationMode
+   127→  agents: AgentConfig[]
+   128→  terminationCondition: TerminationCondition
+   129→  maxConcurrency?: number
+   130→}
+   131→
+   132→export type TerminationCondition =
+   133→  | { type: 'max_steps'; value: number }
+   134→  | { type: 'text_mention'; text: string }
+   135→  | { type: 'approval'; requiredFrom: string[] }
+   136→  | { type: 'composite'; conditions: TerminationCondition[]; operator: 'and' | 'or' }
+   137→```
+   138→
+   139→**New engine files:**
+   140→- `src/lib/agent/orchestrator.ts` — Master orchestrator that selects execution strategy
+   141→- `src/lib/agent/strategies/sequential.ts` — Pipeline execution
+   142→- `src/lib/agent/strategies/group.ts` — Shared-context turn-taking
+   143→- `src/lib/agent/strategies/hierarchical.ts` — Manager-worker delegation
+   144→- `src/lib/agent/strategies/parallel.ts` — Fan-out with concurrency control
+   145→
+   146→**Key design principle (from AutoGen research):** Use **sequential** when steps are fixed and deterministic. Use **group chat** when agents need shared context and iterative collaboration. Replace LLM speaker selection with rules when the order is obvious.
+   147→
+   148→### 1.2 — Sequential Pipeline Strategy
+   149→
+   150→**How it works:** Each agent subscribes to its own "topic" (position in pipeline). Output of agent N becomes input of agent N+1. Termination occurs when the last agent emits `APPROVED` or `maxSteps` is reached.
+   151→
+   152→**Implementation sketch:**
+   153→```typescript
+   154→// src/lib/agent/strategies/sequential.ts
+   155→export async function runSequentialPipeline(
+   156→  team: TeamConfig,
+   157→  input: string,
+   158→  eventEmitter: EventEmitter
+   159→): Promise<AgentEvent[]> {
+   160→  let currentInput = input;
+   161→  const allEvents: AgentEvent[] = [];
+   162→
+   163→  for (const agent of team.agents) {
+   164→    const result = await runSingleAgent(agent, currentInput, eventEmitter);
+   165→    allEvents.push(...result.events);
+   166→    
+   167→    if (result.status === 'failed') break; // Stop pipeline on failure
+   168→    currentInput = result.output; // Handoff to next agent
+   169→  }
+   170→
+   171→  return allEvents;
+   172→}
+   173→```
+   174→
+   175→**UI impact:** "Execution Strategy" dropdown in sidebar/inspector. Pipeline agents shown connected left-to-right on canvas.
+   176→
+   177→### 1.3 — Group Chat Strategy
+   178→
+   179→**How it works:** All agents share a common message history. A Group Chat Manager (LLM-powered or rule-based) selects the next speaker. Termination on `APPROVE`, `TERMINATE`, or `maxMessages`.
+   180→
+   181→**Implementation sketch:**
+   182→```typescript
+   183→// src/lib/agent/strategies/group.ts
+   184→export async function runGroupChat(
+   185→  team: TeamConfig,
+   186→  input: string,
+   187→  eventEmitter: EventEmitter
+   188→): Promise<AgentEvent[]> {
+   189→  const sharedHistory: ChatMessage[] = [{ role: 'user', content: input }];
+   190→  const allEvents: AgentEvent[] = [];
+   191→  let terminated = false;
+   192→
+   193→  while (!terminated) {
+   194→    const nextSpeaker = await selectNextSpeaker(team, sharedHistory);
+   195→    const response = await runAgentTurn(nextSpeaker, sharedHistory, eventEmitter);
+   196→    sharedHistory.push({ role: 'assistant', content: response, source: nextSpeaker.name });
+   197→    
+   198→    terminated = checkTermination(sharedHistory, team.terminationCondition);
+   199→  }
+   200→
+   201→  return allEvents;
+   202→}
+   203→```
+   204→
+   205→**Speaker selection modes:**
+   206→- `llm` — Manager agent uses LLM to pick next speaker (flexible but slower)
+   207→- `round_robin` — Fixed rotation (simple, predictable)
+   208→- `rule_based` — E.g., "reviewer always speaks after writer" (efficient)
+   209→
+   210→### 1.4 — Hierarchical Strategy
+   211→
+   212→**How it works:** A manager/planner agent decomposes the goal, assigns sub-tasks to worker agents, collects results, and synthesizes the final output.
+   213→
+   214→**Key insight from research:** Pairing a weaker, more delegative planner with a strong solver can outperform using a single top-tier model in both roles — the "combo effect."
+   215→
+   216→### 1.5 — Parallel Strategy
+   217→
+   218→**How it works:** Same input dispatched to N agents simultaneously. Results collected and merged. `maxConcurrency` limits simultaneous executions.
+   219→
+   220→**Implementation:** Use `Promise.allSettled()` with a concurrency pool.
+   221→
+   222→---
+   223→
+   224→### 1.6 — Reflection Loop System (Evaluator-Optimizer Pattern)
+   225→
+   226→**Research basis:** The Reflection pattern separates generation and critique into two roles — an Optimizer (Generator) and an Evaluator (Critic) — cycled iteratively. GPT-3.5 jumps from 48.1% to 95.1% on coding benchmarks when wrapped in an agentic refinement loop.
+   227→
+   228→**Implementation:**
+   229→
+   230→```typescript
+   231→// src/lib/agent/reflection.ts
+   232→export interface ReflectionConfig {
+   233→  enabled: boolean;
+   234→  maxIterations: number;     // Default: 3
+   235→  criticRole: string;        // Custom critic system prompt
+   236→  approvalCriteria: string;  // E.g., "APPROVED if no security vulnerabilities found"
+   237→  requireHumanApproval: boolean; // For high-stakes actions
+   238→}
+   239→
+   240→export async function runReflectionLoop(
+   241→  generator: AgentConfig,
+   242→  critic: AgentConfig,
+   243→  input: string,
+   244→  config: ReflectionConfig,
+   245→  eventEmitter: EventEmitter
+   246→): Promise<ReflectionResult> {
+   247→  let iteration = 0;
+   248→  let currentOutput = '';
+   249→  let approved = false;
+   250→
+   251→  while (iteration < config.maxIterations && !approved) {
+   252→    // Generator produces/revises output
+   253→    currentOutput = await runAgentTurn(generator, input, eventEmitter);
+   254→    
+   255→    // Critic evaluates
+   256→    const critique = await runCriticEvaluation(critic, currentOutput, config.approvalCriteria, eventEmitter);
+   257→    
+   258→    approved = critique.includes('APPROVED');
+   259→    if (!approved) {
+   260→      // Feed critique back to generator for revision
+   261→      input = `Previous output:\n${currentOutput}\n\nCritique:\n${critique}\n\nPlease revise.`;
+   262→    }
+   263→    
+   264→    iteration++;
+   265→    eventEmitter.emit('reflection_iteration', { iteration, approved, critique });
+   266→  }
+   267→
+   268→  return { output: currentOutput, iterations: iteration, approved };
+   269→}
+   270→```
+   271→
+   272→**Database changes:**
+   273→```prisma
+   274→model Agent {
+   275→  // ... existing fields
+   276→  reflectionEnabled   Boolean  @default(false)
+   277→  reflectionMaxIter   Int      @default(3)
+   278→  reflectionCriteria  String   @default("APPROVED if satisfactory")
+   279→}
+   280→```
+   281→
+   282→**UI:** "Self-Improve Output" toggle in inspector. Live iteration log showing critique/fix cycle in run view.
+   283→
+   284→---
+   285→
+   286→### 1.7 — Agent Role System
+   287→
+   288→**Research basis:** Specialization reduces context overload and makes multi-agent systems easier to debug than a single monolithic agent.
+   289→
+   290→**Roles:**
+   291→```typescript
+   292→export type AgentRole = 'planner' | 'researcher' | 'executor' | 'critic' | 'reviewer' | 'custom';
+   293→
+   294→export interface RolePermissions {
+   295→  read: boolean;     // Can read shared memory and artifacts
+   296→  write: boolean;    // Can create/modify artifacts
+   297→  execute: boolean;  // Can invoke tools
+   298→  approve: boolean;  // Can approve high-risk actions
+   299→  delegate: boolean; // Can assign tasks to other agents (manager only)
+   300→}
+   301→```
+   302→
+   303→| Role | Read | Write | Execute | Approve | Delegate |
+   304→|------|------|-------|---------|---------|----------|
+   305→| `planner` | ✅ | ✅ | ❌ | ✅ | ✅ |
+   306→| `researcher` | ✅ | ✅ | ✅ | ❌ | ❌ |
+   307→| `executor` | ✅ | ✅ | ✅ | ❌ | ❌ |
+   308→| `critic` | ✅ | ✅ | ❌ | ✅ | ❌ |
+   309→| `reviewer` | ✅ | ❌ | ❌ | ✅ | ❌ |
+   310→
+   311→**Database:**
+   312→```prisma
+   313→model Agent {
+   314→  // ... existing fields
+   315→  role          String   @default("executor")
+   316→  permissions   String   @default("read,write,execute")  // CSV
+   317→}
+   318→```
+   319→
+   320→**UI:** Role badges with color coding on canvas nodes. Specialized config panels per role (e.g., critic gets "Approval Criteria" field, planner gets "Delegation Rules").
+   321→
+   322→---
+   323→
+   324→## Phase 2: Memory, Tools & Verification
+   325→
+   326→### 2.1 — 3-Tier Memory Layer
+   327→
+   328→**Research basis:** Agentic systems need memory at multiple levels — short-term working memory, long-term knowledge, and artifact storage. The shift from reactive assistants to autonomous workflows is built on external tools and memory rather than prompt-only reasoning.
+   329→
+   330→**Architecture:**
+   331→
+   332→| Tier | Scope | Storage | Lifecycle |
+   333→|------|-------|---------|-----------|
+   334→| **Session** | Current run | In-memory Map | Cleared when run ends |
+   335→| **Persistent** | Across runs | SQLite (new model) | Survives restarts |
+   336→| **Artifacts** | Files, code, outputs | SQLite + filesystem | Versioned, retrievable |
+   337→
+   338→**Database changes:**
+   339→```prisma
+   340→model AgentMemory {
+   341→  id        String   @id @default(cuid())
+   342→  agentId   String
+   343→  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+   344→  key       String   // e.g., "user_preference", "project_context"
+   345→  value     String   // JSON string
+   346→  tier      String   @default("persistent") // session | persistent | artifact
+   347→  runId     String?  // Null for persistent, set for session
+   348→  createdAt DateTime @default(now())
+   349→  updatedAt DateTime @updatedAt
+   350→
+   351→  @@unique([agentId, key, tier])
+   352→}
+   353→
+   354→model Artifact {
+   355→  id        String   @id @default(cuid())
+   356→  agentId   String
+   357→  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+   358→  runId     String?
+   359→  name      String
+   360→  type      String   // code | text | json | markdown | file
+   361→  content   String   // The actual content
+   362→  metadata  String?  // JSON: size, language, version, etc.
+   363→  createdAt DateTime @default(now())
+   364→}
+   365→```
+   366→
+   367→**New engine file:** `src/lib/agent/memory-v2.ts`
+   368→```typescript
+   369→export interface MemoryStore {
+   370→  // Session memory (in-memory, run-scoped)
+   371→  setSession(runId: string, key: string, value: any): void;
+   372→  getSession(runId: string, key: string): any;
+   373→  clearSession(runId: string): void;
+   374→
+   375→  // Persistent memory (DB-backed, agent-scoped)
+   376→  setPersistent(agentId: string, key: string, value: any): Promise<void>;
+   377→  getPersistent(agentId: string, key: string): Promise<any>;
+   378→  listPersistent(agentId: string): Promise<MemoryEntry[]>;
+   379→
+   380→  // Artifacts (DB-backed, versioned)
+   381→  saveArtifact(agentId: string, artifact: ArtifactInput): Promise<Artifact>;
+   382→  getArtifacts(agentId: string, type?: string): Promise<Artifact[]>;
+   383→  getArtifact(id: string): Promise<Artifact | null>;
+   384→}
+   385→```
+   386→
+   387→**UI:** "Memory Inspector" panel — a tab in the inspector showing session state, persistent keys, and artifact list in real-time.
+   388→
+   389→### 2.2 — Tool Verification Layer
+   390→
+   391→**Research basis:** Process Reward Models validate intermediate steps. Our verification is simpler — deterministic validators for tool outputs.
+   392→
+   393→**Implementation:**
+   394→
+   395→```typescript
+   396→// src/lib/agent/tool-verification.ts
+   397→export interface ToolValidator {
+   398→  type: 'json_schema' | 'code_compiles' | 'url_reachable' | 'custom';
+   399→  config: Record<string, any>;
+   400→}
+   401→
+   402→export interface VerificationResult {
+   403→  status: 'verified' | 'failed' | 'needs_review';
+   404→  message: string;
+   405→  details?: any;
+   406→}
+   407→
+   408→export async function verifyToolOutput(
+   409→  tool: string,
+   410→  output: string,
+   411→  validator?: ToolValidator
+   412→): Promise<VerificationResult> {
+   413→  if (!validator) return { status: 'needs_review', message: 'No validator configured' };
+   414→
+   415→  switch (validator.type) {
+   416→    case 'json_schema':
+   417→      // Parse output as JSON, validate against schema
+   418→    case 'code_compiles':
+   419→      // Try to compile/parse code output
+   420→    case 'url_reachable':
+   421→      // HTTP HEAD to verify URL
+   422→    case 'custom':
+   423→      // Run custom validation function
+   424→  }
+   425→}
+   426→```
+   427→
+   428→**UI:** Visual indicators on tool results:
+   429→- ✅ `Verified` — Validator passed
+   430→- ❌ `Failed` — Validator failed  
+   431→- ⚠ `Needs Review` — No validator or ambiguous result
+   432→
+   433→**Database:**
+   434→```prisma
+   435→model Step {
+   436→  // ... existing fields
+   437→  verificationStatus  String?  // verified | failed | needs_review
+   438→  verificationDetails  String?  // JSON
+   439→}
+   440→```
+   441→
+   442→### 2.3 — Tool Registry
+   443→
+   444→**Problem:** Tools are hardcoded. V2 needs an extensible registry.
+   445→
+   446→```typescript
+   447→// src/lib/agent/tool-registry.ts
+   448→export interface ToolDefinition {
+   449→  id: string;           // e.g., "web_search", "write_file"
+   450→  name: string;         // Display name
+   451→  description: string;  // For LLM tool-use prompts
+   452→  category: 'search' | 'write' | 'code' | 'browser' | 'memory' | 'api' | 'custom';
+   453→  riskLevel: 'low' | 'medium' | 'high';
+   454→  parameters: JSONSchema;
+   455→  validator?: ToolValidator;
+   456→  executor: (params: any) => Promise<string>;
+   457→}
+   458→```
+   459→
+   460→**API routes:**
+   461→- `GET /api/tools/list` — List available tools with metadata
+   462→- `POST /api/tools/execute` — Execute a specific tool (for testing)
+   463→
+   464→---
+   465→
+   466→## Phase 3: Governance, Safety & Observability
+   467→
+   468→### 3.1 — Policy & Approval System
+   469→
+   470→**Research basis:** Multi-agent systems introduce confused-deputy attacks and cross-agent privilege escalation. SEAgent uses Mandatory Access Control with Block/Deny, User Prompt/Ask, and Shadow Mode outcomes. AWS and Microsoft both mandate least-privilege access, sandboxed execution, and immutable audit logs.
+   471→
+   472→**Architecture:**
+   473→
+   474→```typescript
+   475→// src/lib/agent/policy.ts
+   476→export type RiskLevel = 'low' | 'medium' | 'high';
+   477→
+   478→export interface PolicyRule {
+   479→  id: string;
+   480→  name: string;
+   481→  description: string;
+   482→  condition: {
+   483→    tool?: string[];        // Which tools this applies to
+   484→    role?: AgentRole[];     // Which roles
+   485→    riskLevel?: RiskLevel;  // Which risk levels
+   486→  };
+   487→  action: 'allow' | 'block' | 'ask_user' | 'shadow';
+   488→  reason: string;
+   489→}
+   490→
+   491→export interface ApprovalRequest {
+   492→  id: string;
+   493→  runId: string;
+   494→  agentId: string;
+   495→  stepId: string;
+   496→  tool: string;
+   497→  input: string;
+   498→  riskLevel: RiskLevel;
+   499→  status: 'pending' | 'approved' | 'denied' | 'expired';
+   500→  requestedAt: Date;
+   501→  respondedAt?: Date;
+   502→  respondedBy?: string;
+   503→  reason?: string;
+   504→}
+   505→```
+   506→
+   507→**Default policies:**
+   508→| Action | Risk | Policy |
+   509→|--------|------|--------|
+   510→| `search` (read-only) | Low | `allow` |
+   511→| `write` (create artifact) | Medium | `ask_user` |
+   512→| `code` (execute code) | High | `ask_user` |
+   513→| `browser` (external request) | Medium | `allow` with logging |
+   514→| Any action by `reviewer` role | Low | `allow` (read-only role) |
+   515→
+   516→**Database:**
+   517→```prisma
+   518→model PolicyRule {
+   519→  id          String   @id @default(cuid())
+   520→  name        String
+   521→  description String?
+   522→  condition   String   // JSON
+   523→  action      String   // allow | block | ask_user | shadow
+   524→  priority    Int      @default(0)  // Higher = evaluated first
+   525→  enabled     Boolean  @default(true)
+   526→  createdAt   DateTime @default(now())
+   527→  updatedAt   DateTime @updatedAt
+   528→}
+   529→
+   530→model ApprovalRequest {
+   531→  id            String   @id @default(cuid())
+   532→  runId         String
+   533→  agentId       String
+   534→  stepId        String
+   535→  tool          String
+   536→  input         String
+   537→  riskLevel     String   // low | medium | high
+   538→  status        String   @default("pending") // pending | approved | denied | expired
+   539→  requestedAt   DateTime @default(now())
+   540→  respondedAt   DateTime?
+   541→  respondedBy   String?
+   542→  reason        String?
+   543→}
+   544→```
+   545→
+   546→**API routes:**
+   547→- `GET /api/policy/list` — List all policies
+   548→- `POST /api/policy/create` — Create a policy rule
+   549→- `PATCH /api/policy/update` — Update a policy
+   550→- `DELETE /api/policy/delete` — Delete a policy
+   551→- `GET /api/approval/pending` — List pending approval requests
+   552→- `POST /api/approval/respond` — Approve or deny a request
+   553→
+   554→**UI:** 
+   555→- "Approval Required" modal that pauses agent execution and shows the proposed action
+   556→- Policy Dashboard page/tab for managing rules
+   557→- Run view shows approval gate events
+   558→
+   559→### 3.2 — Audit Trail (Immutable)
+   560→
+   561→**Database:**
+   562→```prisma
+   563→model AuditLog {
+   564→  id        String   @id @default(cuid())
+   565→  timestamp DateTime @default(now())
+   566→  agentId   String
+   567→  runId     String?
+   568→  action    String   // tool_call | policy_check | approval | state_change
+   569→  details   String   // JSON
+   570→  outcome   String   // allowed | blocked | pending | approved | denied
+   571→  riskLevel String?
+   572→}
+   573→```
+   574→
+   575→**Every tool call, policy check, and approval decision writes to this table.** No DELETE capability — append-only.
+   576→
+   577→### 3.3 — Observability Timeline
+   578→
+   579→**Research basis:** Agent systems are extremely hard to debug without per-agent traces of plans, tool calls, decisions, and latency. OpenTelemetry is the emerging standard.
+   580→
+   581→**Implementation:**
+   582→
+   583→```typescript
+   584→// src/lib/agent/observability.ts
+   585→export interface RunMetrics {
+   586→  runId: string;
+   587→  totalSteps: number;
+   588→  totalTokens: number;
+   589→  totalLatencyMs: number;
+   590→  toolCallCounts: Record<string, number>;
+   591→  toolSuccessRates: Record<string, number>;
+   592→  stepLatencies: { stepNum: number; tool: string; latencyMs: number }[];
+   593→  failurePoints: { stepNum: number; error: string }[];
+   594→  reflectionIterations: number;
+   595→  approvalGates: { stepNum: number; waitTimeMs: number }[];
+   596→}
+   597→```
+   598→
+   599→**Database changes:**
+   600→```prisma
+   601→model AgentRun {
+   602→  // ... existing fields
+   603→  totalTokens   Int?
+   604→  totalLatencyMs Int?
+   605→  metrics       String?  // JSON: full RunMetrics
+   606→}
+   607→
+   608→model Step {
+   609→  // ... existing fields
+   610→  latencyMs     Int?
+   611→  tokenCount    Int?
+   612→}
+   613→```
+   614→
+   615→**UI:** CI/CD-style timeline visualization in the run view:
+   616→- Horizontal timeline with step markers
+   617→- Color-coded: green (success), yellow (warning), red (error), blue (thinking), purple (approval gate)
+   618→- Hover to see latency, token count, tool details
+   619→- Summary stats at the top: total time, total tokens, success rate
+   620→
+   621→### 3.4 — System State Manager
+   622→
+   623→**Global states:**
+   624→```
+   625→idle → running → waiting_approval → running → completed
+   626→                                              → failed
+   627→                                              → stopped
+   628→```
+   629→
+   630→**Implementation:**
+   631→```typescript
+   632→// src/lib/agent/state-manager.ts
+   633→export type SystemState = 'idle' | 'running' | 'waiting_approval' | 'error' | 'completed';
+   634→
+   635→export interface SystemStateEntry {
+   636→  state: SystemState;
+   637→  runId?: string;
+   638→  agentId?: string;
+   639→  reason?: string;
+   640→  timestamp: Date;
+   641→}
+   642→```
+   643→
+   644→**UI:** The Agent Studio logo/header serves as the heartbeat indicator — its animation and color reflect the current system state:
+   645→- `idle`: Subtle breathing animation, muted color
+   646→- `running`: Active pulse, accent color
+   647→- `waiting_approval`: Slow blink, amber color
+   648→- `error`: Static red
+   649→- `completed`: Brief green flash, then return to idle
+   650→
+   651→---
+   652→
+   653→## Phase 4: Advanced Features & Scale
+   654→
+   655→### 4.1 — Planner → Task Graph System
+   656→
+   657→**Research basis:** The planner should generate a structured Task Graph (DAG) instead of a flat action list, enabling dependency-aware execution.
+   658→
+   659→```typescript
+   660→export interface TaskNode {
+   661→  id: string;
+   662→  name: string;
+   663→  description: string;
+   664→  assignedRole: AgentRole;
+   665→  dependencies: string[];  // IDs of tasks that must complete first
+   666→  status: 'pending' | 'running' | 'completed' | 'failed';
+   667→  result?: string;
+   668→}
+   669→
+   670→export interface TaskGraph {
+   671→  nodes: TaskNode[];
+   672→  edges: { from: string; to: string }[];
+   673→}
+   674→```
+   675→
+   676→**The planner's LLM call generates a TaskGraph, which the orchestrator then schedules and assigns to agents based on their roles and the dependency order.**
+   677→
+   678→**UI:** Visual graph view of active task dependencies, rendered as a separate canvas mode.
+   679→
+   680→### 4.2 — Parallel + Async Engine
+   681→
+   682→**Implementation:**
+   683→```typescript
+   684→// src/lib/agent/concurrency.ts
+   685→export async function runWithConcurrency<T>(
+   686→  tasks: (() => Promise<T>)[],
+   687→  maxConcurrency: number
+   688→): Promise<PromiseSettledResult<T>[]> {
+   689→  const results: PromiseSettledResult<T>[] = [];
+   690→  const executing: Promise<void>[] = [];
+   691→
+   692→  for (const task of tasks) {
+   693→    const p = task().then(result => {
+   694→      results.push({ status: 'fulfilled', value: result });
+   695→    }, error => {
+   696→      results.push({ status: 'rejected', reason: error });
+   697→    });
+   698→
+   699→    executing.push(p);
+   700→
+   701→    if (executing.length >= maxConcurrency) {
+   702→      await Promise.race(executing);
+   703→      executing.splice(
+   704→        executing.findIndex(e => e === p),
+   705→        1
+   706→      );
+   707→    }
+   708→  }
+   709→
+   710→  await Promise.all(executing);
+   711→  return results;
+   712→}
+   713→```
+   714→
+   715→**Future triggers (not in V2, but infrastructure-ready):**
+   716→- Cron-based scheduled runs
+   717→- Webhook-triggered runs
+   718→- Event-driven activation (agent A finishes → agent B starts)
+   719→
+   720→### 4.3 — Cron & Webhook Infrastructure
+   721→
+   722→**Database:**
+   723→```prisma
+   724→model AgentTrigger {
+   725→  id        String   @id @default(cuid())
+   726→  agentId   String
+   727→  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+   728→  type      String   // cron | webhook | event
+   729→  config    String   // JSON: cron expression, webhook URL, event filter
+   730→  enabled   Boolean  @default(true)
+   731→  lastRun   DateTime?
+   732→  createdAt DateTime @default(now())
+   733→}
+   734→```
+   735→
+   736→**API routes:**
+   737→- `POST /api/trigger/create` — Create a trigger
+   738→- `GET /api/trigger/list` — List triggers for an agent
+   739→- `DELETE /api/trigger/delete` — Remove a trigger
+   740→
+   741→### 4.4 — Agent Templates V2 (Expanded)
+   742→
+   743→Current: 4 static templates. V2 adds community templates and custom template saving.
+   744→
+   745→```prisma
+   746→model AgentTemplate {
+   747→  id          String   @id @default(cuid())
+   748→  name        String
+   749→  description String
+   750→  category    String   // research | writing | code | business | custom
+   751→  config      String   // JSON: full AgentConfig
+   752→  isPublic    Boolean  @default(false)
+   753→  authorId    String?
+   754→  useCount    Int      @default(0)
+   755→  createdAt   DateTime @default(now())
+   756→}
+   757→```
+   758→
+   759→**New templates:**
+   760→| Template | Role | Orchestration | Description |
+   761→|----------|------|---------------|-------------|
+   762→| Deep Research | researcher → writer | Sequential | Multi-source research with synthesis |
+   763→| Code Reviewer | executor → critic | Reflection | Write code, self-critique, iterate |
+   764→| Project Planner | planner (hierarchical) | Hierarchical | Break down project, delegate, collect |
+   765→| Market Analyst | researcher × 3 | Parallel | Parallel market research, merge results |
+   766→| Content Pipeline | researcher → writer → reviewer | Sequential | End-to-end content creation |
+   767→
+   768→---
+   769→
+   770→## Complete Database Schema Changes Summary
+   771→
+   772→### New Models
+   773→| Model | Purpose |
+   774→|-------|---------|
+   775→| `AgentMemory` | 3-tier memory (session, persistent, artifact) |
+   776→| `Artifact` | Versioned output storage |
+   777→| `PolicyRule` | Governance rules |
+   778→| `ApprovalRequest` | Human-in-the-loop approvals |
+   779→| `AuditLog` | Immutable audit trail |
+   780→| `AgentTemplate` | Shareable agent templates |
+   781→| `AgentTrigger` | Cron/webhook triggers |
+   782→| `Team` | Agent groupings for orchestration |
+   783→
+   784→### Modified Models
+   785→| Model | New Fields |
+   786→|-------|-----------|
+   787→| `Agent` | `orchestrationMode`, `role`, `permissions`, `reflectionEnabled`, `reflectionMaxIter`, `reflectionCriteria`, `model`, `maxConcurrency`, `teamId` |
+   788→| `AgentRun` | `totalTokens`, `totalLatencyMs`, `metrics` |
+   789→| `Step` | `latencyMs`, `tokenCount`, `verificationStatus`, `verificationDetails` |
+   790→
+   791→---
+   792→
+   793→## New API Routes Summary
+   794→
+   795→| Route | Method | Phase | Purpose |
+   796→|-------|--------|-------|---------|
+   797→| `/api/agent/delete` | DELETE | P0 | Delete agent + cascade |
+   798→| `/api/agent/team/create` | POST | P1 | Create agent team |
+   799→| `/api/agent/team/list` | GET | P1 | List teams |
+   800→| `/api/agent/team/run` | POST | P1 | Run a team with orchestration |
+   801→| `/api/policy/list` | GET | P3 | List policy rules |
+   802→| `/api/policy/create` | POST | P3 | Create policy rule |
+   803→| `/api/policy/update` | PATCH | P3 | Update policy |
+   804→| `/api/policy/delete` | DELETE | P3 | Delete policy |
+   805→| `/api/approval/pending` | GET | P3 | List pending approvals |
+   806→| `/api/approval/respond` | POST | P3 | Approve/deny request |
+   807→| `/api/memory/list` | GET | P2 | List agent memory |
+   808→| `/api/memory/set` | POST | P2 | Set persistent memory |
+   809→| `/api/memory/delete` | DELETE | P2 | Delete memory entry |
+   810→| `/api/artifacts/list` | GET | P2 | List agent artifacts |
+   811→| `/api/artifacts/get` | GET | P2 | Get artifact by ID |
+   812→| `/api/tools/list` | GET | P2 | List available tools |
+   813→| `/api/tools/execute` | POST | P2 | Test-execute a tool |
+   814→| `/api/trigger/create` | POST | P4 | Create cron/webhook trigger |
+   815→| `/api/trigger/list` | GET | P4 | List triggers |
+   816→| `/api/trigger/delete` | DELETE | P4 | Delete trigger |
+   817→| `/api/templates/list` | GET | P4 | List templates |
+   818→| `/api/templates/create` | POST | P4 | Save custom template |
+   819→
+   820→---
+   821→
+   822→## New UI Components Summary
+   823→
+   824→| Component | Phase | Description |
+   825→|-----------|-------|-------------|
+   826→| `OrchestrationSelector` | P1 | Dropdown for execution strategy |
+   827→| `TeamBuilder` | P1 | Drag agents into team, set orchestration mode |
+   828→| `ReflectionToggle` | P1 | Self-improve toggle + iteration count |
+   829→| `ReflectionLog` | P1 | Live critique/fix cycle display |
+   830→| `RoleBadge` | P1 | Color-coded role badge on canvas nodes |
+   831→| `RoleConfigPanel` | P1 | Specialized config per role |
+   832→| `MemoryInspector` | P2 | Tab showing session/persistent/artifact state |
+   833→| `VerificationBadge` | P2 | ✅❌⚠ indicators on tool results |
+   834→| `ApprovalModal` | P3 | Pause + show proposed action for user approval |
+   835→| `PolicyDashboard` | P3 | Create/edit/delete policy rules |
+   836→| `AuditTimeline` | P3 | CI/CD-style run timeline with metrics |
+   837→| `SystemStateIndicator` | P3 | Animated logo reflecting OS state |
+   838→| `TaskGraphCanvas` | P4 | DAG visualization of task dependencies |
+   839→| `TriggerManager` | P4 | Cron/webhook trigger config UI |
+   840→| `TemplateGallery` | P4 | Browse + use community templates |
+   841→
+   842→---
+   843→
+   844→## Implementation Priority Matrix
+   845→
+   846→| Priority | Workstream | Phase | Effort | Impact |
+   847→|----------|-----------|-------|--------|--------|
+   848→| 🔴 P0 | Real tool implementations | P0 | M | H |
+   849→| 🔴 P0 | Canvas persistence | P0 | S | M |
+   850→| 🔴 P0 | Agent deletion | P0 | S | M |
+   851→| 🔴 P0 | Legacy cleanup | P0 | S | L |
+   852→| 🔴 P0 | Model configuration | P0 | S | M |
+   853→| 🟡 P1 | Orchestration mode engine | P1 | XL | H |
+   854→| 🟡 P1 | Sequential pipeline strategy | P1 | L | H |
+   855→| 🟡 P1 | Group chat strategy | P1 | L | H |
+   856→| 🟡 P1 | Hierarchical strategy | P1 | L | M |
+   857→| 🟡 P1 | Parallel strategy | P1 | M | H |
+   858→| 🟡 P1 | Reflection loop system | P1 | M | H |
+   859→| 🟡 P1 | Agent role system | P1 | M | M |
+   860→| 🟢 P2 | 3-tier memory layer | P2 | L | H |
+   861→| 🟢 P2 | Tool verification | P2 | M | M |
+   862→| 🟢 P2 | Tool registry | P2 | M | M |
+   863→| 🔵 P3 | Policy & approval system | P3 | XL | H |
+   864→| 🔵 P3 | Audit trail | P3 | M | H |
+   865→| 🔵 P3 | Observability timeline | P3 | L | H |
+   866→| 🔵 P3 | System state manager | P3 | M | M |
+   867→| ⚪ P4 | Task graph system | P4 | XL | M |
+   868→| ⚪ P4 | Cron & webhook triggers | P4 | L | M |
+   869→| ⚪ P4 | Agent templates V2 | P4 | M | L |
+   870→
+   871→---
+   872→
+   873→## Risk Analysis
+   874→
+   875→### Technical Risks
+   876→
+   877→| Risk | Likelihood | Impact | Mitigation |
+   878→|------|-----------|--------|------------|
+   879→| SSE breaks with multi-agent (event ordering) | Medium | High | Use structured event types with agentId + sequence numbers |
+   880→| SQLite can't handle concurrent writes from parallel agents | Medium | High | Use WAL mode; consider migration path to Postgres for scale |
+   881→| LLM costs spike with reflection loops + multi-agent | High | Medium | Add token budget per run; cap reflection iterations; cache planner decisions |
+   882→| Group chat context bloat degrades agent quality | Medium | Medium | Implement context windowing; summarize older messages |
+   883→| Kill switch doesn't cleanly stop parallel agents | Medium | High | Use AbortController per agent; propagate cancellation signals |
+   884→
+   885→### Security Risks (from Research)
+   886→
+   887→| Risk | Description | Mitigation |
+   888→|------|-------------|------------|
+   889→| **Confused Deputy** | Untrusted agent manipulates trusted agent into privileged action | Policy engine checks inter-agent messages; role-based permission boundaries |
+   890→| **Cross-Agent Escalation** | Agents combine permissions to exceed individual authority | Least-privilege per role; audit all cross-agent communication |
+   891→| **Prompt Injection via Tool Output** | Malicious tool output hijacks agent reasoning | Sanitize tool outputs; separate instructions from data in prompts |
+   892→| **Reward Hacking** (reflection loops) | Generator learns to produce outputs that fool the critic, not genuinely better ones | Use deterministic validators where possible; cap iterations; require human approval for high-stakes |
+   893→
+   894→---
+   895→
+   896→## Migration Path from V1 to V2
+   897→
+   898→### Step 1: Backward Compatibility
+   899→All V1 agents continue to work as `orchestrationMode: 'single'`. No data loss. No API breakage.
+   900→
+   901→### Step 2: Database Migration
+   902→```bash
+   903→# Add new fields with defaults so existing records are unaffected
+   904→bun run db:push  # After updating schema.prisma
+   905→```
+   906→
+   907→### Step 3: Incremental Rollout
+   908→- **Week 1:** Phase 0 (foundation fixes) — ship immediately
+   909→- **Week 2-3:** Phase 1 orchestration (start with sequential + reflection)
+   910→- **Week 4:** Phase 1 remaining (group, hierarchical, parallel)
+   911→- **Week 5:** Phase 2 (memory, verification, tool registry)
+   912→- **Week 6-7:** Phase 3 (governance, observability)
+   913→- **Week 8+:** Phase 4 (advanced features)
+   914→
+   915→---
+   916→
+   917→## Key Research-Informed Design Decisions
+   918→
+   919→1. **Sequential over Group Chat as default** — Research shows sequential is cleaner for enterprise pipelines. Group chat adds value only when shared deliberation is needed (writer-editor cycles).
+   920→
+   921→2. **Deterministic validators over LLM judges** — Inspired by RLVR (Reinforcement Learning with Verifiable Rewards), which outperforms Process Reward Models because deterministic checks (JSON parsing, code compilation) are immune to reward hacking.
+   922→
+   923→3. **Soft limits over hard kills** — AgentCgroup research shows that OOM kills destroy non-recoverable LLM context. Our policy engine should throttle/pause rather than terminate when possible.
+   924→
+   925→4. **Rule-based speaker selection over LLM** — AutoGen docs recommend replacing LLM speaker selection with simple rules when the order is obvious. This saves tokens and latency.
+   926→
+   927→5. **Weaker planner + stronger solver** — The "combo effect" shows that a delegative planner paired with a capable solver outperforms a single dominant model trying to do everything.
+   928→
+   929→6. **Immutable audit trail** — Both AWS and Microsoft security guidance mandate traceability as a core design requirement, not an optional add-on.
+   930→
+   931→7. **Approval gates for high-risk actions** — SEAgent's three-outcome model (Block/Ask/Shadow) maps directly to our policy engine's allow/block/ask_user/shadow actions.
+   932→
+   933→---
+   934→
+   935→## What This Plan Does NOT Include (Future V3)
+   936→
+   937→- **Vector search / RAG** — Persistent memory uses simple key-value in V2; semantic search requires pgvector or a dedicated vector store
+   938→- **User authentication & multi-tenancy** — User model exists but auth is deferred
+   939→- **Model fine-tuning** — No RLVR or custom model training within the platform
+   940→- **Agent marketplace** — Community sharing of agents beyond templates
+   941→- **Mobile app** — Responsive web only
+   942→- **Kubernetes deployment** — Single-server SQLite architecture for V2
+   943→- **Real-time collaboration** — Multi-user editing of the same agent/team
+   944→
+   945→---
+   946→
+   947→*This plan synthesizes insights from AutoGen multi-agent patterns, the Evaluator-Optimizer reflection pattern, SEAgent security frameworks, AgentCgroup resource management, and RLVR verification methodology into a concrete, phased implementation roadmap for Agent Studio OS V2.*
+   948→

@@ -1,0 +1,1059 @@
+     1→# Agent System Reference
+     2→
+     3→> Complete documentation for the Agent Studio OS agent engine — how agents think, act, coordinate, and learn.
+     4→
+     5→---
+     6→
+     7→## Table of Contents
+     8→
+     9→1. [Agent Lifecycle](#1-agent-lifecycle)
+    10→2. [Agent Configuration](#2-agent-configuration)
+    11→3. [Execution Loop](#3-execution-loop)
+    12→4. [Tool System](#4-tool-system)
+    13→5. [Role System](#5-role-system)
+    14→6. [Orchestration Modes](#6-orchestration-modes)
+    15→7. [Memory System](#7-memory-system)
+    16→8. [Policy & Governance](#8-policy--governance)
+    17→9. [Reflection Loop](#9-reflection-loop)
+    18→10. [Metrics & Observability](#10-metrics--observability)
+    19→11. [Building Agents with AI](#11-building-agents-with-ai)
+    20→12. [API Reference for Agent Operations](#12-api-reference-for-agent-operations)
+    21→
+    22→---
+    23→
+    24→## 1. Agent Lifecycle
+    25→
+    26→An agent goes through the following lifecycle from creation to execution:
+    27→
+    28→```
+    29→┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+    30→│   CREATED   │────►│  CONFIGURED │────►│   RUNNING   │────►│  COMPLETED  │
+    31→│             │     │             │     │             │     │             │
+    32→│  Agent      │     │  Goal,      │     │  Executing  │     │  Goal       │
+    33→│  exists in  │     │  tools,     │     │  steps in   │     │  achieved   │
+    34→│  database   │     │  role set   │     │  loop       │     │  or failed  │
+    35→└─────────────┘     └─────────────┘     └──────┬──────┘     └─────────────┘
+    36→                                               │
+    37→                                        ┌──────┴──────┐
+    38→                                        │             │
+    39→                                        ▼             ▼
+    40→                                  ┌──────────┐  ┌──────────┐
+    41→                                  │  STOPPED │  │  FAILED  │
+    42→                                  │          │  │          │
+    43→                                  │  User    │  │  Error   │
+    44→                                  │  halted  │  │  occured │
+    45→                                  └──────────┘  └──────────┘
+    46→```
+    47→
+    48→### Creation Paths
+    49→
+    50→```
+    51→Path 1: Template Quick-Create
+    52→  User clicks template → createAgent() with preset config → agent appears in DB + canvas
+    53→
+    54→Path 2: AI Builder
+    55→  User describes agent → buildAgent(userInput) → LLM generates config → save to DB
+    56→
+    57→Path 3: Manual Create
+    58→  User clicks "New Agent" → createAgent() with minimal defaults → configure in inspector
+    59→
+    60→Path 4: Template Instantiation
+    61→  POST /api/template/instantiate → creates agent from saved template with optional overrides
+    62→```
+    63→
+    64→---
+    65→
+    66→## 2. Agent Configuration
+    67→
+    68→### Complete Agent Schema
+    69→
+    70→```typescript
+    71→interface AgentConfig {
+    72→  // ── Identity ──
+    73→  name: string;               // Display name (required)
+    74→  goal: string;               // What the agent should accomplish (required)
+    75→  personality: string;        // Behavioral modifier ("helpful and thorough assistant")
+    76→
+    77→  // ── Capabilities ──
+    78→  tools: string[];            // Available tools: search, write, code, browser, finish
+    79→  role: AgentRole;            // Role assignment (general, planner, researcher, executor, critic, reviewer)
+    80→  model: string;              // LLM model: gemini-2.5-pro, gemini-2.5-flash, gpt-4o, etc.
+    81→
+    82→  // ── Execution ──
+    83→  maxSteps: number;           // Maximum iteration steps (1-20, default 10)
+    84→  autoRun: boolean;           // Whether to auto-execute on creation (default true)
+    85→  outputFormat: string;       // Output format: text, json, markdown
+    86→
+    87→  // ── Orchestration ──
+    88→  orchestrationMode: OrchestrationMode;  // single | sequential | group | hierarchical | parallel
+    89→  maxConcurrency: number;     // Max parallel agents (for parallel mode, default 3)
+    90→
+    91→  // ── Memory ──
+    92→  shortTermMemory: boolean;   // Enable session-scoped memory (default true)
+    93→  longTermMemory: boolean;    // Enable persistent cross-run memory (default false)
+    94→
+    95→  // ── Reflection ──
+    96→  reflectionEnabled: boolean;        // Enable critic-generator loop (default false)
+    97→  reflectionMaxIter: number;         // Max reflection iterations (1-10, default 3)
+    98→  reflectionCriteria: string;        // Approval criteria string (default "APPROVED")
+    99→
+   100→  // ── Canvas ──
+   101→  graphData: {                 // React Flow graph position data
+   102→    nodes: Node[];
+   103→    edges: Edge[];
+   104→  } | null;
+   105→
+   106→  // ── Team ──
+   107→  teamId: string | null;      // Team membership (if part of a team)
+   108→}
+   109→```
+   110→
+   111→### Role Definitions
+   112→
+   113→```
+   114→┌────────────┬────────┬───────────────────────────────────────────────────┐
+   115→│ Role       │ Color  │ Description                                       │
+   116→├────────────┼────────┼───────────────────────────────────────────────────┤
+   117→│ general    │ gray   │ Default — no special behavior, all tools           │
+   118→│ planner    │ cyan   │ Decomposes goals into subtasks, delegates work     │
+   119→│ researcher │ green  │ Gathers and synthesizes information                │
+   120→│ executor   │ yellow │ Performs actions, writes content, generates code   │
+   121→│ critic     │ amber  │ Evaluates output quality, identifies improvements  │
+   122→│ reviewer   │ red    │ Audits for correctness, compliance, and safety     │
+   123→└────────────┴────────┴───────────────────────────────────────────────────┘
+   124→```
+   125→
+   126→### Role Permissions Matrix
+   127→
+   128→```
+   129→┌────────────┬──────┬──────┬──────┬──────┬──────────┐
+   130→│ Role       │ Read │ Write│ Exec │Approve│ Delegate │
+   131→├────────────┼──────┼──────┼──────┼──────┼──────────┤
+   132→│ general    │  ✓   │  ✓   │  ✓   │  ✗   │    ✗     │
+   133→│ planner    │  ✓   │  ✓   │  ✓   │  ✓   │    ✓     │
+   134→│ researcher │  ✓   │  ✓   │  ✗   │  ✗   │    ✗     │
+   135→│ executor   │  ✓   │  ✓   │  ✓   │  ✗   │    ✗     │
+   136→│ critic     │  ✓   │  ✓   │  ✗   │  ✓   │    ✗     │
+   137→│ reviewer   │  ✓   │  ✓   │  ✗   │  ✓   │    ✗     │
+   138→└────────────┴──────┴──────┴──────┴──────┴──────────┘
+   139→```
+   140→
+   141→### Default Tools Per Role
+   142→
+   143→| Role | Default Tools |
+   144→|------|--------------|
+   145→| general | search, write, code, browser |
+   146→| planner | search, write |
+   147→| researcher | search, write, browser |
+   148→| executor | search, write, code |
+   149→| critic | search, write |
+   150→| reviewer | search, write |
+   151→
+   152→---
+   153→
+   154→## 3. Execution Loop
+   155→
+   156→### Single Agent Run Loop
+   157→
+   158→```
+   159→┌──────────────────────────────────────────────────────────┐
+   160→│                    runAgent() Loop                        │
+   161→│                                                          │
+   162→│  1. Initialize run (create AgentRun in DB)               │
+   163→│  2. Emit "status" event → { status: "running" }         │
+   164→│  3. Loop (up to maxSteps):                               │
+   165→│     │                                                    │
+   166→│     ├── a. Check policy (policyEngine.check)             │
+   167→│     │   ├── ALLOW → proceed                             │
+   168→│     │   ├── BLOCK → emit "policy" event, stop           │
+   169→│     │   ├── ASK_USER → create ApprovalRequest, wait      │
+   170→│     │   └── SHADOW → proceed + log audit                │
+   171→│     │                                                    │
+   172→│     ├── b. Plan next action (planner.plan)               │
+   173→│     │   ├── Send goal + context + tools to LLM           │
+   174→│     │   ├── Parse LLM response → AgentAction             │
+   175→│     │   └── Emit "plan" event                            │
+   176→│     │                                                    │
+   177→│     ├── c. Execute action (tools.execute)                │
+   178→│     │   ├── Dispatch to tool handler                     │
+   179→│     │   ├── Verify output (deterministic check)          │
+   180→│     │   └── Emit "action" + "result" events             │
+   181→│     │                                                    │
+   182→│     ├── d. Record step in DB                             │
+   183→│     │   └── Step { stepNum, tool, input, result, ... }   │
+   184→│     │                                                    │
+   185→│     ├── e. Update memory (memoryManager.set)             │
+   186→│     │                                                    │
+   187→│     ├── f. Check if done:                                │
+   188→│     │   ├── Tool was "finish" → break loop               │
+   189→│     │   └── Evaluator says goal met → break loop         │
+   190→│     │                                                    │
+   191→│     └── g. If not done → continue to next step           │
+   192→│                                                          │
+   193→│  4. Finalize run                                         │
+   194→│     ├── Set AgentRun status → completed/failed/stopped   │
+   195→│     ├── Compute metrics (tokens, latency, steps)         │
+   196→│     └── Emit "done" event                                │
+   197→│                                                          │
+   198→│  5. Cleanup                                              │
+   199→│     ├── Clear run memory (session tier)                  │
+   200→│     └── Remove from active runs                          │
+   201→└──────────────────────────────────────────────────────────┘
+   202→```
+   203→
+   204→### Step Execution Detail
+   205→
+   206→```
+   207→runStep(agent, runId, stepNum, history, memory)
+   208→  │
+   209→  ├── 1. Build context
+   210→  │     ├── Agent goal + personality
+   211→  │     ├── Role prompt modifier
+   212→  │     ├── Tool descriptions
+   213→  │     ├── Memory entries
+   214→  │     └── Step history (previous actions + results)
+   215→  │
+   216→  ├── 2. Call planner.plan()
+   217→  │     ├── Format prompt with context
+   218→  │     ├── Call ZAI LLM SDK
+   219→  │     └── Parse response → AgentAction
+   220→  │         ├── Strategy 1: Direct JSON parse
+   221→  │         ├── Strategy 2: Extract from ```json``` code block
+   222→  │         ├── Strategy 3: Greedy JSON extraction (first { to last })
+   223→  │         └── Strategy 4: Infer from tool mention in text
+   224→  │
+   225→  ├── 3. Emit "plan" event
+   226→  │
+   227→  ├── 4. Execute tool
+   228→  │     ├── search → ZAI Web Search API
+   229→  │     ├── write → Save to memory
+   230→  │     ├── code → Execute with verification
+   231→  │     ├── browser → ZAI Page Reader API
+   232→  │     └── finish → Return result string
+   233→  │
+   234→  ├── 5. Verify output
+   235→  │     ├── JSON validation (if applicable)
+   236→  │     ├── Code compilation check (if code tool)
+   237→  │     └── URL reachability (if browser tool)
+   238→  │
+   239→  ├── 6. Record Step in DB
+   240→  │
+   241→  └── 7. Return step result
+   242→```
+   243→
+   244→### Event Types
+   245→
+   246→| Event Type | When Emitted | Data |
+   247→|-----------|-------------|------|
+   248→| `status` | Run starts/stops | `{ status: "running" \| "completed" \| "failed" }` |
+   249→| `plan` | LLM generates next action | `{ step, tool, reasoning }` |
+   250→| `action` | Tool execution begins | `{ step, tool, input }` |
+   251→| `result` | Tool execution completes | `{ step, output, success }` |
+   252→| `thinking` | LLM is processing (intermediate) | `{ message }` |
+   253→| `error` | Error occurs | `{ message }` |
+   254→| `done` | Run completes | `{ result, totalSteps, totalTokens }` |
+   255→| `reflection` | Reflection iteration completes | `{ iteration, critique, approved }` |
+   256→| `policy` | Policy blocks action | `{ tool, action, reason }` |
+   257→| `handoff` | Agent passes output to next (sequential) | `{ fromAgent, toAgent }` |
+   258→| `group_message` | Agent speaks in group chat | `{ agent, message }` |
+   259→
+   260→---
+   261→
+   262→## 4. Tool System
+   263→
+   264→### Built-in Tools
+   265→
+   266→```
+   267→┌──────────────────────────────────────────────────────────────────┐
+   268→│                        Tool Arsenal                              │
+   269→│                                                                  │
+   270→│  ┌────────────┐  Risk: Low                                      │
+   271→│  │ web_search │  Search the web using ZAI Web Search API         │
+   272→│  │            │  Input: { query: string }                        │
+   273→│  │            │  Output: Search results with snippets            │
+   274→│  └────────────┘                                                  │
+   275→│                                                                  │
+   276→│  ┌────────────┐  Risk: Low                                      │
+   277→│  │ write_file │  Save content to agent memory                   │
+   278→│  │            │  Input: { filename: string, content: string }   │
+   279→│  │            │  Output: Confirmation + memory key              │
+   280→│  └────────────┘                                                  │
+   281→│                                                                  │
+   282→│  ┌────────────┐  Risk: Medium                                   │
+   283→│  │execute_code│  Execute code with optional verification        │
+   284→│  │            │  Input: { code: string, language: string }      │
+   285→│  │            │  Output: Execution result + verification status │
+   286→│  └────────────┘                                                  │
+   287→│                                                                  │
+   288→│  ┌────────────┐  Risk: Low                                      │
+   289→│  │ browse_url │  Read and extract web page content              │
+   290→│  │            │  Input: { url: string }                         │
+   291→│  │            │  Output: Page content (text/HTML)               │
+   292→│  └────────────┘                                                  │
+   293→│                                                                  │
+   294→│  ┌────────────┐  Risk: None                                     │
+   295→│  │  finish    │  Signal goal completion with final output       │
+   296→│  │            │  Input: { output: string }                      │
+   297→│  │            │  Output: Final result → run ends                │
+   298→│  └────────────┘                                                  │
+   299→│                                                                  │
+   300→│  ┌────────────┐  Risk: Low                                      │
+   301→│  │save_memory │  Persist data to memory tiers                   │
+   302→│  │            │  Input: { key: string, value: any, tier: enum } │
+   303→│  │            │  Output: Confirmation                           │
+   304→│  └────────────┘                                                  │
+   305→│                                                                  │
+   306→│  ┌────────────┐  Risk: Low                                      │
+   307→│  │read_memory │  Retrieve data from memory tiers                │
+   308→│  │            │  Input: { key: string, tier?: enum }            │
+   309→│  │            │  Output: Stored value                           │
+   310→│  └────────────┘                                                  │
+   311→└──────────────────────────────────────────────────────────────────┘
+   312→```
+   313→
+   314→### Tool Risk Levels
+   315→
+   316→| Risk Level | Color | Policy Default | Example Tools |
+   317→|-----------|-------|---------------|---------------|
+   318→| `low` | Green | Auto-allow | web_search, browse_url, finish, save_memory, read_memory |
+   319→| `medium` | Yellow | May require approval | execute_code |
+   320→| `high` | Orange | Requires approval | — |
+   321→| `critical` | Red | Always requires approval | — |
+   322→
+   323→### Verification Methods
+   324→
+   325→| Method | Description | Applied To |
+   326→|--------|-------------|-----------|
+   327→| `json_schema` | Validate output against a JSON schema | write, code |
+   328→| `code_compiles` | Check that code compiles without errors | code |
+   329→| `url_reachable` | HTTP HEAD to verify URL returns 2xx | browser |
+   330→| `regex_match` | Pattern matching against output | any |
+   331→| `custom` | User-defined validator function | any |
+   332→
+   333→---
+   334→
+   335→## 5. Role System
+   336→
+   337→### Role Architecture
+   338→
+   339→```
+   340→┌──────────────────────────────────────────────────────────┐
+   341→│                     Role System                           │
+   342→│                                                          │
+   343→│  Each role provides:                                     │
+   344→│  ┌────────────────────────────────────────────────────┐  │
+   345→│  │  Prompt Modifier                                    │  │
+   346→│  │  Injected into LLM prompt to shape agent behavior  │  │
+   347→│  │  e.g., "You are a planner. Break goals into        │  │
+   348→│  │  subtasks and delegate to appropriate agents."     │  │
+   349→│  └────────────────────────────────────────────────────┘  │
+   350→│                                                          │
+   351→│  ┌────────────────────────────────────────────────────┐  │
+   352→│  │  Default Tools                                      │  │
+   353→│  │  Pre-configured tool set for the role               │  │
+   354→│  │  Planner: search, write                             │  │
+   355→│  │  Executor: search, write, code                      │  │
+   356→│  └────────────────────────────────────────────────────┘  │
+   357→│                                                          │
+   358→│  ┌────────────────────────────────────────────────────┐  │
+   359→│  │  Permissions                                        │  │
+   360→│  │  Access control: read, write, execute, approve,     │  │
+   361→│  │  delegate                                            │  │
+   362→│  └────────────────────────────────────────────────────┘  │
+   363→│                                                          │
+   364→│  ┌────────────────────────────────────────────────────┐  │
+   365→│  │  Default Personality                                │  │
+   366→│  │  Behavioral baseline for the role                   │  │
+   367→│  │  Planner: "strategic and methodical"                │  │
+   368→│  │  Critic: "analytical and constructively critical"   │  │
+   369→│  └────────────────────────────────────────────────────┘  │
+   370→└──────────────────────────────────────────────────────────┘
+   371→```
+   372→
+   373→### Effective Personality Composition
+   374→
+   375→```
+   376→Final Prompt = Base Personality + Role Prompt Modifier
+   377→
+   378→Example: Agent with personality="helpful assistant" and role="planner"
+   379→
+   380→  Base:       "You are a helpful assistant."
+   381→  + Modifier: "You are a planner. Break goals into subtasks and
+   382→               delegate to appropriate agents. Think step by step."
+   383→  = Effective: "You are a helpful assistant. You are a planner.
+   384→               Break goals into subtasks and delegate to appropriate
+   385→               agents. Think step by step."
+   386→```
+   387→
+   388→---
+   389→
+   390→## 6. Orchestration Modes
+   391→
+   392→### Mode Overview
+   393→
+   394→```
+   395→┌───────────────────────────────────────────────────────────────────┐
+   396→│                    Orchestration Engine                            │
+   397→│                                                                   │
+   398→│  ┌─────────────┐  Simplest ←─────────────────────── Most Complex │
+   399→│  │             │                                                  │
+   400→│  │   SINGLE    │  One agent, one run, linear execution            │
+   401→│  │             │  No coordination overhead                         │
+   402→│  │      │      │                                                  │
+   403→│  │      ▼      │                                                  │
+   404→│  │ SEQUENTIAL  │  A→B→C handoff chain                             │
+   405→│  │             │  Each agent receives previous agent's output      │
+   406→│  │      │      │                                                  │
+   407→│  │      ▼      │                                                  │
+   408→│  │   GROUP     │  Shared scratchpad, LLM speaker selection        │
+   409→│  │             │  Agents discuss until termination condition       │
+   410→│  │      │      │                                                  │
+   411→│  │      ▼      │                                                  │
+   412→│  │HIERARCHICAL │  Manager → Workers → Synthesizer                 │
+   413→│  │             │  Top-down task decomposition and delegation       │
+   414→│  │      │      │                                                  │
+   415→│  │      ▼      │                                                  │
+   416→│  │  PARALLEL   │  Fan-out with semaphore concurrency control       │
+   417→│  │             │  All agents run simultaneously, merge results     │
+   418→│  └─────────────┘                                                  │
+   419→└───────────────────────────────────────────────────────────────────┘
+   420→```
+   421→
+   422→### Single Mode
+   423→
+   424→```
+   425→User Goal → Agent → [Plan → Execute → Verify]* → Result
+   426→```
+   427→
+   428→- One agent runs the full loop
+   429→- No coordination overhead
+   430→- Best for simple, well-defined tasks
+   431→
+   432→### Sequential Mode
+   433→
+   434→```
+   435→┌────────┐     ┌────────┐     ┌────────┐
+   436→│Agent A │────►│Agent B │────►│Agent C │
+   437→│Research│     │Analyze │     │  Write │
+   438→└────────┘     └────────┘     └────────┘
+   439→     │              │              │
+   440→     ▼              ▼              ▼
+   441→  Output A      Output B      Final Output
+   442→  = Input B     = Input C
+   443→
+   444→Events emitted: handoff (fromAgent, toAgent) between each step
+   445→```
+   446→
+   447→- Agents run in series
+   448→- Each agent's output becomes the next agent's input
+   449→- Handoff events emitted between transitions
+   450→
+   451→### Group Chat Mode
+   452→
+   453→```
+   454→┌───────────────────────────────────────────┐
+   455→│              Shared Scratchpad             │
+   456→│                                           │
+   457→│  Agent A: "I found data on X..."          │
+   458→│  Agent B: "Building on that, Y shows..."  │
+   459→│  Agent A: "The key insight is Z..."       │
+   460→│  Agent C: "I can verify this by..."       │
+   461→│                                           │
+   462→│  LLM Speaker Selection:                   │
+   463→│  After each message, LLM chooses which    │
+   464→│  agent speaks next based on context       │
+   465→└───────────────────────────────────────────┘
+   466→         │
+   467→         ▼
+   468→  Termination condition met → Synthesize final output
+   469→
+   470→Events emitted: group_message (agent, message)
+   471→```
+   472→
+   473→- All agents share a conversation scratchpad
+   474→- LLM decides which agent speaks next
+   475→- Terminates on max_steps, text_mention, or max_messages
+   476→
+   477→### Hierarchical Mode
+   478→
+   479→```
+   480→         ┌──────────┐
+   481→         │ Manager  │
+   482→         │(Planner) │
+   483→         └────┬─────┘
+   484→              │
+   485→     ┌────────┼────────┐
+   486→     │        │        │
+   487→     ▼        ▼        ▼
+   488→┌────────┐┌────────┐┌────────┐
+   489→│Worker 1││Worker 2││Worker 3│
+   490→│Research││Execute ││Review  │
+   491→└────┬───┘└────┬───┘└────┬───┘
+   492→     │         │         │
+   493→     └─────────┼─────────┘
+   494→               │
+   495→               ▼
+   496→         ┌──────────────┐
+   497→         │ Synthesizer  │
+   498→         │ (Manager)    │
+   499→         └──────────────┘
+   500→               │
+   501→               ▼
+   502→          Final Output
+   503→```
+   504→
+   505→- Manager decomposes goal into subtasks
+   506→- Delegates subtasks to worker agents
+   507→- Workers execute independently
+   508→- Manager synthesizes all worker outputs
+   509→
+   510→### Parallel Mode
+   511→
+   512→```
+   513→           ┌──────────┐
+   514→           │  Fan-out  │
+   515→           └────┬─────┘
+   516→                │
+   517→      ┌─────────┼─────────┐
+   518→      │         │         │
+   519→      ▼         ▼         ▼
+   520→┌──────────┐┌──────────┐┌──────────┐
+   521→│ Agent A  ││ Agent B  ││ Agent C  │
+   522→│          ││          ││          │
+   523→│ Semaphore││ Semaphore││ Semaphore│
+   524→│  Slot 1  ││  Slot 2  ││  Slot 3  │
+   525→└────┬─────┘└────┬─────┘└────┬─────┘
+   526→     │           │           │
+   527→     └───────────┼───────────┘
+   528→                 │
+   529→                 ▼
+   530→          ┌────────────┐
+   531→          │  Merge     │
+   532→          │  Results   │
+   533→          └────────────┘
+   534→```
+   535→
+   536→- All agents run simultaneously
+   537→- Semaphore controls max concurrency (configurable, default 3)
+   538→- Results merged in agent order after all complete
+   539→- Best for independent research tasks
+   540→
+   541→### Team Configuration
+   542→
+   543→```typescript
+   544→interface TeamConfig {
+   545→  name: string;                    // Team display name
+   546→  mode: OrchestrationMode;         // sequential | group | hierarchical | parallel
+   547→  maxConcurrency: number;          // Max parallel agents (parallel mode only)
+   548→  terminationType: string;         // max_steps | text_mention | max_messages
+   549→  terminationValue: number;        // Threshold for termination condition
+   550→  sharedContext: boolean;          // Whether agents share context
+   551→  agents: AgentConfig[];           // Agent configurations
+   552→}
+   553→```
+   554→
+   555→---
+   556→
+   557→## 7. Memory System
+   558→
+   559→### 3-Tier Architecture
+   560→
+   561→```
+   562→┌─────────────────────────────────────────────────────────┐
+   563→│                   MemoryManager                          │
+   564→│                                                          │
+   565→│  ┌────────────────────────────────────────────────────┐ │
+   566→│  │  TIER 1: SESSION (In-Memory)                       │ │
+   567→│  │                                                    │ │
+   568→│  │  • Stored in Map<runId, Map<key, entry>>           │ │
+   569→│  │  • Scoped to a single run                          │ │
+   570→│  │  • Auto-expires after 24 hours                     │ │
+   571→│  │  • Fastest read/write                              │ │
+   572→│  │  • Cleared on clearSession() or run end            │ │
+   573→│  │  • Use case: temporary working data, context       │ │
+   574→│  └────────────────────────────────────────────────────┘ │
+   575→│                                                          │
+   576→│  ┌────────────────────────────────────────────────────┐ │
+   577→│  │  TIER 2: PERSISTENT (Database)                     │ │
+   578→│  │                                                    │ │
+   579→│  │  • Stored in AgentMemory table                     │ │
+   580→│  │  • Unique key: (agentId, key, tier)                │ │
+   581→│  │  • Upsert semantics (update or create)             │ │
+   582→│  │  • Survives across runs                            │ │
+   583→│  │  • Use case: learned facts, user preferences       │ │
+   584→│  └────────────────────────────────────────────────────┘ │
+   585→│                                                          │
+   586→│  ┌────────────────────────────────────────────────────┐ │
+   587→│  │  TIER 3: ARTIFACT (Database)                       │ │
+   588→│  │                                                    │ │
+   589→│  │  • Stored in Artifact table                        │ │
+   590→│  │  • Unique key: (agentId, name)                     │ │
+   591→│  │  • Rich metadata (type, runId, custom metadata)    │ │
+   592→│  │  • Large content blobs (code, documents, data)     │ │
+   593→│  │  • Use case: generated reports, code files, data   │ │
+   594→│  └────────────────────────────────────────────────────┘ │
+   595→│                                                          │
+   596→│  API:                                                    │
+   597→│    get(agentId, key, tier?) → value                      │
+   598→│    set(agentId, key, value, tier, runId?) → void         │
+   599→│    delete(agentId, key, tier) → void                     │
+   600→│    list(agentId, tier?) → MemoryEntry[]                  │
+   601→│    clearSession(runId) → void                            │
+   602→│    saveArtifact(agentId, name, type, content, meta?) → a │
+   603→│    listArtifacts(agentId) → Artifact[]                   │
+   604→│    getArtifact(agentId, name) → Artifact                 │
+   605→└─────────────────────────────────────────────────────────┘
+   606→```
+   607→
+   608→### Memory in Agent Execution
+   609→
+   610→```
+   611→During runStep():
+   612→  │
+   613→  ├── Read: Load relevant memories into LLM context
+   614→  │   ├── Session: current run's working data
+   615→  │   ├── Persistent: cross-run learned facts
+   616→  │   └── Artifact: reference documents
+   617→  │
+   618→  ├── Execute: Tool may produce output worth remembering
+   619→  │
+   620→  └── Write: Save new insights
+   621→      ├── Session: temporary calculations, intermediate state
+   622→      ├── Persistent: confirmed facts, discovered patterns
+   623→      └── Artifact: generated files, reports, code
+   624→```
+   625→
+   626→---
+   627→
+   628→## 8. Policy & Governance
+   629→
+   630→### Policy Engine Architecture
+   631→
+   632→```
+   633→┌─────────────────────────────────────────────────────────┐
+   634→│                    PolicyEngine                          │
+   635→│                                                          │
+   636→│  Input: tool, role, riskLevel, agentId                  │
+   637→│                                                          │
+   638→│  1. Load all enabled policies (sorted by priority DESC) │
+   639→│                                                          │
+   640→│  2. Evaluate each policy:                               │
+   641→│     ┌─────────────────────────────────────┐             │
+   642→│     │  Condition Match:                    │             │
+   643→│     │  • tool: ["execute_code", ...]       │             │
+   644→│     │  • role: ["executor", ...]           │             │
+   645→│     │  • riskLevel: ["high", "critical"]   │             │
+   646→│     │  • agentId: ["specific-agent-id"]    │             │
+   647→│     │                                      │             │
+   648→│     │  If ALL condition fields match →     │             │
+   649→│     │    Apply this policy's action         │             │
+   650→│     └─────────────────────────────────────┘             │
+   651→│                                                          │
+   652→│  3. First matching policy wins (priority order)         │
+   653→│                                                          │
+   654→│  4. Return PolicyCheckResult:                           │
+   655→│     ├── action: allow | block | ask_user | shadow       │
+   656→│     ├── matchedPolicy: PolicyRule | null                │
+   657→│     └── reason: string                                  │
+   658→│                                                          │
+   659→│  5. Log to AuditLog (always, regardless of action)      │
+   660→└─────────────────────────────────────────────────────────┘
+   661→```
+   662→
+   663→### Policy Actions
+   664→
+   665→| Action | Behavior | UI Impact |
+   666→|--------|----------|-----------|
+   667→| `allow` | Execute tool normally | No interruption |
+   668→| `block` | Prevent execution, return error | Red error event in stream |
+   669→| `ask_user` | Pause execution, create ApprovalRequest | ApprovalModal appears |
+   670→| `shadow` | Execute tool + log audit, no interruption | No visible interruption |
+   671→
+   672→### Default Policies (Pre-seeded)
+   673→
+   674→| Priority | Name | Condition | Action |
+   675→|----------|------|-----------|--------|
+   676→| 100 | Block critical risk | riskLevel = critical | block |
+   677→| 90 | Require approval for code execution | tool = execute_code | ask_user |
+   678→| 80 | Block all for reviewer role | role = reviewer | block (execute) |
+   679→| 70 | Allow read operations | tool = search \| browse_url \| read_memory | allow |
+   680→| 60 | Allow general role | role = general | allow |
+   681→
+   682→### Approval Workflow
+   683→
+   684→```
+   685→┌──────────┐     ┌───────────────┐     ┌──────────────┐
+   686→│  Agent   │────►│ ApprovalReq   │────►│  Human User  │
+   687→│  Wants   │     │  (pending)    │     │  Sees Modal  │
+   688→│  to Act  │     │  in DB        │     │              │
+   689→└──────────┘     └───────────────┘     └──────┬───────┘
+   690→                                               │
+   691→                                        ┌──────┴───────┐
+   692→                                        │              │
+   693→                                     Approved        Denied
+   694→                                        │              │
+   695→                                        ▼              ▼
+   696→                                   Execute tool    Emit error
+   697→                                   + update        + update
+   698→                                   approval        approval
+   699→                                   status          status
+   700→```
+   701→
+   702→---
+   703→
+   704→## 9. Reflection Loop
+   705→
+   706→### Critic-Generator Pattern
+   707→
+   708→```
+   709→┌──────────────────────────────────────────────────────────┐
+   710→│                  Reflection Loop                          │
+   711→│                                                          │
+   712→│  Initial Output (from agent execution)                   │
+   713→│       │                                                  │
+   714→│       ▼                                                  │
+   715→│  ┌──────────────┐                                        │
+   716→│  │  ITERATION 1 │                                        │
+   717→│  │              │                                        │
+   718→│  │  Generator:  │  "Here is the analysis..."            │
+   719→│  │  produces    │                                        │
+   720→│  │  output      │                                        │
+   721→│  │              │                                        │
+   722→│  │  Critic:     │  "The analysis lacks depth on X.      │
+   723→│  │  evaluates   │   Please revise with more detail."    │
+   724→│  │              │                                        │
+   725→│  │  Approved?   │  NO → Continue                        │
+   726→│  └──────────────┘                                        │
+   727→│       │                                                  │
+   728→│       ▼                                                  │
+   729→│  ┌──────────────┐                                        │
+   730→│  │  ITERATION 2 │                                        │
+   731→│  │              │                                        │
+   732→│  │  Generator:  │  "Revised analysis with X detail..."  │
+   733→│  │  revises     │                                        │
+   734→│  │  based on    │                                        │
+   735→│  │  critique    │                                        │
+   736→│  │              │                                        │
+   737→│  │  Critic:     │  "APPROVED"                            │
+   738→│  │  evaluates   │                                        │
+   739→│  │              │                                        │
+   740→│  │  Approved?   │  YES → Break                           │
+   741→│  └──────────────┘                                        │
+   742→│       │                                                  │
+   743→│       ▼                                                  │
+   744→│  Return final output                                     │
+   745→│                                                          │
+   746→│  Safety: Max iterations (default 3) prevents infinite    │
+   747→│  loops. If max reached without approval, return latest.  │
+   748→└──────────────────────────────────────────────────────────┘
+   749→```
+   750→
+   751→### Reflection Configuration
+   752→
+   753→```typescript
+   754→interface ReflectionConfig {
+   755→  enabled: boolean;            // Master toggle
+   756→  maxIterations: number;       // Max critic-generator cycles (1-10)
+   757→  criteria: string;            // Approval criteria string (default "APPROVED")
+   758→}
+   759→```
+   760→
+   761→### Reflection Persistence
+   762→
+   763→Each iteration is stored in the `ReflectionIteration` database table:
+   764→
+   765→| Field | Type | Description |
+   766→|-------|------|-------------|
+   767→| `id` | cuid | Primary key |
+   768→| `runId` | string | FK to AgentRun |
+   769→| `iteration` | number | Cycle number (1, 2, 3...) |
+   770→| `output` | string | Generator's output |
+   771→| `critique` | string | Critic's evaluation |
+   772→| `approved` | boolean | Whether critic approved |
+   773→
+   774→---
+   775→
+   776→## 10. Metrics & Observability
+   777→
+   778→### Metrics Collection
+   779→
+   780→```
+   781→┌─────────────────────────────────────────────────────────┐
+   782→│                 MetricsCollector                         │
+   783→│                                                          │
+   784→│  Per-Run Metrics:                                        │
+   785→│  ├── Total tokens used                                   │
+   786→│  ├── Total latency (ms)                                  │
+   787→│  ├── Number of steps                                     │
+   788→│  ├── Tool usage distribution (count per tool)            │
+   789→│  ├── Verification pass/fail rate                         │
+   790→│  └── Error count                                         │
+   791→│                                                          │
+   792→│  System-Wide Metrics:                                    │
+   793→│  ├── Total runs                                          │
+   794→│  ├── Completed runs                                      │
+   795→│  ├── Failed runs                                         │
+   796→│  ├── Active runs                                         │
+   797→│  ├── Total agents                                        │
+   798→│  ├── Total tokens used (all time)                        │
+   799→│  ├── Average latency per run                             │
+   800→│  ├── Average steps per run                               │
+   801→│  └── Error rate (%)                                      │
+   802→│                                                          │
+   803→│  Timeline Events (per run):                              │
+   804→│  ├── run_start                                           │
+   805→│  ├── step_start                                          │
+   806→│  ├── llm_call (with token count + duration)              │
+   807→│  ├── tool_execution (with duration)                      │
+   808→│  ├── step_end                                            │
+   809→│  └── run_end                                             │
+   810→└─────────────────────────────────────────────────────────┘
+   811→```
+   812→
+   813→### Audit Trail
+   814→
+   815→Every policy check and approval creates an immutable audit log entry:
+   816→
+   817→| Field | Description |
+   818→|-------|-------------|
+   819→| `agentId` | Which agent triggered the check |
+   820→| `runId` | Which run |
+   821→| `action` | What action was requested (tool name) |
+   822→| `details` | Full condition match details (JSON) |
+   823→| `outcome` | allow, block, ask_user, shadow |
+   824→| `riskLevel` | Assessed risk level |
+   825→
+   826→---
+   827→
+   828→## 11. Building Agents with AI
+   829→
+   830→### AI Builder Flow
+   831→
+   832→```
+   833→User Input: "I need an agent that researches quantum computing
+   834→             and writes a summary report"
+   835→
+   836→       │
+   837→       ▼
+   838→┌──────────────┐
+   839→│  Planner     │
+   840→│  .build()    │
+   841→│              │
+   842→│  1. Create   │
+   843→│     system   │
+   844→│     prompt   │
+   845→│              │
+   846→│  2. Call LLM │
+   847→│     with     │
+   848→│     ZAI SDK  │
+   849→│              │
+   850→│  3. Parse    │
+   851→│     JSON     │
+   852→│     response │
+   853→└──────┬───────┘
+   854→       │
+   855→       ▼
+   856→AgentConfig {
+   857→  name: "Quantum Research Agent",
+   858→  goal: "Research quantum computing topics and produce
+   859→         comprehensive summary reports",
+   860→  personality: "analytical and detail-oriented researcher",
+   861→  tools: ["search", "write", "browser"],
+   862→  role: "researcher",
+   863→  model: "gemini-2.5-pro",
+   864→  orchestrationMode: "single",
+   865→  maxSteps: 15,
+   866→  outputFormat: "markdown",
+   867→  reflectionEnabled: false,
+   868→  shortTermMemory: true,
+   869→  longTermMemory: true
+   870→}
+   871→       │
+   872→       ▼
+   873→  Save to DB → Add to Canvas → Select in Inspector
+   874→```
+   875→
+   876→### JSON Extraction Strategies
+   877→
+   878→When the LLM returns a response, the planner tries 4 strategies to extract valid JSON:
+   879→
+   880→```
+   881→Strategy 1: Direct Parse
+   882→  → Try JSON.parse(entire response)
+   883→  → Success rate: Low (LLM often adds prose)
+   884→
+   885→Strategy 2: Code Block Extraction
+   886→  → Find ```json ... ``` in response
+   887→  → Parse the content between backticks
+   888→  → Success rate: Medium
+   889→
+   890→Strategy 3: Greedy JSON Extraction
+   891→  → Find first { and last }
+   892→  → Parse substring
+   893→  → Success rate: High (catches most cases)
+   894→
+   895→Strategy 4: Tool Mention Inference
+   896→  → If no JSON found, scan text for tool names
+   897→  → Create a simple action based on mention
+   898→  → Success rate: Fallback only
+   899→```
+   900→
+   901→---
+   902→
+   903→## 12. API Reference for Agent Operations
+   904→
+   905→### Create Agent
+   906→
+   907→```
+   908→POST /api/agent/create
+   909→Body: {
+   910→  name: string,              (required)
+   911→  goal: string,              (required)
+   912→  personality?: string,
+   913→  tools?: string[],
+   914→  role?: string,
+   915→  model?: string,
+   916→  orchestrationMode?: string,
+   917→  maxSteps?: number,
+   918→  autoRun?: boolean,
+   919→  outputFormat?: string,
+   920→  reflectionEnabled?: boolean,
+   921→  reflectionMaxIter?: number,
+   922→  reflectionCriteria?: string,
+   923→  shortTermMemory?: boolean,
+   924→  longTermMemory?: boolean,
+   925→  maxConcurrency?: number
+   926→}
+   927→Response: AgentInfo
+   928→```
+   929→
+   930→### Build Agent with AI
+   931→
+   932→```
+   933→POST /api/agent/build
+   934→Body: {
+   935→  userInput: string,         (required - natural language description)
+   936→  save?: boolean             (default: true - save to DB)
+   937→}
+   938→Response: {
+   939→  config: AgentConfig,       (generated configuration)
+   940→  agent?: AgentInfo          (if save=true, the saved agent)
+   941→}
+   942→```
+   943→
+   944→### Run Agent
+   945→
+   946→```
+   947→POST /api/agent/run
+   948→Body: {
+   949→  agentId: string,           (required)
+   950→  goal?: string              (optional override)
+   951→}
+   952→Response: {
+   953→  runId: string              (use for SSE stream)
+   954→}
+   955→
+   956→Then connect to SSE:
+   957→GET /api/agent/stream?runId={runId}
+   958→```
+   959→
+   960→### Stop Agent
+   961→
+   962→```
+   963→POST /api/agent/stop
+   964→Body: {
+   965→  runId: string              (required)
+   966→}
+   967→Response: { success: true }
+   968→```
+   969→
+   970→### Run Team
+   971→
+   972→```
+   973→POST /api/team/run
+   974→Body: {
+   975→  teamId: string,            (required)
+   976→  goal?: string              (optional)
+   977→}
+   978→Response: {
+   979→  runId: string
+   980→}
+   981→```
+   982→
+   983→### Get Metrics
+   984→
+   985→```
+   986→GET /api/metrics/run?runId={runId}
+   987→Response: {
+   988→  totalTokens: number,
+   989→  totalLatencyMs: number,
+   990→  stepCount: number,
+   991→  toolUsage: Record<string, number>,
+   992→  verificationResults: { passed: number, failed: number }
+   993→}
+   994→
+   995→GET /api/metrics/system
+   996→Response: {
+   997→  totalRuns: number,
+   998→  completedRuns: number,
+   999→  failedRuns: number,
+  1000→  activeRuns: number,
+  1001→  totalAgents: number,
+  1002→  totalTokensUsed: number,
+  1003→  avgLatencyMs: number,
+  1004→  avgStepsPerRun: number,
+  1005→  errorRate: number
+  1006→}
+  1007→```
+  1008→
+  1009→---
+  1010→
+  1011→## Appendix: Quick Reference
+  1012→
+  1013→### Event Stream Cheat Sheet
+  1014→
+  1015→| SSE Event | When | What to Show |
+  1016→|-----------|------|-------------|
+  1017→| `status` | Run lifecycle change | Status bar update |
+  1018→| `thinking` | LLM processing | Thinking indicator |
+  1019→| `plan` | Next action decided | Step card with reasoning |
+  1020→| `action` | Tool starts | Tool icon + input preview |
+  1021→| `result` | Tool completes | Output preview |
+  1022→| `error` | Something went wrong | Red error card |
+  1023→| `done` | Run finished | Completion banner |
+  1024→| `reflection` | Critic evaluates | Iteration card |
+  1025→| `policy` | Policy blocks action | Yellow warning card |
+  1026→| `handoff` | Sequential agent handoff | Agent transition card |
+  1027→| `group_message` | Group chat message | Agent bubble |
+  1028→
+  1029→### Run Status Values
+  1030→
+  1031→| Status | Color | Description |
+  1032→|--------|-------|-------------|
+  1033→| `pending` | Gray | Created but not started |
+  1034→| `running` | Cyan | Currently executing |
+  1035→| `completed` | Green | Successfully finished |
+  1036→| `failed` | Red | Errored out |
+  1037→| `stopped` | Yellow | User manually stopped |
+  1038→
+  1039→### Orchestration Mode Decision Tree
+  1040→
+  1041→```
+  1042→Need multiple agents?
+  1043→├── No → SINGLE
+  1044→└── Yes
+  1045→    ├── Need agents to run one after another?
+  1046→    │   └── Yes → SEQUENTIAL
+  1047→    └── No
+  1048→        ├── Need agents to discuss together?
+  1049→        │   └── Yes → GROUP
+  1050→        └── No
+  1051→            ├── Need a manager to coordinate?
+  1052→            │   └── Yes → HIERARCHICAL
+  1053→            └── No → PARALLEL (run independently)
+  1054→```
+  1055→
+  1056→---
+  1057→
+  1058→*This document covers the complete agent system in Agent Studio OS. Last updated: 2025-01-18.*
+  1059→

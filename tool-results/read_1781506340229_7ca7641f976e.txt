@@ -1,0 +1,1236 @@
+     1→# CODEREVIEW.md AGENTIC OS V2 — FEATURE SPEC (DEV-READY)
+     2→
+     3→## 🎯 Executive Summary
+     4→
+     5→**Transformation**: From single-agent task orchestration UI → Multi-agent autonomous runtime OS
+     6→
+     7→**Impact**: Agent Studio OS evolves from a "task runner" into a full "agent operating system" capable of managing complex, multi-agent workflows with reflection, parallel execution, approval systems, and enterprise-grade observability.
+     8→
+     9→**Scope**: 10 major features spanning architecture, execution engine, safety, and observability.
+    10→
+    11→---
+    12→
+    13→## 📊 Current State Analysis
+    14→
+    15→### ✅ V1 Strengths (Foundation)
+    16→- **Architecture**: Clean layered design (Presentation → API → Engine → Data)
+    17→- **Execution**: Step-based safety model with kill switches and max steps
+    18→- **Real-time**: SSE streaming for live execution updates
+    19→- **UI/UX**: Professional dark theme with React Flow canvas
+    20→- **Safety**: Kill switch, step limits, auto/manual modes
+    21→
+    22→### ❌ V1 Gaps (vs V2 Requirements)
+    23→- **Execution**: Single-agent only, sequential execution only
+    24→- **Quality**: No self-improvement or reflection loops
+    25→- **Composition**: No agent roles, permissions, or specialization
+    26→- **Memory**: Single-tier in-memory only (resets on restart)
+    27→- **Reliability**: No tool verification or approval systems
+    28→- **Observability**: Basic event streaming, no comprehensive timeline
+    29→- **Performance**: No parallel execution or async processing
+    30→- **Planning**: No structured task graphs or orchestration modes
+    31→
+    32→### 🎯 Gap Analysis Matrix
+    33→
+    34→| V2 Feature | V1 Status | Implementation Complexity | Impact |
+    35→|------------|-----------|---------------------------|--------|
+    36→| Orchestration Modes | ❌ Missing | Medium | High |
+    37→| Reflection Loops | ❌ Missing | High | High |
+    38→| Agent Roles | ❌ Missing | Medium | High |
+    39→| 3-Tier Memory | ❌ Basic | Medium | Medium |
+    40→| Tool Verification | ❌ Missing | Medium | High |
+    41→| Approval System | ❌ Missing | Low | High |
+    42→| Observability Timeline | ❌ Basic | Low | Medium |
+    43→| Parallel Engine | ❌ Missing | High | High |
+    44→| Task Graphs | ❌ Missing | High | High |
+    45→| System States | ❌ Basic | Low | Medium |
+    46→
+    47→---
+    48→
+    49→## 🚀 V2 Feature Implementation Plans
+    50→
+    51→### 1. 🎭 Orchestration Mode Engine
+    52→
+    53→**Goal**: Support multiple execution patterns beyond single-agent sequential
+    54→
+    55→#### Current State
+    56→- Single agent execution loop in `agent.ts`
+    57→- Hard-coded sequential execution in `runAgent()`
+    58→- No support for multi-agent coordination
+    59→
+    60→#### Implementation Plan
+    61→
+    62→**Database Changes**:
+    63→```prisma
+    64→model AgentRun {
+    65→  // ... existing fields
+    66→  mode: OrchestrationMode @default("sequential")
+    67→  orchestrationData: String? // JSON for mode-specific config
+    68→}
+    69→
+    70→enum OrchestrationMode {
+    71→  SEQUENTIAL
+    72→  GROUP
+    73→  HIERARCHICAL
+    74→  PARALLEL
+    75→}
+    76→```
+    77→
+    78→**Type Extensions** (`types.ts`):
+    79→```typescript
+    80→export type OrchestrationMode = "sequential" | "group" | "hierarchical" | "parallel";
+    81→
+    82→export type AgentConfig = {
+    83→  // ... existing fields
+    84→  orchestration?: {
+    85→    mode: OrchestrationMode;
+    86→    maxConcurrency?: number;
+    87→    managerAgentId?: string; // for hierarchical
+    88→    sharedContext?: boolean; // for group
+    89→  };
+    90→};
+    91→```
+    92→
+    93→**Engine Changes** (`agent.ts`):
+    94→```typescript
+    95→export async function runOrchestration(
+    96→  runId: string,
+    97→  agentConfigs: AgentConfig[],
+    98→  mode: OrchestrationMode
+    99→): Promise<void> {
+   100→  switch (mode) {
+   101→    case "sequential":
+   102→      return runSequential(runId, agentConfigs);
+   103→    case "parallel":
+   104→      return runParallel(runId, agentConfigs);
+   105→    case "group":
+   106→      return runGroup(runId, agentConfigs);
+   107→    case "hierarchical":
+   108→      return runHierarchical(runId, agentConfigs);
+   109→  }
+   110→}
+   111→```
+   112→
+   113→**API Extensions**:
+   114→- `POST /api/orchestration/start` - Start multi-agent orchestration
+   115→- `GET /api/orchestration/status` - Get orchestration status
+   116→- `POST /api/orchestration/stop` - Stop orchestration
+   117→
+   118→**UI Changes**:
+   119→- New "Orchestration Mode" dropdown in agent inspector
+   120→- Multi-agent canvas with connection arrows showing execution flow
+   121→- Real-time status indicators for each agent in orchestration
+   122→
+   123→#### Files to Modify
+   124→- `prisma/schema.prisma` - Add orchestration fields
+   125→- `src/lib/agent/types.ts` - Extend types
+   126→- `src/lib/agent/agent.ts` - Add orchestration logic
+   127→- `src/app/api/orchestration/` - New API routes
+   128→- `src/components/agent/agent-inspector.tsx` - Add mode selector
+   129→- `src/components/agent/agent-canvas.tsx` - Multi-agent visualization
+   130→
+   131→#### Testing Requirements
+   132→- Sequential mode maintains backward compatibility
+   133→- Parallel mode executes agents simultaneously
+   134→- Group mode shares memory between agents
+   135→- Hierarchical mode routes tasks through manager
+   136→
+   137→---
+   138→
+   139→### 2. 🔄 Reflection Loop System
+   140→
+   141→**Goal**: Automatic output quality improvement through self-critique
+   142→
+   143→#### Current State
+   144→- Single-pass execution (Plan → Execute → Evaluate → Done)
+   145→- No self-improvement or iteration loops
+   146→- Fixed output quality
+   147→
+   148→#### Implementation Plan
+   149→
+   150→**Database Changes**:
+   151→```prisma
+   152→model AgentRun {
+   153→  // ... existing fields
+   154→  reflectionEnabled: Boolean @default(false)
+   155→  maxIterations: Int @default(3)
+   156→  iterations: Iteration[]
+   157→}
+   158→
+   159→model Iteration {
+   160→  id: String @id @default(cuid())
+   161→  runId: String
+   162→  iterationNum: Int
+   163→  output: String
+   164→  feedback: String?
+   165→  approved: Boolean @default(false)
+   166→  createdAt: DateTime @default(now())
+   167→}
+   168→```
+   169→
+   170→**Type Extensions**:
+   171→```typescript
+   172→export type AgentConfig = {
+   173→  // ... existing fields
+   174→  reflection?: {
+   175→    enabled: boolean;
+   176→    maxIterations: number;
+   177→    approvalKeyword: string;
+   178→  };
+   179→};
+   180→
+   181→export type ReflectionEvent = {
+   182→  type: "iteration_start" | "critique" | "iteration_complete";
+   183→  iteration: number;
+   184→  output: string;
+   185→  feedback?: string;
+   186→};
+   187→```
+   188→
+   189→**Engine Changes** (`agent.ts`):
+   190→```typescript
+   191→export async function runWithReflection(
+   192→  runId: string,
+   193→  config: AgentConfig
+   194→): Promise<void> {
+   195→  let iteration = 0;
+   196→  let currentOutput = "";
+   197→  
+   198→  while (iteration < config.reflection.maxIterations) {
+   199→    // Generate output
+   200→    currentOutput = await generateOutput(runId, config, iteration);
+   201→    
+   202→    // Self-critique
+   203→    const critique = await critiqueOutput(currentOutput, config);
+   204→    
+   205→    // Check for approval
+   206→    if (critique.includes(config.reflection.approvalKeyword)) {
+   207→      await saveApprovedOutput(runId, currentOutput, iteration);
+   208→      break;
+   209→    }
+   210→    
+   211→    // Iterate
+   212→    iteration++;
+   213→    await saveIteration(runId, iteration, currentOutput, critique);
+   214→  }
+   215→}
+   216→```
+   217→
+   218→**New Module** (`src/lib/agent/reflection.ts`):
+   219→```typescript
+   220→export async function critiqueOutput(output: string, config: AgentConfig): Promise<string> {
+   221→  // Use LLM to critique the output
+   222→  const prompt = `Critique this output for quality and completeness: ${output}`;
+   223→  const critique = await callLLM(prompt);
+   224→  return critique;
+   225→}
+   226→```
+   227→
+   228→**UI Changes**:
+   229→- "Self-Improve Output" toggle in agent inspector
+   230→- Live iteration counter and progress bar
+   231→- Iteration history panel showing each attempt and critique
+   232→- Approve/Reject buttons for manual oversight
+   233→
+   234→#### Files to Create/Modify
+   235→- `prisma/schema.prisma` - Add reflection/iteration models
+   236→- `src/lib/agent/types.ts` - Add reflection types
+   237→- `src/lib/agent/reflection.ts` - New reflection module
+   238→- `src/lib/agent/agent.ts` - Integrate reflection loop
+   239→- `src/components/agent/reflection-panel.tsx` - New UI component
+   240→- `src/app/api/reflection/` - Reflection-specific API routes
+   241→
+   242→#### Testing Requirements
+   243→- Reflection loop terminates on approval keyword
+   244→- Max iterations respected
+   245→- Iteration history properly saved
+   246→- UI shows real-time iteration progress
+   247→
+   248→---
+   249→
+   250→### 3. 👥 Agent Role System
+   251→
+   252→**Goal**: Specialized, composable agents with permissions
+   253→
+   254→#### Current State
+   255→- All agents are general-purpose
+   256→- No specialization or permission system
+   257→- Homogeneous agent capabilities
+   258→
+   259→#### Implementation Plan
+   260→
+   261→**Database Changes**:
+   262→```prisma
+   263→model Agent {
+   264→  // ... existing fields
+   265→  role: AgentRole @default(GENERAL)
+   266→  permissions: String @default("read,write") // comma-separated
+   267→  specialization: String? // role-specific config JSON
+   268→}
+   269→
+   270→enum AgentRole {
+   271→  GENERAL
+   272→  PLANNER
+   273→  RESEARCHER
+   274→  EXECUTOR
+   275→  CRITIC
+   276→  REVIEWER
+   277→}
+   278→```
+   279→
+   280→**Type Extensions**:
+   281→```typescript
+   282→export type AgentRole = "general" | "planner" | "researcher" | "executor" | "critic" | "reviewer";
+   283→
+   284→export type AgentPermissions = ("read" | "write" | "execute" | "network" | "filesystem")[];
+   285→
+   286→export type AgentConfig = {
+   287→  // ... existing fields
+   288→  role?: AgentRole;
+   289→  permissions?: AgentPermissions;
+   290→  specialization?: Record<string, any>;
+   291→};
+   292→```
+   293→
+   294→**Role Behaviors** (`src/lib/agent/roles.ts`):
+   295→```typescript
+   296→export const roleDefinitions = {
+   297→  planner: {
+   298→    personality: "strategic and organized",
+   299→    tools: ["search", "write"],
+   300→    promptModifier: "Focus on creating detailed execution plans",
+   301→    color: "#7C3AED" // purple
+   302→  },
+   303→  researcher: {
+   304→    personality: "thorough and analytical", 
+   305→    tools: ["search", "browser"],
+   306→    promptModifier: "Gather comprehensive information",
+   307→    color: "#22C55E" // green
+   308→  },
+   309→  executor: {
+   310→    personality: "efficient and precise",
+   311→    tools: ["code", "write"],
+   312→    promptModifier: "Execute tasks with high accuracy",
+   313→    color: "#3B82F6" // blue
+   314→  },
+   315→  critic: {
+   316→    personality: "objective and constructive",
+   317→    tools: ["write"],
+   318→    promptModifier: "Provide detailed critique and suggestions",
+   319→    color: "#F59E0B" // amber
+   320→  },
+   321→  reviewer: {
+   322→    personality: "meticulous and quality-focused",
+   323→    tools: ["search", "write"],
+   324→    promptModifier: "Review work for completeness and accuracy",
+   325→    color: "#EF4444" // red
+   326→  }
+   327→};
+   328→```
+   329→
+   330→**UI Changes**:
+   331→- Role selection dropdown with color-coded badges
+   332→- Permission checkboxes in agent inspector
+   333→- Role-specific configuration panels
+   334→- Visual role indicators on canvas nodes
+   335→
+   336→#### Files to Create/Modify
+   337→- `prisma/schema.prisma` - Add role and permission fields
+   338→- `src/lib/agent/types.ts` - Add role types
+   339→- `src/lib/agent/roles.ts` - Role definitions and behaviors
+   340→- `src/lib/agent/planner.ts` - Role-aware planning
+   341→- `src/components/agent/role-badge.tsx` - Visual role indicators
+   342→- `src/components/agent/agent-inspector.tsx` - Role configuration
+   343→
+   344→#### Testing Requirements
+   345→- Role behaviors modify agent personality and tool selection
+   346→- Permissions restrict available actions
+   347→- UI shows role-specific styling and options
+   348→
+   349→---
+   350→
+   351→### 4. 🧠 Memory Layer (3-tier)
+   352→
+   353→**Goal**: Structured context management across sessions
+   354→
+   355→#### Current State
+   356→- Single in-memory store per run
+   357→- No persistence across runs
+   358→- No artifact management
+   359→
+   360→#### Implementation Plan
+   361→
+   362→**Database Changes**:
+   363→```prisma
+   364→model AgentMemory {
+   365→  id: String @id @default(cuid())
+   366→  agentId: String
+   367→  type: MemoryType
+   368→  key: String
+   369→  value: String // JSON
+   370→  expiresAt: DateTime?
+   371→  createdAt: DateTime @default(now())
+   372→  updatedAt: DateTime @updatedAt
+   373→}
+   374→
+   375→model MemoryArtifact {
+   376→  id: String @id @default(cuid())
+   377→  runId: String
+   378→  name: String
+   379→  type: String // "file", "data", "result"
+   380→  content: String
+   381→  metadata: String? // JSON
+   382→  createdAt: DateTime @default(now())
+   383→}
+   384→
+   385→enum MemoryType {
+   386→  SESSION
+   387→  PERSISTENT  
+   388→  ARTIFACT
+   389→}
+   390→```
+   391→
+   392→**Type Extensions**:
+   393→```typescript
+   394→export type MemoryTier = "session" | "persistent" | "artifacts";
+   395→
+   396→export type MemoryEntry = {
+   397→  id: string;
+   398→  type: MemoryTier;
+   399→  key: string;
+   400→  value: any;
+   401→  expiresAt?: Date;
+   402→  metadata?: Record<string, any>;
+   403→};
+   404→```
+   405→
+   406→**Enhanced Memory Module** (`src/lib/agent/memory.ts`):
+   407→```typescript
+   408→export class MemoryManager {
+   409→  private sessionMemory = new Map<string, any>();
+   410→  private persistentCache = new Map<string, any>();
+   411→  
+   412→  async get(key: string, tier: MemoryTier): Promise<any> {
+   413→    switch (tier) {
+   414→      case "session":
+   415→        return this.sessionMemory.get(key);
+   416→      case "persistent":
+   417→        return await this.loadPersistent(key);
+   418→      case "artifacts":
+   419→        return await this.loadArtifact(key);
+   420→    }
+   421→  }
+   422→  
+   423→  async set(key: string, value: any, tier: MemoryTier): Promise<void> {
+   424→    switch (tier) {
+   425→      case "session":
+   426→        this.sessionMemory.set(key, value);
+   427→        break;
+   428→      case "persistent":
+   429→        await this.savePersistent(key, value);
+   430→        break;
+   431→      case "artifacts":
+   432→        await this.saveArtifact(key, value);
+   433→        break;
+   434→    }
+   435→  }
+   436→}
+   437→```
+   438→
+   439→**UI Changes**:
+   440→- "Memory Inspector" panel showing all three tiers
+   441→- Session memory: current run context
+   442→- Persistent memory: cross-run knowledge
+   443→- Artifacts: generated files and outputs
+   444→- Memory browser with search and filtering
+   445→
+   446→#### Files to Create/Modify
+   447→- `prisma/schema.prisma` - Memory and artifact models
+   448→- `src/lib/agent/types.ts` - Memory types
+   449→- `src/lib/agent/memory.ts` - Enhanced memory management
+   450→- `src/components/agent/memory-inspector.tsx` - New UI panel
+   451→- `src/app/api/memory/` - Memory management API
+   452→
+   453→#### Testing Requirements
+   454→- Session memory resets between runs
+   455→- Persistent memory survives restarts
+   456→- Artifacts properly stored and retrievable
+   457→- Memory inspector shows correct data
+   458→
+   459→---
+   460→
+   461→### 5. 🔍 Tool + Verification Layer
+   462→
+   463→**Goal**: Reliable execution with validation
+   464→
+   465→#### Current State
+   466→- Tools return unverified results
+   467→- No quality checks or validation
+   468→- Trust-based execution
+   469→
+   470→#### Implementation Plan
+   471→
+   472→**Type Extensions**:
+   473→```typescript
+   474→export type ToolConfig = {
+   475→  name: string;
+   476→  validator?: (output: any) => ValidationResult;
+   477→  retryOnFailure?: boolean;
+   478→  maxRetries?: number;
+   479→};
+   480→
+   481→export type ValidationResult = {
+   482→  valid: boolean;
+   483→  score?: number;
+   484→  feedback?: string;
+   485→  suggestions?: string[];
+   486→};
+   487→
+   488→export type AgentConfig = {
+   489→  // ... existing fields
+   490→  toolConfig?: Record<string, ToolConfig>;
+   491→};
+   492→```
+   493→
+   494→**Verification Module** (`src/lib/agent/verification.ts`):
+   495→```typescript
+   496→export async function executeWithVerification(
+   497→  tool: string,
+   498→  input: any,
+   499→  config: ToolConfig
+   500→): Promise<{ result: any; validation: ValidationResult }> {
+   501→  let result;
+   502→  let attempts = 0;
+   503→  
+   504→  do {
+   505→    result = await executeTool(tool, input);
+   506→    const validation = await validateResult(result, config.validator);
+   507→    
+   508→    if (validation.valid) {
+   509→      return { result, validation };
+   510→    }
+   511→    
+   512→    attempts++;
+   513→  } while (config.retryOnFailure && attempts < config.maxRetries);
+   514→  
+   515→  return { result, validation: { valid: false, feedback: "Max retries exceeded" } };
+   516→}
+   517→
+   518→async function validateResult(result: any, validator?: Function): Promise<ValidationResult> {
+   519→  if (!validator) return { valid: true };
+   520→  
+   521→  try {
+   522→    return await validator(result);
+   523→  } catch (error) {
+   524→    return { valid: false, feedback: `Validation error: ${error.message}` };
+   525→  }
+   526→}
+   527→```
+   528→
+   529→**Built-in Validators**:
+   530→```typescript
+   531→export const validators = {
+   532→  jsonSchema: (schema: any) => (result: any) => {
+   533→    // Validate against JSON schema
+   534→    return validateJsonSchema(result, schema);
+   535→  },
+   536→  
+   537→  codeExecution: (testCommand: string) => async (result: string) => {
+   538→    // Execute code and check for errors
+   539→    const success = await runCodeTest(result, testCommand);
+   540→    return { valid: success, feedback: success ? "Code executes successfully" : "Code execution failed" };
+   541→  },
+   542→  
+   543→  apiResponse: (expectedStatus: number) => (result: any) => {
+   544→    // Check API response structure
+   545→    return result.status === expectedStatus;
+   546→  }
+   547→};
+   548→```
+   549→
+   550→**UI Changes**:
+   551→- Status indicators: ✅ Verified, ❌ Failed, ⚠ Needs Review
+   552→- Validation feedback display
+   553→- Retry controls for failed validations
+   554→- Validation configuration panel
+   555→
+   556→#### Files to Create/Modify
+   557→- `src/lib/agent/types.ts` - Tool verification types
+   558→- `src/lib/agent/verification.ts` - Validation logic
+   559→- `src/lib/agent/tools.ts` - Integrate verification
+   560→- `src/components/agent/validation-status.tsx` - Status indicators
+   561→- `src/components/agent/tool-config.tsx` - Validation configuration
+   562→
+   563→#### Testing Requirements
+   564→- Validators correctly assess tool outputs
+   565→- Failed validations trigger retries
+   566→- UI shows validation status clearly
+   567→- Manual review option works
+   568→
+   569→---
+   570→
+   571→### 6. 🛡️ Policy + Approval System
+   572→
+   573→**Goal**: Prevent unsafe actions through governance
+   574→
+   575→#### Current State
+   576→- No risk assessment or approval workflows
+   577→- All actions execute immediately
+   578→- No governance controls
+   579→
+   580→#### Implementation Plan
+   581→
+   582→**Database Changes**:
+   583→```prisma
+   584→model Policy {
+   585→  id: String @id @default(cuid())
+   586→  name: String
+   587→  description: String
+   588→  riskLevel: RiskLevel
+   589→  requiresApproval: Boolean @default(false)
+   590→  conditions: String // JSON conditions
+   591→  actions: String // JSON actions
+   592→  createdAt: DateTime @default(now())
+   593→}
+   594→
+   595→model Approval {
+   596→  id: String @id @default(cuid())
+   597→  runId: String
+   598→  policyId: String
+   599→  status: ApprovalStatus @default(PENDING)
+   600→  requestedBy: String? // user ID
+   601→  approvedBy: String?
+   602→  reason: String?
+   603→  createdAt: DateTime @default(now())
+   604→}
+   605→
+   606→enum RiskLevel {
+   607→  LOW
+   608→  MEDIUM
+   609→  HIGH
+   610→  CRITICAL
+   611→}
+   612→
+   613→enum ApprovalStatus {
+   614→  PENDING
+   615→  APPROVED
+   616→  REJECTED
+   617→  EXPIRED
+   618→}
+   619→```
+   620→
+   621→**Type Extensions**:
+   622→```typescript
+   623→export type RiskLevel = "low" | "medium" | "high" | "critical";
+   624→
+   625→export type Policy = {
+   626→  id: string;
+   627→  name: string;
+   628→  riskLevel: RiskLevel;
+   629→  requiresApproval: boolean;
+   630→  conditions: PolicyCondition[];
+   631→  actions: PolicyAction[];
+   632→};
+   633→
+   634→export type ApprovalRequest = {
+   635→  id: string;
+   636→  runId: string;
+   637→  policyId: string;
+   638→  reason: string;
+   639→  status: "pending" | "approved" | "rejected";
+   640→};
+   641→```
+   642→
+   643→**Policy Engine** (`src/lib/agent/policy.ts`):
+   644→```typescript
+   645→export class PolicyEngine {
+   646→  async checkPolicies(action: AgentAction, context: any): Promise<PolicyCheck[]> {
+   647→    const policies = await this.getActivePolicies();
+   648→    const checks: PolicyCheck[] = [];
+   649→    
+   650→    for (const policy of policies) {
+   651→      const triggered = await this.evaluateConditions(policy.conditions, action, context);
+   652→      if (triggered) {
+   653→        checks.push({
+   654→          policy,
+   655→          triggered: true,
+   656→          requiresApproval: policy.requiresApproval,
+   657→          riskLevel: policy.riskLevel
+   658→        });
+   659→      }
+   660→    }
+   661→    
+   662→    return checks;
+   663→  }
+   664→  
+   665→  async requestApproval(runId: string, policyChecks: PolicyCheck[]): Promise<void> {
+   666→    for (const check of policyChecks) {
+   667→      if (check.requiresApproval) {
+   668→        await this.createApprovalRequest(runId, check.policy);
+   669→        await this.pauseExecution(runId);
+   670→      }
+   671→    }
+   672→  }
+   673→}
+   674→```
+   675→
+   676→**UI Changes**:
+   677→- "Approval Required" modal with policy details
+   678→- Policy dashboard showing active policies and approval queue
+   679→- Risk level indicators (color-coded)
+   680→- Approve/Reject buttons with reason fields
+   681→
+   682→#### Files to Create/Modify
+   683→- `prisma/schema.prisma` - Policy and approval models
+   684→- `src/lib/agent/types.ts` - Policy types
+   685→- `src/lib/agent/policy.ts` - Policy engine
+   686→- `src/components/agent/approval-modal.tsx` - Approval UI
+   687→- `src/components/agent/policy-dashboard.tsx` - Policy management
+   688→- `src/app/api/policy/` - Policy management API
+   689→
+   690→#### Testing Requirements
+   691→- High-risk actions trigger approval requests
+   692→- Execution pauses for pending approvals
+   693→- UI shows approval status clearly
+   694→- Policy conditions evaluate correctly
+   695→
+   696→---
+   697→
+   698→### 7. 📊 Observability Timeline
+   699→
+   700→**Goal**: Debug and trust through comprehensive tracking
+   701→
+   702→#### Current State
+   703→- Basic SSE events (thinking, plan, action, result, done)
+   704→- No latency tracking, token counting, or failure analysis
+   705→- Limited debugging capabilities
+   706→
+   707→#### Implementation Plan
+   708→
+   709→**Database Changes**:
+   710→```prisma
+   711→model TimelineEvent {
+   712→  id: String @id @default(cuid())
+   713→  runId: String
+   714→  stepId: String?
+   715→  type: EventType
+   716→  timestamp: DateTime @default(now())
+   717→  duration: Int? // milliseconds
+   718→  tokens: Int? // LLM tokens used
+   719→  metadata: String // JSON
+   720→  error: String?
+   721→}
+   722→
+   723→model RunMetrics {
+   724→  id: String @id @default(cuid())
+   725→  runId: String
+   726→  totalSteps: Int
+   727→  totalDuration: Int
+   728→  totalTokens: Int
+   729→  successRate: Float
+   730→  failureCount: Int
+   731→  createdAt: DateTime @default(now())
+   732→}
+   733→
+   734→enum EventType {
+   735→  RUN_START
+   736→  STEP_START
+   737→  LLM_CALL
+   738→  TOOL_EXECUTION
+   739→  VALIDATION
+   740→  APPROVAL_REQUEST
+   741→  ERROR
+   742→  STEP_COMPLETE
+   743→  RUN_COMPLETE
+   744→}
+   745→```
+   746→
+   747→**Metrics Collector** (`src/lib/agent/metrics.ts`):
+   748→```typescript
+   749→export class MetricsCollector {
+   750→  private events: TimelineEvent[] = [];
+   751→  
+   752→  async recordEvent(
+   753→    runId: string,
+   754→    type: EventType,
+   755→    metadata: any,
+   756→    duration?: number,
+   757→    tokens?: number
+   758→  ): Promise<void> {
+   759→    const event: TimelineEvent = {
+   760→      id: generateId(),
+   761→      runId,
+   762→      type,
+   763→      timestamp: new Date(),
+   764→      duration,
+   765→      tokens,
+   766→      metadata: JSON.stringify(metadata)
+   767→    };
+   768→    
+   769→    this.events.push(event);
+   770→    await this.persistEvent(event);
+   771→  }
+   772→  
+   773→  async getRunMetrics(runId: string): Promise<RunMetrics> {
+   774→    const events = await this.getEventsForRun(runId);
+   775→    return this.calculateMetrics(events);
+   776→  }
+   777→}
+   778→```
+   779→
+   780→**UI Changes**:
+   781→- Timeline component showing events chronologically
+   782→- Performance metrics dashboard (latency, tokens, success rate)
+   783→- Event details with expandable metadata
+   784→- Filter and search capabilities
+   785→- CI/CD-style pipeline visualization
+   786→
+   787→#### Files to Create/Modify
+   788→- `prisma/schema.prisma` - Timeline and metrics models
+   789→- `src/lib/agent/metrics.ts` - Metrics collection
+   790→- `src/lib/agent/agent.ts` - Integrate metrics recording
+   791→- `src/components/agent/timeline.tsx` - Timeline visualization
+   792→- `src/components/agent/metrics-dashboard.tsx` - Performance dashboard
+   793→- `src/app/api/metrics/` - Metrics API
+   794→
+   795→#### Testing Requirements
+   796→- All events properly recorded with timing
+   797→- Token usage accurately tracked
+   798→- Timeline shows correct event sequence
+   799→- Performance metrics calculate correctly
+   800→
+   801→---
+   802→
+   803→### 8. ⚡ Parallel + Async Engine
+   804→
+   805→**Goal**: Speed and autonomy through concurrent execution
+   806→
+   807→#### Current State
+   808→- Sequential step execution with 500ms delays
+   809→- No concurrent processing
+   810→- Synchronous execution model
+   811→
+   812→#### Implementation Plan
+   813→
+   814→**Engine Changes** (`agent.ts`):
+   815→```typescript
+   816→export async function runParallelOrchestration(
+   817→  runId: string,
+   818→  agentConfigs: AgentConfig[],
+   819→  maxConcurrency: number = 3
+   820→): Promise<void> {
+   821→  const semaphore = new Semaphore(maxConcurrency);
+   822→  const promises: Promise<void>[] = [];
+   823→  
+   824→  for (const config of agentConfigs) {
+   825→    promises.push(
+   826→      semaphore.acquire().then(async (release) => {
+   827→        try {
+   828→          await runAgent(`${runId}-${config.id}`, config);
+   829→        } finally {
+   830→          release();
+   831→        }
+   832→      })
+   833→    );
+   834→  }
+   835→  
+   836→  await Promise.allSettled(promises);
+   837→}
+   838→```
+   839→
+   840→**Async Task System** (`src/lib/agent/async.ts`):
+   841→```typescript
+   842→export class AsyncTaskManager {
+   843→  private queue: Task[] = [];
+   844→  private workers: Worker[] = [];
+   845→  
+   846→  async enqueueTask(task: Task): Promise<string> {
+   847→    const taskId = generateId();
+   848→    this.queue.push({ ...task, id: taskId });
+   849→    await this.processQueue();
+   850→    return taskId;
+   851→  }
+   852→  
+   853→  private async processQueue(): Promise<void> {
+   854→    while (this.queue.length > 0 && this.workers.length < this.maxWorkers) {
+   855→      const task = this.queue.shift();
+   856→      if (task) {
+   857→        const worker = this.createWorker(task);
+   858→        this.workers.push(worker);
+   859→        
+   860→        worker.promise.finally(() => {
+   861→          this.workers = this.workers.filter(w => w !== worker);
+   862→          this.processQueue(); // Process next task
+   863→        });
+   864→      }
+   865→    }
+   866→  }
+   867→}
+   868→```
+   869→
+   870→**Configuration**:
+   871→```typescript
+   872→export type AsyncConfig = {
+   873→  enabled: boolean;
+   874→  maxConcurrency: number;
+   875→  queueSize: number;
+   876→  timeout: number;
+   877→};
+   878→```
+   879→
+   880→**UI Changes**:
+   881→- Concurrency controls in agent inspector
+   882→- Parallel execution visualization
+   883→- Queue status indicators
+   884→- Worker utilization metrics
+   885→
+   886→#### Files to Create/Modify
+   887→- `src/lib/agent/async.ts` - Async task management
+   888→- `src/lib/agent/agent.ts` - Parallel execution logic
+   889→- `src/lib/agent/types.ts` - Async configuration types
+   890→- `src/components/agent/concurrency-controls.tsx` - UI controls
+   891→- `src/components/agent/parallel-view.tsx` - Parallel execution visualization
+   892→
+   893→#### Testing Requirements
+   894→- Parallel execution respects max concurrency
+   895→- Failed tasks don't block others
+   896→- Async queue processes tasks correctly
+   897→- UI shows concurrent execution status
+   898→
+   899→---
+   900→
+   901→### 9. 🗺️ Planner → Task Graph System
+   902→
+   903→**Goal**: Structured execution through task decomposition
+   904→
+   905→#### Current State
+   906→- Single-step planning per execution cycle
+   907→- No multi-step task breakdown
+   908→- Reactive planning only
+   909→
+   910→#### Implementation Plan
+   911→
+   912→**Database Changes**:
+   913→```prisma
+   914→model TaskGraph {
+   915→  id: String @id @default(cuid())
+   916→  runId: String
+   917→  rootTaskId: String
+   918→  status: GraphStatus
+   919→  createdAt: DateTime @default(now())
+   920→  tasks: Task[]
+   921→}
+   922→
+   923→model Task {
+   924→  id: String @id @default(cuid())
+   925→  graphId: String
+   926→  parentTaskId: String?
+   927→  title: String
+   928→  description: String
+   929→  assignedAgentId: String?
+   930→  status: TaskStatus
+   931→  dependencies: String // JSON array of task IDs
+   932→  result: String?
+   933→  createdAt: DateTime @default(now())
+   934→  updatedAt: DateTime @updatedAt
+   935→}
+   936→
+   937→enum GraphStatus {
+   938→  PLANNING
+   939→  EXECUTING
+   940→  COMPLETED
+   941→  FAILED
+   942→}
+   943→
+   944→enum TaskStatus {
+   945→  PENDING
+   946→  IN_PROGRESS
+   947→  COMPLETED
+   948→  FAILED
+   949→  BLOCKED
+   950→}
+   951→```
+   952→
+   953→**Task Graph Engine** (`src/lib/agent/task-graph.ts`):
+   954→```typescript
+   955→export class TaskGraph {
+   956→  private tasks = new Map<string, Task>();
+   957→  private dependencies = new Map<string, string[]>();
+   958→  
+   959→  async createFromGoal(goal: string): Promise<TaskGraph> {
+   960→    const plan = await this.generateTaskPlan(goal);
+   961→    return this.buildGraph(plan);
+   962→  }
+   963→  
+   964→  async execute(): Promise<void> {
+   965→    const executableTasks = this.getExecutableTasks();
+   966→    
+   967→    for (const taskId of executableTasks) {
+   968→      await this.executeTask(taskId);
+   969→      await this.updateDependencies(taskId);
+   970→    }
+   971→  }
+   972→  
+   973→  private getExecutableTasks(): string[] {
+   974→    return Array.from(this.tasks.values())
+   975→      .filter(task => 
+   976→        task.status === 'PENDING' && 
+   977→        this.areDependenciesMet(task.id)
+   978→      )
+   979→      .map(task => task.id);
+   980→  }
+   981→}
+   982→```
+   983→
+   984→**UI Changes**:
+   985→- Task graph visualization (like a project management Gantt chart)
+   986→- Task assignment interface
+   987→- Dependency arrows between tasks
+   988→- Task status indicators and progress tracking
+   989→
+   990→#### Files to Create/Modify
+   991→- `prisma/schema.prisma` - Task graph models
+   992→- `src/lib/agent/task-graph.ts` - Graph management
+   993→- `src/lib/agent/planner.ts` - Task decomposition
+   994→- `src/components/agent/task-graph.tsx` - Graph visualization
+   995→- `src/components/agent/task-assignment.tsx` - Assignment interface
+   996→- `src/app/api/task-graph/` - Graph management API
+   997→
+   998→#### Testing Requirements
+   999→- Task dependencies respected
+  1000→- Parallel execution of independent tasks
+  1001→- Graph completion triggers next phase
+  1002→- UI shows task relationships clearly
+  1003→
+  1004→---
+  1005→
+  1006→### 10. 🎮 System State Manager
+  1007→
+  1008→**Goal**: Animated boot UI connecting to agent runtime state
+  1009→
+  1010→#### Current State
+  1011→- Basic run status (pending, running, completed, failed)
+  1012→- No system-wide state management
+  1013→- Limited state visualization
+  1014→
+  1015→#### Implementation Plan
+  1016→
+  1017→**System States**:
+  1018→```typescript
+  1019→export type SystemState = 
+  1020→  | "idle"
+  1021→  | "planning"
+  1022→  | "running"
+  1023→  | "waiting_approval"
+  1024→  | "error"
+  1025→  | "completed"
+  1026→  | "maintenance";
+  1027→
+  1028→export type SystemStatus = {
+  1029→  state: SystemState;
+  1030→  activeRuns: number;
+  1031→  pendingApprovals: number;
+  1032→  systemLoad: number;
+  1033→  lastActivity: Date;
+  1034→};
+  1035→```
+  1036→
+  1037→**State Manager** (`src/lib/agent/system-state.ts`):
+  1038→```typescript
+  1039→export class SystemStateManager {
+  1040→  private currentState: SystemState = "idle";
+  1041→  private listeners: StateListener[] = [];
+  1042→  
+  1043→  async transitionTo(newState: SystemState, metadata?: any): Promise<void> {
+  1044→    const oldState = this.currentState;
+  1045→    this.currentState = newState;
+  1046→    
+  1047→    await this.notifyListeners(oldState, newState, metadata);
+  1048→    await this.updatePersistentState(newState);
+  1049→  }
+  1050→  
+  1051→  getCurrentState(): SystemState {
+  1052→    return this.currentState;
+  1053→  }
+  1054→  
+  1055→  async getSystemStatus(): Promise<SystemStatus> {
+  1056→    return {
+  1057→      state: this.currentState,
+  1058→      activeRuns: await this.countActiveRuns(),
+  1059→      pendingApprovals: await this.countPendingApprovals(),
+  1060→      systemLoad: await this.calculateLoad(),
+  1061→      lastActivity: await this.getLastActivity()
+  1062→    };
+  1063→  }
+  1064→}
+  1065→```
+  1066→
+  1067→**Boot UI Integration**:
+  1068→```typescript
+  1069→// Animated logo that reflects system state
+  1070→export function SystemStateIndicator({ state }: { state: SystemState }) {
+  1071→  const animations = {
+  1072→    idle: "pulse",
+  1073→    running: "spin",
+  1074→    error: "shake",
+  1075→    completed: "bounce"
+  1076→  };
+  1077→  
+  1078→  return (
+  1079→    <motion.div
+  1080→      animate={animations[state]}
+  1081→      className="system-indicator"
+  1082→    >
+  1083→      <SystemIcon state={state} />
+  1084→    </motion.div>
+  1085→  );
+  1086→}
+  1087→```
+  1088→
+  1089→**UI Changes**:
+  1090→- Animated system state indicator in header
+  1091→- State-aware color schemes and animations
+  1092→- System status dashboard
+  1093→- State transition notifications
+  1094→
+  1095→#### Files to Create/Modify
+  1096→- `src/lib/agent/system-state.ts` - State management
+  1097→- `src/lib/agent/types.ts` - System state types
+  1098→- `src/components/ui/system-indicator.tsx` - Animated indicator
+  1099→- `src/components/agent/system-dashboard.tsx` - Status dashboard
+  1100→- `src/store/system-store.ts` - Global state management
+  1101→
+  1102→#### Testing Requirements
+  1103→- State transitions work correctly
+  1104→- UI animations match system state
+  1105→- State persistence survives restarts
+  1106→- Real-time state updates
+  1107→
+  1108→---
+  1109→
+  1110→## 📋 Implementation Roadmap
+  1111→
+  1112→### Phase 1: Foundation (Week 1-2)
+  1113→**Priority**: High-impact, low-risk features
+  1114→1. **System State Manager** - Animated boot UI
+  1115→2. **Observability Timeline** - Debug capabilities  
+  1116→3. **Policy + Approval System** - Safety layer
+  1117→4. **Agent Role System** - Specialization
+  1118→
+  1119→### Phase 2: Core Features (Week 3-4)
+  1120→**Priority**: Medium complexity, high value
+  1121→1. **Memory Layer (3-tier)** - Context management
+  1122→2. **Tool + Verification Layer** - Reliability
+  1123→3. **Orchestration Mode Engine** - Multi-agent support
+  1124→
+  1125→### Phase 3: Advanced Execution (Week 5-6)
+  1126→**Priority**: Complex, transformative features
+  1127→1. **Parallel + Async Engine** - Performance
+  1128→2. **Planner → Task Graph System** - Structured planning
+  1129→3. **Reflection Loop System** - Quality improvement
+  1130→
+  1131→### Phase 4: Polish & Testing (Week 7-8)
+  1132→**Priority**: Integration and validation
+  1133→- End-to-end testing of all features
+  1134→- UI/UX polish and consistency
+  1135→- Performance optimization
+  1136→- Documentation updates
+  1137→
+  1138→---
+  1139→
+  1140→## 🔬 Risk Assessment
+  1141→
+  1142→### High Risk
+  1143→- **Parallel Engine**: Race conditions, deadlocks
+  1144→- **Reflection Loops**: Infinite iteration potential
+  1145→- **Task Graphs**: Complex dependency management
+  1146→
+  1147→### Medium Risk  
+  1148→- **Memory Layer**: Data consistency across tiers
+  1149→- **Verification Layer**: False positives/negatives
+  1150→- **Orchestration Modes**: Coordination complexity
+  1151→
+  1152→### Low Risk
+  1153→- **System State Manager**: UI-only changes
+  1154→- **Observability Timeline**: Additive feature
+  1155→- **Agent Roles**: Configuration changes
+  1156→
+  1157→### Mitigation Strategies
+  1158→- **Testing**: Comprehensive unit and integration tests
+  1159→- **Gradual Rollout**: Feature flags for new capabilities
+  1160→- **Monitoring**: Extensive logging and metrics
+  1161→- **Fallbacks**: Graceful degradation for failures
+  1162→
+  1163→---
+  1164→
+  1165→## 📊 Resource Estimates
+  1166→
+  1167→### Development Effort
+  1168→- **Foundation Phase**: 40 hours (2 developers × 1 week)
+  1169→- **Core Features**: 60 hours (2 developers × 1.5 weeks)  
+  1170→- **Advanced Execution**: 80 hours (2 developers × 2 weeks)
+  1171→- **Polish & Testing**: 40 hours (2 developers × 1 week)
+  1172→- **Total**: 220 hours / ~2 months with 2 developers
+  1173→
+  1174→### Infrastructure Requirements
+  1175→- **Database**: Add 6-8 new tables
+  1176→- **API**: 12-15 new endpoints
+  1177→- **UI**: 8-10 new components
+  1178→- **Testing**: 50+ new test cases
+  1179→
+  1180→### Dependencies
+  1181→- **New Packages**: None (all use existing stack)
+  1182→- **Breaking Changes**: Minimal (additive features)
+  1183→- **Migration**: Database schema updates only
+  1184→
+  1185→---
+  1186→
+  1187→## 🧪 Success Metrics
+  1188→
+  1189→### Technical Metrics
+  1190→- **Performance**: <500ms state transitions, <2s graph rendering
+  1191→- **Reliability**: 99.9% uptime, <0.1% race conditions
+  1192→- **Scalability**: Support 10+ concurrent orchestrations
+  1193→
+  1194→### User Experience Metrics
+  1195→- **Usability**: >90% task completion rate
+  1196→- **Trust**: <5% approval overrides, >95% validation accuracy
+  1197→- **Efficiency**: 3x faster execution with parallel processing
+  1198→
+  1199→### Business Impact
+  1200→- **Adoption**: 80% of users enable advanced features
+  1201→- **Satisfaction**: >4.5/5 user satisfaction score
+  1202→- **Capability**: Support for 10x more complex workflows
+  1203→
+  1204→---
+  1205→
+  1206→## 🚀 Migration Strategy
+  1207→
+  1208→### Backward Compatibility
+  1209→- All existing single-agent workflows continue to work
+  1210→- New features are opt-in via configuration
+  1211→- API versioning maintains compatibility
+  1212→
+  1213→### Data Migration
+  1214→- Existing agents get default configurations
+  1215→- Run history remains accessible
+  1216→- Gradual migration of memory to new tiers
+  1217→
+  1218→### User Communication
+  1219→- Feature announcements with tutorials
+  1220→- Gradual rollout with feature flags
+  1221→- Comprehensive documentation updates
+  1222→
+  1223→---
+  1224→
+  1225→## 🎯 Next Steps
+  1226→
+  1227→1. **Immediate**: Create implementation tickets for Phase 1 features
+  1228→2. **Week 1**: Begin with System State Manager and Observability Timeline
+  1229→3. **Week 2**: Add Policy/Approval System and Agent Roles
+  1230→4. **Testing**: Set up comprehensive test suite
+  1231→5. **Documentation**: Update README and user guides
+  1232→
+  1233→This V2 specification transforms Agent Studio OS from a single-agent task runner into a full autonomous agent operating system capable of managing complex, multi-agent workflows with enterprise-grade safety, observability, and performance.
+  1234→
+  1235→The result: **From orchestration UI → Agent Runtime OS**.
+  1236→

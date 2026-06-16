@@ -1,0 +1,1066 @@
+     1→Total pages: 24
+     2→--- Page 1 ---
+     3→EXECUTIVE OPERATIONAL BLUEPRINT
+     4→HERMES PLATFORM :: MASTER DOSSIER
+     5→CONSOLIDATED ENGINEERING SERIES · UNABRIDGED · DOCUMENTS 1-5
+     6→▶ DOSSIER CONTENTS (UNABRIDGED)
+     7→DOC 1: HPR-01 // TECHNICAL ROADMAP
+     8→DOC 2: RFC-001 // DETERMINISTIC KERNEL
+     9→DOC 3: RFC-002 // CANONICAL EVENT MODEL
+    10→DOC 4/5: RFC-003/004 // ALGEBRAIC ORDERING & DISTRIBUTED CLOSURE
+    11→STATUS: CANONICAL. ALL INVARIANTS, SCHEMAS, AND TOPOLOGICAL BOUNDARIES ENFORCED.
+    12→• 
+    13→• 
+    14→• 
+    15→• 
+    16→
+    17→--- Page 2 ---
+    18→ENGINEERING PLANNING DOCUMENT
+    19→DOCUMENT 1 :: TECHNICAL ROADMAP
+    20→HERMES PLATFORM ENGINEERING SERIES · REF: HPR-01
+    21→DOCUMENT ID
+    22→HPR-01
+    23→EFFECTIVE DATE
+    24→June 2026
+    25→REVISION
+    26→v1.0
+    27→STATUS
+    28→Draft
+    29→CLASSIFICATION
+    30→Internal Engineering Ref
+    31→DEPARTMENT
+    32→Core Engineering
+    33→01   EXECUTIVE SUMMARY
+    34→Hermes is no longer a “workflow engine” project. It is evolving into a deterministic runtime platform, with agent execution as
+    35→merely one application layer built on top of a proven kernel. This document defines the phased engineering roadmap from
+    36→kernel validation through to distributed multi-node federation.
+    37→The roadmap comprises seven phases (Phase 0 through Phase 6), each with explicit objectives, deliverables, execution flows,
+    38→and success criteria. The strategic foundation of the entire platform rests on Phase 0: proving that Hermes can deterministically
+    39→reconstruct reality from facts. Everything else is built on top of that kernel.
+    40→⚠ STRATEGIC PRIORITY
+    41→No subsequent phase may begin until Phase 0 success criteria are fully demonstrated. The deterministic kernel is the
+    42→non-negotiable foundation of the entire platform.
+    43→02   STRATEGIC CONTEXT
+    44→The core architectural thesis of Hermes is this: most agent frameworks begin by building agents, then attempt to retrofit
+    45→governance, observability, and determinism. Hermes inverts this. The deterministic kernel is built first. Governance is built
+    46→second. Agents are introduced only after the substrate beneath them is proven correct and mature.
+    47→The strategic inflection point is between Phase 0 and Phase 1. Once the event stream → deterministic replay → identical state
+    48→reconstruction chain is validated, the hardest and most differentiated part of the platform is complete. All subsequent phases
+    49→add capabilities around a proven kernel, rather than discovering the kernel while simultaneously building agents, UIs,
+    50→orchestration, and governance.
+    51→03   ROADMAP OVERVIEW
+    52→PHASE
+    53→NAME
+    54→CORE QUESTION
+    55→STATUS
+    56→0
+    57→Prove the Kernel
+    58→Can Hermes deterministically reconstruct reality from facts?
+    59→● Active
+    60→1
+    61→Constitutional Runtime
+    62→Can Hermes enforce governance before execution?
+    63→Planned
+    64→2
+    65→Execution Substrate
+    66→Can Hermes execute real work?
+    67→Planned
+    68→3
+    69→Compilation
+    70→Can intent compile into execution?
+    71→Planned
+    72→4
+    73→Agent Integration
+    74→Can probabilistic systems safely participate?
+    75→Planned
+    76→5
+    77→Council & Governance
+    78→Can the system evolve without compromising determinism?
+    79→Planned
+    80→6
+    81→Distributed Hermes
+    82→Can Hermes operate across many nodes?
+    83→Future
+    84→
+    85→--- Page 3 ---
+    86→● ACTIVE
+    87→PLANNED
+    88→PLANNED
+    89→04   PHASE DEFINITIONS
+    90→PHASE 0: PROVE THE KERNEL
+    91→OBJECTIVE
+    92→Can Hermes deterministically reconstruct reality
+    93→from facts?
+    94→RATIONALE
+    95→This is the foundational proof-of-concept. If this
+    96→phase fails or is bypassed, everything built above it
+    97→rests on sand. No other phase begins until Phase 0
+    98→success criteria are met.
+    99→DELIVERABLES
+   100→Event model & Event store
+   101→Reducer & Replay engine
+   102→Checkpoints & Policy evaluator
+   103→SUCCESS CRITERIA
+   104→Run a full execution trace
+   105→Persist all events to the event store
+   106→Destroy all in-memory state
+   107→Replay the trace from persisted events
+   108→Reconstruct an identical state to the original
+   109→PHASE 1: ESTABLISH THE CONSTITUTIONAL RUNTIME
+   110→OBJECTIVE
+   111→Can Hermes enforce governance before
+   112→execution?
+   113→EXECUTION FLOW
+   114→Decision → Constitution → Policy →
+   115→Execution
+   116→DELIVERABLES
+   117→ConstitutionIR, PolicyIR, Evaluation engine,
+   118→Approval workflows, Constraint application, Audit
+   119→chain validation.
+   120→SUCCESS CRITERIA
+   121→Denied actions never execute; Approval gates
+   122→block execution correctly; Constrained execution is
+   123→fully reproducible; Replay produces identical
+   124→verdicts.
+   125→PHASE 2: BUILD THE EXECUTION SUBSTRATE
+   126→OBJECTIVE
+   127→Can Hermes execute real work?
+   128→EXECUTION FLOW
+   129→DecisionEvent → Policy Boundary →
+   130→ExecutionEvent → SystemEvent
+   131→DELIVERABLES
+   132→Tool registry, Tool contracts, Execution sandbox,
+   133→Retry engine, Failure recovery, Resource
+   134→accounting.
+   135→SUCCESS CRITERIA
+   136→Retries are deterministic/reproducible; Failures are
+   137→fully observable; Execution provenance is complete
+   138→end-to-end.
+   139→• 
+   140→• 
+   141→• 
+   142→• 
+   143→• 
+   144→• 
+   145→• 
+   146→• 
+   147→
+   148→--- Page 4 ---
+   149→PLANNED
+   150→PLANNED
+   151→PLANNED
+   152→PHASE 3: INTRODUCE COMPILATION
+   153→OBJECTIVE
+   154→Can intent compile into execution?
+   155→EXECUTION FLOW
+   156→Intent → HermesIR → Compiler → ExecIR
+   157→→ PlanSnapshot
+   158→DELIVERABLES
+   159→HermesIR schema, ExecIR schema, Compiler
+   160→pipeline, Snapshot generation, Dependency
+   161→pinning.
+   162→SUCCESS CRITERIA
+   163→Identical IR input produces identical execution
+   164→plans; Plans are replay-safe across runtime
+   165→restarts; Snapshots remain valid across upgrades.
+   166→PHASE 4: INTRODUCE AGENTS
+   167→OBJECTIVE
+   168→Can probabilistic systems safely participate?
+   169→EXECUTION FLOW
+   170→Model → Proposal → DecisionEvent →
+   171→Policy → Execution
+   172→DELIVERABLES
+   173→Agent abstraction layer, Model adapters, Candidate
+   174→generation, Decision normalization, Multi-agent
+   175→coordination.
+   176→■ CRITICAL CONSTRAINT — AGENT BOUNDARIES
+   177→Agents never mutate state. Agents never execute tools. Agents only propose. This constraint is non-negotiable.
+   178→Agents are probabilistic; the kernel must remain deterministic.
+   179→PHASE 5: COUNCIL AND GOVERNANCE
+   180→OBJECTIVE
+   181→Can the system evolve without compromising
+   182→determinism?
+   183→EXECUTION FLOW
+   184→Observation → Proposal → Review →
+   185→Compilation → New Snapshot
+   186→DELIVERABLES
+   187→Council architecture, GovernanceProposal system,
+   188→Patch review workflows, Constitutional amendment
+   189→process, Signed proposals.
+   190→
+   191→--- Page 5 ---
+   192→FUTURE
+   193→PHASE 6: DISTRIBUTED HERMES
+   194→OBJECTIVE
+   195→Can Hermes operate across many nodes?
+   196→OPEN DESIGN QUESTIONS
+   197→Single writer model vs. multi-writer?
+   198→Leader election strategy?
+   199→Consensus algorithm selection?
+   200→CRDT applicability?
+   201→DELIVERABLES
+   202→Distributed event log, Vector clocks, Trace
+   203→partitioning, Consensus model, Multi-runtime
+   204→federation.
+   205→05   LONG-TERM ARCHITECTURE: MATURE HERMES STACK
+   206→The following diagram represents the mature Hermes stack in its target state, with the highest-level application layer at the top
+   207→and the foundational event infrastructure at the bottom. Each layer is strictly dependent on the correctness of the layer below it.
+   208→LAYER (TOP → BOTTOM)
+   209→PHASE
+   210→INTRODUCED
+   211→DESCRIPTION
+   212→Applications
+   213→Post Phase 6
+   214→End-user and system-facing application logic built on the full platform
+   215→Agent Systems
+   216→Phase 4
+   217→Probabilistic model layer; constrained to proposal generation only
+   218→Council Governance
+   219→Phase 5
+   220→Controlled system evolution via signed, auditable governance proposals
+   221→HermesIR / ExecIR
+   222→Compiler
+   223→Phase 3
+   224→Compilation pipeline from high-level intent to deterministic execution plans
+   225→Policy & Constitution Layer
+   226→Phase 1
+   227→Constitutional and policy evaluation; governance enforcement before
+   228→execution
+   229→Deterministic Kernel
+   230→Phase 0
+   231→Core runtime; state reconstruction via event application (reducer model)
+   232→Event Store + Replay Core
+   233→Phase 0
+   234→Append-only persisted event log; foundation of all determinism guarantees
+   235→06   PHASE GATE POLICY
+   236→Each phase has explicit success criteria that must be fully demonstrated before the subsequent phase begins. The following
+   237→rules govern phase transitions:
+   238→No phase may be initiated in parallel with an incomplete prior phase gate, with the exception of preparatory design work.
+   239→Engineering velocity must not be used as justification for bypassing phase gates.
+   240→Phase gate demonstrations must be reproducible and reviewed by the senior engineering team before sign-off.
+   241→Any phase gate failure requires root-cause analysis before the phase may be reattempted.
+   242→Phase 6 remains unscheduled until all Phase 0–5 gates have been closed.
+   243→⚠ WARNING
+   244→Bypassing a phase gate for any reason — including external pressure, milestone deadlines, or perceived low risk — is a
+   245→platform integrity violation. The entire value of the Hermes architecture depends on the correctness of each layer before
+   246→the next is built upon it.
+   247→• 
+   248→• 
+   249→• 
+   250→• 
+   251→• 
+   252→• 
+   253→• 
+   254→• 
+   255→• 
+   256→
+   257→--- Page 6 ---
+   258→IMPLEMENTATION SPECIFICATION
+   259→DOCUMENT 2 :: RFC-001 DETERMINISTIC KERNEL,
+   260→EXECUTABLE CONSTITUTIONS, CAUSAL CLOSURE
+   261→HERMES PLATFORM ENGINEERING SERIES · REF: RFC-001
+   262→DOCUMENT ID
+   263→RFC-001
+   264→EFFECTIVE DATE
+   265→June 14, 2026
+   266→REVISION
+   267→v1.4
+   268→STATUS
+   269→Canonical Draft
+   270→CLASSIFICATION
+   271→Internal Engineering Ref
+   272→SCOPE
+   273→Core Execution Model
+   274→1. ABSTRACT
+   275→This RFC defines the Hermes Runtime as a deterministic, replayable state machine governed by a strict hierarchy of compiled
+   276→intermediate representations, anchored by an executable constitution.
+   277→The runtime treats LLMs as proposal generators. All actions are filtered through synchronous policy evaluation, executed as
+   278→side-effects, and recorded as causal facts. The kernel reducer derives reality exclusively from state-transition facts
+   279→(SystemEvent), which must provably trace their origin to execution attempts (ExecutionEvent).
+   280→This RFC formalizes:
+   281→An executable ConstitutionIR with strict precedence and severity.
+   282→Causal closure between execution attempts and state transitions.
+   283→A primitive, explicitly typed state-transition taxonomy.
+   284→An event-sourced blackboard projection model.
+   285→Cryptographic authorship via signatures.
+   286→The TraceManifest as the genesis block of execution.
+   287→2. GOALS
+   288→The Hermes Runtime exists to support workflows that are:
+   289→Deterministic under replay with bounded recovery
+   290→Causally closed (no orphaned state mutations)
+   291→Constitutionally supreme and policy-governed
+   292→Auditable with full provenance and cryptographic authorship
+   293→Robust to probabilistic model output, retries, and partial failure
+   294→• 
+   295→• 
+   296→• 
+   297→• 
+   298→• 
+   299→• 
+   300→• 
+   301→• 
+   302→• 
+   303→• 
+   304→• 
+   305→
+   306→--- Page 7 ---
+   307→3. TERMINOLOGY
+   308→TERM
+   309→DEFINITION
+   310→ConstitutionIR
+   311→The runtime-wide axiomatic law. Compiled into executable validators. Overrides all other IRs.
+   312→TraceManifest
+   313→The genesis block of a trace. Binds a traceId to its specific Constitution, Plan, and Policy hashes.
+   314→Causal Closure
+   315→The invariant that every state-mutating SystemEvent must reference the ExecutionEvent or DecisionEvent
+   316→that caused it, eliminating trust in rootless state transitions.
+   317→Event-Sourced
+   318→Blackboard
+   319→A memory substrate where state is a projection of BLACKBOARD_WRITTEN system events, rather than
+   320→an opaque mutated object.
+   321→Signature
+   322→A cryptographic attestation of authorship, binding an identity to an artifact or event.
+   323→4. ARCHITECTURAL INVARIANTS
+   324→4.1 Factual Reduction: The reducer consumes only SystemEvents. No other event tier may directly mutate kernel state.
+   325→4.2 Causal Closure: Every SystemEvent representing a step or workflow transition must reference the executionEventId or
+   326→decisionEventId that precipitated it. Rootless state transitions are constitutionally invalid.
+   327→4.3 Constitutional Supremacy: IR precedence is strictly enforced. Conflict at any level results in an immediate
+   328→FATAL_CONSTITUTIONAL_VIOLATION.
+   329→ConstitutionIR > PolicyIR > ExecIR > HermesIR
+   330→4.4 Single Authoritative Sequencer (Model A): To guarantee strict deterministic replay, the runtime operates on a single-
+   331→authoritative-event-sequencer model. eventSequence and logicalClock are sufficient. Vector clocks are excluded from the
+   332→kernel; distributed execution is achieved by delegating to isolated sub-traces or external workers whose results are normalized
+   333→back into the authoritative sequence.
+   334→4.5 Event-Sourced Memory: Blackboard state is derived by folding BLACKBOARD_WRITTEN events. In-place mutation
+   335→outside the event stream is prohibited.
+   336→4.6 Authorship over Integrity: Hashes prove integrity; signatures prove authority. Governance proposals, approvals, and
+   337→constitutional amendments require cryptographic signatures.
+   338→5. CANONICAL IR MODEL & PRECEDENCE
+   339→5.1 ConstitutionIR
+   340→Defines runtime-wide executable axioms. The ConstitutionIR is the supreme governing artifact of a trace. All validators
+   341→compiled from it run synchronously prior to any policy or execution evaluation.
+   342→interface ConstitutionIR {
+   343→  id: string;
+   344→  version: string;
+   345→  constitutionalHash: string;
+   346→  axioms: ConstitutionalAxiom[];
+   347→}
+   348→interface ConstitutionalAxiom {
+   349→  id: string;
+   350→  description: string;
+   351→  severity: 'FATAL' | 'ERROR' | 'WARNING';
+   352→  validator: string; // URI or hash of a deterministic validation function
+   353→}
+   354→
+   355→--- Page 8 ---
+   356→Example Axiom (Severity: FATAL): "No STEP_SUCCEEDED event is valid without a preceding ExecutionEvent referencing the
+   357→same stepId."
+   358→5.2 HermesIR (Intent), ExecIR (Mechanics), PolicyIR (Law)
+   359→As defined in v1.3, but strictly subordinate to ConstitutionIR. These IRs govern intent expression, execution mechanics, and
+   360→runtime law respectively. No construct within these IRs may supersede or conflict with a constitutional axiom. Violations are
+   361→surfaced as FATAL_CONSTITUTIONAL_VIOLATION kernel halts per Invariant 4.3.
+   362→6. TRACEMANIFEST (GENESIS BLOCK)
+   363→Before execution begins, a trace must be instantiated with its constitutional and operational anchors. The TraceManifest is the
+   364→first artifact written and is immutable for the lifetime of the trace.
+   365→interface TraceManifest {
+   366→  traceId: string;
+   367→  planId: string;
+   368→  constitutionHash: string;
+   369→  executionPlanHash: string;
+   370→  policyHash: string;
+   371→  initiatedBy: Signature;
+   372→  createdAt: number;
+   373→}
+   374→Replay validation begins by loading the TraceManifest to verify that subsequent events adhere to the correct constitution and
+   375→plans. Any mismatch between the manifest hashes and the artifacts available at replay time constitutes a fatal integrity
+   376→violation.
+   377→7. KERNEL STATE & EVENT-SOURCED BLACKBOARD
+   378→7.1 KernelState
+   379→The canonical kernel state is the complete projection of all SystemEvents consumed by the reducer since the genesis block.
+   380→interface KernelState {
+   381→  workflowStatus: 'INITIALIZED' | 'RUNNING' | 'BLOCKED' | 'COMPLETED' | 'FAILED';
+   382→  stepStatuses: Record<string, 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED'>;
+   383→  blackboard: KernelBlackboard; // Projection of BLACKBOARD_WRITTEN events
+   384→  eventSequence: number;
+   385→}
+   386→7.2 Blackboard as Projection
+   387→The KernelBlackboard is no longer mutated directly. It is the left-fold of BLACKBOARD_WRITTEN events. Every slot write
+   388→carries provenance metadata and a version counter to enable conflict detection and auditing.
+   389→
+   390→--- Page 9 ---
+   391→interface BlackboardWritePayload {
+   392→  slot: string;
+   393→  value: unknown;
+   394→  previousVersion: number;
+   395→  newVersion: number;
+   396→  provenance: {
+   397→    sourceType: 'USER' | 'TOOL' | 'MODEL' | 'SYSTEM';
+   398→    sourceId: string;
+   399→    confidence?: number;
+   400→  };
+   401→}
+   402→8. EVENT TAXONOMY & CAUSAL LINKING
+   403→Events are strictly tiered. Only SystemEvents are valid reducer inputs. SystemAction values are an explicit, closed set of
+   404→primitives — no generic details blobs are permitted at the type level.
+   405→8.1 Base Event
+   406→All events in the Hermes Runtime extend BaseEvent. The cryptographic chain linkage (eventHash / previousEventHash)
+   407→enables tamper detection across the full trace.
+   408→interface BaseEvent {
+   409→  eventId: string;
+   410→  traceId: string;
+   411→  eventSequence: number;
+   412→  causationId: string | null;
+   413→  correlationId: string;
+   414→  tier: EventTier;
+   415→  timestamp: number;
+   416→  logicalClock: number;
+   417→  eventHash: string;
+   418→  previousEventHash: string | null;
+   419→  signatures?: Signature[]; // Required for governance/approval events
+   420→}
+   421→8.2 SystemEvent (The Only Reducer Input)
+   422→State transitions are primitive and explicit. No generic details blobs at the type boundary. Each SystemAction has a strictly
+   423→typed payload schema in the implementation layer.
+   424→type SystemAction =
+   425→  | 'WORKFLOW_INITIALIZED' | 'WORKFLOW_BLOCKED' | 'WORKFLOW_FAILED' | 'WORKFLOW_COMPLETED'
+   426→  | 'STEP_STARTED' | 'STEP_SUCCEEDED' | 'STEP_FAILED'
+   427→  | 'BLACKBOARD_WRITTEN' | 'BLACKBOARD_CLEARED'
+   428→  | 'POLICY_VIOLATION' | 'CHECKPOINT_REACHED';
+   429→interface SystemEvent extends BaseEvent {
+   430→  tier: 'SYSTEM';
+   431→  payload: {
+   432→    action: SystemAction;
+   433→    // Causal closure: The event that authorized this state mutation
+   434→    executionEventId?: string; // Required for STEP_SUCCEEDED/FAILED
+   435→    decisionEventId?: string;  // Required for STEP_STARTED
+   436→    details?: Record<string, unknown>; // Strictly typed per action in implementation
+   437→  };
+   438→}
+   439→
+   440→--- Page 10 ---
+   441→8.3 ExecutionEvent
+   442→Records the factual result of a side-effect boundary. An ExecutionEvent is the ground truth of what occurred at a tool
+   443→invocation. It is the mandatory antecedent of any STEP_SUCCEEDED or STEP_FAILED system event.
+   444→interface ExecutionEvent extends BaseEvent {
+   445→  tier: 'EXECUTION';
+   446→  payload: {
+   447→    toolId: string;
+   448→    invocationId: string;
+   449→    inputs: unknown;
+   450→    outputs: unknown;
+   451→    status: 'SUCCESS' | 'FAILURE';
+   452→  };
+   453→}
+   454→9. SIGNATURE MODEL
+   455→Integrity (hashes) prevents tampering. Signatures establish authority. These are orthogonal concerns: a valid hash on a
+   456→fraudulent artifact is meaningless without a corresponding valid signature from an authorized identity.
+   457→interface Signature {
+   458→  signerId: string;
+   459→  algorithm: string;
+   460→  value: string; // Cryptographic signature over the artifact hash
+   461→  timestamp: number;
+   462→}
+   463→Signature requirements:
+   464→GovernanceProposal must be signed by the proposing Council Agent.
+   465→REQUIRE_APPROVAL outcomes must be resolved via a signed DecisionEvent from an authorized human or system.
+   466→ConstitutionIR amendments require quorum signatures.
+   467→10. POLICY & CONSTITUTIONAL EVALUATION
+   468→10.1 Precedence Evaluation Flow
+   469→When a DecisionEvent occurs, the following evaluation sequence is strictly enforced in order:
+   470→Constitutional Check: Does the decision violate a ConstitutionIR axiom? 
+   471→Yes (FATAL): Halt kernel. Emit FATAL_CONSTITUTIONAL_VIOLATION.
+   472→Yes (ERROR/WARNING): Emit violation event, proceed or block based on severity logic.
+   473→Policy Check: Does PolicyIR permit the execution? 
+   474→DENY: Emit POLICY_VIOLATION, transition step to FAILED.
+   475→REQUIRE_APPROVAL: Pause until signed approval DecisionEvent arrives.
+   476→ALLOW / CONSTRAINED_ALLOW: Proceed to ExecutionBoundary.
+   477→PURITY INVARIANT
+   478→Both Constitution and Policy evaluation must remain pure, deterministic, network-isolated, and side-effect free. Any
+   479→evaluator that performs I/O, network access, or non-deterministic computation is constitutionally invalid and must be
+   480→rejected at load time.
+   481→• 
+   482→• 
+   483→• 
+   484→1. 
+   485→◦ 
+   486→◦ 
+   487→2. 
+   488→◦ 
+   489→◦ 
+   490→◦ 
+   491→
+   492→--- Page 11 ---
+   493→11. EXECUTION BOUNDARY & CAUSAL CLOSURE
+   494→The execution boundary guarantees that state transitions only occur as a verified, recorded consequence of side-effects. No
+   495→state may change without a provable causal antecedent in the event stream.
+   496→CLOSURE ENFORCEMENT RULE
+   497→If a SystemEvent with action STEP_SUCCEEDED or STEP_FAILED is fed into the reducer, and its executionEventId
+   498→does not point to a valid ExecutionEvent in the trace, the reducer must reject the event and throw a
+   499→FATAL_CONSTITUTIONAL_VIOLATION. There is no recovery path from a rootless state transition.
+   500→12. REPLAY CONTRACT
+   501→Replay reconstructs the runtime deterministically from the TraceManifest and the factual event stream. A replay that does not
+   502→produce the recorded terminal state is evidence of either implementation divergence or event stream corruption — both of
+   503→which are fatal.
+   504→12.1 Replay Steps
+   505→Load TraceManifest — Verify genesis hashes against available artifacts.
+   506→Initialize state from Checkpoint — If applicable; otherwise initialize from scratch.
+   507→Consume events strictly by eventSequence — No out-of-order processing permitted.
+   508→Filter for SystemEvent tier only — All other tiers are ignored by the reducer.
+   509→Validate Causal Closure — Ensure STEP_SUCCEEDED / STEP_FAILED events reference valid ExecutionEvents within
+   510→the trace.
+   511→Feed into reducer — Apply each SystemEvent to produce the next KernelState.
+   512→Validate cryptographic chain linkage — Verify eventHash / previousEventHash integrity across the full sequence.
+   513→Assert deep equality — Compare computed terminal state against recorded terminal state. Any divergence is a fatal
+   514→replay violation.
+   515→13. FINAL STATEMENT
+   516→"Hermes is a fact-derived reality engine."
+   517→Models propose. Policies judge. Executions occur. Facts are recorded. Reducers derive reality.
+   518→By enforcing causal closure, executable constitutions, explicit primitive transitions, and event-sourced memory, the system
+   519→eliminates the ambiguity that allows probabilistic components to corrupt deterministic state. The runtime does not guess what
+   520→happened; it cryptographically proves what occurred, strictly ordered, and derives the present from that proof.
+   521→1. 
+   522→2. 
+   523→3. 
+   524→4. 
+   525→5. 
+   526→6. 
+   527→7. 
+   528→8. 
+   529→
+   530→--- Page 12 ---
+   531→IMPLEMENTATION SPECIFICATION
+   532→DOCUMENT 3 :: RFC-002 CANONICAL EVENT MODEL,
+   533→CRYPTOGRAPHIC CHAINING, AND SERIALIZATION
+   534→HERMES PLATFORM ENGINEERING SERIES · REF: RFC-002
+   535→DOCUMENT ID
+   536→RFC-002
+   537→EFFECTIVE DATE
+   538→June 14, 2026
+   539→REVISION
+   540→v1.0
+   541→STATUS
+   542→Implementation
+   543→Specification
+   544→CLASSIFICATION
+   545→Internal Engineering Ref
+   546→RELATIONSHIP
+   547→Implements RFC-001
+   548→▶ STRATEGIC FRAMING
+   549→"This is the exact correct inflection point. The constitution is written; now we must define the physics. Phase 0 is the only
+   550→priority. If the kernel cannot prove reality from facts, the rest of the stack is science fiction."
+   551→1. ABSTRACT
+   552→This RFC defines the exact mechanical representation of truth in the Hermes Runtime. If RFC-001 is the constitutional law,
+   553→RFC-002 is the criminal code — it specifies the precise schemas, serialization rules, cryptographic algorithms, and validation
+   554→procedures required to ensure that a recorded trace can be replayed to produce byte-identical state reconstruction.
+   555→2. SERIALIZATION AND CANONICALIZATION
+   556→To guarantee deterministic replay across different languages, runtimes, and timestamps, events must be canonicalized before
+   557→hashing or signing.
+   558→2.1 Format: All events are serialized as JSON strings.
+   559→2.2 Canonicalization Algorithm: We adopt RFC 8785 (JSON Canonicalization Scheme — JCS). JCS ensures that JSON
+   560→payloads with identical logical content produce identical byte representations by strictly defining whitespace, string
+   561→escaping, and property ordering.
+   562→2.3 Numeric Constraints: To prevent floating-point drift across runtimes: 
+   563→All timestamps MUST be represented as 64-bit integers (Unix epoch milliseconds).
+   564→No floating-point numbers are permitted in canonicalized payloads. Decimals (e.g., costs, confidence scores) MUST
+   565→be represented as strings (e.g., "0.95") or scaled integers.
+   566→3. CRYPTOGRAPHIC HASHING AND CHAINING
+   567→The audit chain guarantees the temporal integrity and tamper-evidence of a trace.
+   568→3.1 Hashing Algorithm: SHA-256.
+   569→3.2 Chain Construction: Every event is linked to its predecessor within the same traceId. The construction procedure is as
+   570→follows:
+   571→Construct the event object, leaving eventHash and previousEventHash as empty strings ("").
+   572→Replace previousEventHash with the eventHash of the preceding event in the trace. For the first event in the trace,
+   573→use the hash of the TraceManifest.
+   574→Canonicalize the object using JCS, excluding the still-empty eventHash field.
+   575→Compute the SHA-256 hash of the canonicalized UTF-8 string.
+   576→• 
+   577→• 
+   578→• 
+   579→◦ 
+   580→◦ 
+   581→1. 
+   582→2. 
+   583→3. 
+   584→4. 
+   585→
+   586→--- Page 13 ---
+   587→Assign the resulting hex-encoded string to eventHash.
+   588→Implementation Note: The eventHash field is explicitly excluded from the hash input to prevent recursive computation. The hash
+   589→covers previousEventHash, ensuring the chain is unbroken.
+   590→3.3 Chain Validation Procedure
+   591→During replay, the engine must verify the chain using the following procedure:
+   592→Load TraceManifest. Compute its hash.
+   593→For the first event, verify previousEventHash equals the manifest hash.
+   594→For event N, verify previousEventHash equals the eventHash of event N‑1.
+   595→Recompute the hash of event N (excluding eventHash) and verify it matches the stored eventHash.
+   596→⚠ FATAL ERROR CONDITION — CHAIN VALIDATION FAILURE
+   597→A chain validation failure constitutes a FATAL_CONSTITUTIONAL_VIOLATION. The trace is considered corrupted or
+   598→tampered with. Replay must abort immediately. No partial state reconstruction is permitted under any failure condition.
+   599→The trace must be quarantined and escalated for forensic investigation.
+   600→4. EVENT IDENTITY AND CAUSALITY
+   601→4.1 Event ID: eventId MUST be a UUIDv7 (time-ordered). This guarantees that event IDs are globally unique, monotonically
+   602→increasing within a clock drift boundary, and sort-friendly for database indexing.
+   603→4.2 Causal Linkage: The following fields encode the causal graph of every event:
+   604→FIELD
+   605→PURPOSE
+   606→causationId
+   607→The eventId of the specific event that directly triggered this event. For example, a SystemEvent for
+   608→step completion has causationId pointing to the ExecutionEvent.
+   609→correlationId
+   610→The eventId of the originating user intent or root trigger. Threads the full causal ancestry back to its
+   611→origin.
+   612→5. CANONICAL EVENT SCHEMAS
+   613→All event types in the Hermes Runtime are derived from a common BaseEvent structure. The following table provides a tier
+   614→hierarchy overview before the full schema definitions.
+   615→TIER
+   616→DESCRIPTION
+   617→DRIVES
+   618→STATE?
+   619→MODEL
+   620→Raw probabilistic output from the LLM.
+   621→No
+   622→DECISION
+   623→Agent action choice derived from model output.
+   624→No
+   625→EXECUTION
+   626→Tool side-effect result; factual record of what happened.
+   627→No
+   628→SYSTEM
+   629→State transition fact emitted by the kernel.
+   630→YES (Sole
+   631→Input)
+   632→TELEMETRY
+   633→Metrics and operational data; observability only.
+   634→No
+   635→5.1 BaseEvent
+   636→All events inherit this structure. Every field defined here is mandatory on every emitted event unless explicitly marked optional.
+   637→5. 
+   638→1. 
+   639→2. 
+   640→3. 
+   641→4. 
+   642→
+   643→--- Page 14 ---
+   644→interface BaseEvent {
+   645→  eventId: string;           // UUIDv7
+   646→  traceId: string;
+   647→  eventSequence: number;     // Strictly monotonic within trace
+   648→  causationId: string | null;
+   649→  correlationId: string;
+   650→  tier: EventTier;
+   651→  timestamp: number;         // Unix epoch ms (int64)
+   652→  logicalClock: number;      // Monotonically increasing kernel tick
+   653→  eventHash: string;         // SHA-256 hex
+   654→  previousEventHash: string; // SHA-256 hex of previous event or manifest
+   655→  signatures?: Signature[];  // Optional: Required for GOV/APPROVAL tiers
+   656→}
+   657→5.2 ModelEvent
+   658→Raw probabilistic output from the LLM. This tier is observational — it drives no state transitions directly.
+   659→interface ModelEvent extends BaseEvent {
+   660→  tier: 'MODEL';
+   661→  payload: {
+   662→    agentId: string;
+   663→    modelId: string;
+   664→    promptHash: string;      // SHA-256 of the exact prompt template + vars
+   665→    rawOutput: string;       // Unparsed LLM text
+   666→    tokenUsage: { input: number; output: number; };
+   667→  };
+   668→}
+   669→5.3 DecisionEvent
+   670→The runtime's choice of action based on model output. Records the provenance of every decision including which model event
+   671→produced the candidates and which was selected.
+   672→interface DecisionEvent extends BaseEvent {
+   673→  tier: 'DECISION';
+   674→  payload: {
+   675→    stepId: string;
+   676→    agentId: string;
+   677→    proposedAction: string;
+   678→    targetToolId: string | null;
+   679→    parameters: Record<string, unknown>;
+   680→    provenance: {
+   681→      modelEventId: string;  // Links to the ModelEvent that generated candidates
+   682→      chosenCandidateIndex: number;
+   683→      selectionRationale: string | null;
+   684→    };
+   685→  };
+   686→}
+   687→5.4 ExecutionEvent
+   688→The factual result of a side-effect. This is the immutable record of what a tool did. Full inputs and outputs are content-
+   689→addressed externally.
+   690→
+   691→--- Page 15 ---
+   692→interface ExecutionEvent extends BaseEvent {
+   693→  tier: 'EXECUTION';
+   694→  payload: {
+   695→    stepId: string;
+   696→    toolId: string;
+   697→    invocationId: string;    // Idempotency key for the tool
+   698→    inputsHash: string;      // SHA-256 of canonicalized inputs
+   699→    outputsHash: string;     // SHA-256 of canonicalized outputs
+   700→    outputsSummary: string;  // Truncated/scrubbed output for audit
+   701→    status: 'SUCCESS' | 'FAILURE' | 'TIMEOUT';
+   702→    durationMs: number;
+   703→  };
+   704→}
+   705→5.5 SystemEvent — The Reducer Input
+   706→The only tier that drives KernelState mutations. All state transitions in the Hermes kernel are caused exclusively by
+   707→SystemEvent records passing through the reducer.
+   708→type SystemAction =
+   709→  | 'WORKFLOW_INITIALIZED' | 'WORKFLOW_COMPLETED' | 'WORKFLOW_FAILED' | 'WORKFLOW_BLOCKED'
+   710→  | 'STEP_STARTED' | 'STEP_SUCCEEDED' | 'STEP_FAILED'
+   711→  | 'BLACKBOARD_WRITTEN' | 'POLICY_VIOLATION' | 'CHECKPOINT_REACHED';
+   712→interface SystemEvent extends BaseEvent {
+   713→  tier: 'SYSTEM';
+   714→  payload: {
+   715→    action: SystemAction;
+   716→    stepId?: string;
+   717→    executionEventId?: string; // Causal closure mandates: SUCCEEDED/FAILED must reference 
+   718→ExecutionEvent
+   719→    blackboardMutation?: {
+   720→      slot: string;
+   721→      valueHash: string;
+   722→      previousVersion: number;
+   723→      newVersion: number;
+   724→      provenance: {
+   725→        sourceType: 'USER' | 'TOOL' | 'MODEL' | 'SYSTEM';
+   726→        sourceId: string;
+   727→        confidence: number | null;
+   728→      };
+   729→    };
+   730→  };
+   731→}
+   732→5.6 TelemetryEvent
+   733→Metrics and operational data. Observability-only.
+   734→interface TelemetryEvent extends BaseEvent {
+   735→  tier: 'TELEMETRY';
+   736→  payload: {
+   737→    metric: string;
+   738→    value: number;
+   739→    unit: string;
+   740→    tags: Record<string, string>;
+   741→  };
+   742→}
+   743→
+   744→--- Page 16 ---
+   745→6. EVENT SIGNING
+   746→Hashes prove integrity; signatures prove authority. The two mechanisms are complementary and serve distinct security
+   747→properties.
+   748→6.1 Algorithm: Ed25519 — deterministic, fast, and widely supported.
+   749→6.2 Signing Procedure: The signer computes the eventHash, signs the UTF-8 hex string of the eventHash using their
+   750→private key, and appends the signature object to the signatures array.
+   751→interface Signature {
+   752→  signerId: string;      // SPIFFE ID or Agent ID
+   753→  algorithm: 'Ed25519';
+   754→  value: string;         // Hex-encoded signature
+   755→  timestamp: number;     // Unix epoch ms
+   756→}
+   757→6.3 Required Signatures: WORKFLOW_INITIALIZED MUST be signed by the runtime initiator. STEP_SUCCEEDED arising
+   758→from a REQUIRE_APPROVAL policy MUST include a signature from the human approver authorizing the ExecutionEvent.
+   759→7. CHECKPOINT LINKAGE
+   760→Checkpoints bound the cost of replay. They allow the replay engine to fast-forward to a known-good state.
+   761→7.1 Checkpoint Creation
+   762→A SystemEvent with action: CHECKPOINT_REACHED is emitted.
+   763→interface CheckpointPayload {
+   764→  action: 'CHECKPOINT_REACHED';
+   765→  checkpointId: string;
+   766→  eventSequence: number;     // The sequence number of this event
+   767→  kernelStateHash: string;   // SHA-256 of the canonicalized KernelState at this tick
+   768→  blackboardHash: string;    // SHA-256 of the canonicalized Blackboard at this tick
+   769→}
+   770→8. REPLAY VALIDATION PROCEDURE — THE PROOF
+   771→◆ PHASE 0 CRITICAL DELIVERABLE
+   772→This section defines the central deliverable of Phase 0. The validateTrace function below is the proof that the
+   773→Hermes physics engine is real. Until this function runs against a live trace and returns true, all other platform work is
+   774→speculative.
+   775→To prove a trace is valid, the replay engine must execute the following algorithm in its entirety. Each check is a constitutional
+   776→axiom — no check may be skipped or downgraded to a warning.
+   777→• 
+   778→• 
+   779→
+   780→--- Page 17 ---
+   781→function validateTrace(manifest: TraceManifest, events: BaseEvent[]): boolean {
+   782→  let prevHash = hashManifest(manifest);
+   783→  let expectedSequence = 1;
+   784→  for (const event of events) {
+   785→    // 1. Sequence Check
+   786→    if (event.eventSequence !== expectedSequence) throw new Error("Sequence gap");
+   787→    // 2. Chain Integrity
+   788→    if (event.previousEventHash !== prevHash) throw new Error("Chain broken");
+   789→    // 3. Hash Verification
+   790→    const computedHash = computeEventHash(event);
+   791→    if (computedHash !== event.eventHash) throw new Error("Tampered event");
+   792→    // 4. Causal Closure (Constitutional Axiom)
+   793→    if (event.tier === 'SYSTEM') {
+   794→      const sysEvent = event as SystemEvent;
+   795→      if (sysEvent.payload.action === 'STEP_SUCCEEDED' || sysEvent.payload.action === 'STEP_FAILED') 
+   796→{
+   797→        if (!sysEvent.payload.executionEventId) {
+   798→            throw new Error("Causal closure violation: rootless state transition");
+   799→        }
+   800→        // Verify the referenced ExecutionEvent exists in the past events
+   801→        if (!events.find(e => e.eventId === sysEvent.payload.executionEventId)) {
+   802→            throw new Error("Phantom execution reference");
+   803→        }
+   804→      }
+   805→    }
+   806→    prevHash = computedHash;
+   807→    expectedSequence++;
+   808→  }
+   809→  return true;
+   810→}
+   811→9. IMPLEMENTATION CHECKLIST
+   812→The following files constitute the complete Phase 0 implementation surface. Every file listed below must exist and pass a test
+   813→suite before Phase 0 is considered complete.
+   814→FILE
+   815→RESPONSIBILITY (PHASE 0)
+   816→types.ts
+   817→All TypeScript interfaces defined in Section 5: BaseEvent, ModelEvent, DecisionEvent,
+   818→ExecutionEvent, SystemEvent, TelemetryEvent, Signature.
+   819→hashing.ts
+   820→JCS canonicalization, SHA-256 hash computation, computeEventHash() per Section 3.2,
+   821→manifest hashing, and Ed25519 signing utilities per Section 6.
+   822→event-store.ts
+   823→Event persistence layer. Append-only write path, indexed reads by traceId and eventSequence,
+   824→and hash-keyed object storage delegation for full I/O payloads.
+   825→reducer.ts
+   826→Pure function: (KernelState, SystemEvent) => KernelState. Handles all SystemAction variants.
+   827→Must be side-effect free and deterministic.
+   828→replay.ts
+   829→Implements validateTrace() per Section 8. Sequence check, chain integrity, hash verification,
+   830→causal closure enforcement. Must throw on any violation.
+   831→checkpoint.ts
+   832→Checkpoint creation (Section 7.1): snapshot KernelState, compute hashes, emit
+   833→CHECKPOINT_REACHED SystemEvent. Checkpoint-based replay fast-forward (Section 7.2).
+   834→
+   835→--- Page 18 ---
+   836→IMPLEMENTATION SPECIFICATION
+   837→DOCUMENT 4/5 :: RFC-003 & 004 ALGEBRAIC ORDERING
+   838→& DISTRIBUTED CLOSURE
+   839→HERMES PLATFORM ENGINEERING SERIES · REF: RFC-003/004
+   840→DOCUMENT ID
+   841→RFC-003/004
+   842→EFFECTIVE DATE
+   843→June 14, 2026
+   844→REVISION
+   845→v1.0
+   846→STATUS
+   847→Canonical Mathematical
+   848→Foundation
+   849→CLASSIFICATION
+   850→Internal Engineering Ref
+   851→SCOPE
+   852→Causal Topology &
+   853→Linearization
+   854→▶ STRATEGIC FRAMING
+   855→This document bridges the gap from structured architecture to runtime physics. It formally defines the algebraic objects,
+   856→the causal partial order, the linearization function, and the exact homomorphism requirements of the distributed reducer.
+   857→1. FIRST PRINCIPLES: THE EXECUTION MODEL
+   858→The Hermes Runtime operates on three distinct mathematical layers. Failure to separate these layers results in crystallization
+   859→ambiguity and hidden nondeterminism.
+   860→The Causal Partial Order ( P ): The true topological dependency graph of events. Defined by the relation ≺
+   861→(happened-before).
+   862→The Total Linear Extension ( L ): A strictly sequential, cryptographically chained ordering of events. This is a valid
+   863→topological sort of P .
+   864→The State Projection ( Σ ): The deterministic fold of the Reducer function over the Total Linear Extension.
+   865→The fundamental theorem of the Hermes substrate is:
+   866→Any valid linear extension L of a causal graph P fed into a pure Reducer f will yield a
+   867→verifiable state Σ.
+   868→2. EVENT TOPOLOGY AND THE CAUSAL RELATION (≺)
+   869→To support parallel steps, fork-join workflows, and speculative execution, the single causationId pointer is elevated to a 
+   870→parentIds set.
+   871→2.1 The Causal Relation
+   872→For any event e , let P(e)  be its parentIds. We define the "happened-before" relation ≺ as the transitive closure of the
+   873→parent graph:
+   874→e₁ ≺ e₂ ⇔ e₁ ∈ P(e₂) ∨ ∃ e₃ : (e₁ ≺ e₃ ∧ e₃ ≺ e₂)
+   875→2.2 Invariant: Causal Acyclicity
+   876→The set of all events E  in a trace must form a Directed Acyclic Graph (DAG). If a proposed event creates a cycle, it is
+   877→mathematically invalid and must be rejected.
+   878→1. 
+   879→2. 
+   880→3. 
+   881→
+   882→--- Page 19 ---
+   883→∉ e ∈ E such that e ≺ e
+   884→2.3 Invariant: Parent Existence
+   885→All parents must exist in the committed prefix before an event is crystallized.
+   886→∀ p ∈ P(e), p must exist in E
+   887→3. THE LINEARIZATION FUNCTION (L)
+   888→Because distributed systems cannot always agree on a single global timeline instantly, nodes may observe partial, concurrent
+   889→histories. The runtime requires a pure, deterministic linearization function L .
+   890→3.1 Definition
+   891→L  takes a set of unsequenced proposals (a partial order) and returns a strictly ordered array of events (a total order).
+   892→3.2 The Tie-Breaking Rule (Crystallization Determinism)
+   893→When L  encounters events that are concurrent ( e₁ ⊀ e₂  and e₂ ⊀ e₁ ), it must resolve the order deterministically
+   894→without relying on wall-clock timestamps or network arrival order.
+   895→if e₁ ⊀ e₂ and e₂ ⊀ e₁, sort by SHA-256(JCS(e₁)) < SHA-256(JCS(e₂))
+   896→This ensures that crystallize() is mathematically pure. Any two nodes resolving the exact same set of concurrent
+   897→proposals will yield the identical total order.
+   898→4. THE BIFURCATION: AUTHORITY VS. ALGEBRA
+   899→The kernel accepts events from an external ordering source. This source is treated as an untrusted oracle.
+   900→4.1 Object A: The Ordering Authority (Total Order Oracle)
+   901→Context: Phase 0 / Single-Writer / Raft-based consensus.
+   902→Contract: The oracle provides exactly one event at a time. It guarantees that no concurrent events exist.
+   903→Kernel Validation: 1) event.prevHash === tip.hash, 2) event.sequence === tip.sequence + 1, 3) 
+   904→parentIds are strictly in the past.
+   905→4.2 Object B: The Ordering Algebra (DAG Resolver)
+   906→Context: Phase 1+ / Multi-Writer / DAG-based consensus.
+   907→Contract: The algebra accepts concurrent proposals, constructs the DAG, and applies L  to yield a batch of sequenced
+   908→events.
+   909→Kernel Validation (Strict): The Kernel treats the batch as an untrusted block. It verifies chain links, continuity, and
+   910→crucially, verifies the Linearization. The kernel checks that the batch provided strictly adheres to the topological sort of 
+   911→≺ and the deterministic tie-breaking rule.
+   912→• 
+   913→• 
+   914→• 
+   915→• 
+   916→• 
+   917→• 
+   918→
+   919→--- Page 20 ---
+   920→5. CANONICAL INVARIANTS TABLE
+   921→5.1 Causal Correctness
+   922→[C-01] DAG Integrity: Event parent graphs must be acyclic.
+   923→[C-02] Causal Closure: Every state-mutating SystemEvent must reference an ExecutionEvent in its parentIds.
+   924→[C-03] Execution Idempotency: For any (toolId, invocationId) pair, there exists at most one SUCCESS
+   925→ExecutionEvent in the entire causal history.
+   926→5.2 Ordering Correctness
+   927→[O-01] Total Order Integrity: event.prevHash === H(event_n - 1)
+   928→[O-02] Monotonic Sequence: event.sequence === event_n - 1.sequence + 1
+   929→[O-03] Valid Extension: The sequenced batch is a valid topological sort of the underlying DAG ( P ).
+   930→5.3 Execution Correctness
+   931→[E-01] Hash Binding: event.hash === H(JCS(event \ {hash}))
+   932→[E-02] Attestation Binding: Signatures are valid and correctly bound to the event.hash.
+   933→[E-03] Zero-Drift: No floats, NaN, or Infinity in canonical state.
+   934→6. DISTRIBUTED CAUSAL CLOSURE & CONVERGENCE SPECIFICATION
+   935→6.1 The Visibility Function (V)
+   936→Let E  be the global set of valid events. Let N  be a node in the network. The visibility function V_N(t) ⊆ E  returns the
+   937→event set observable by node N  at logical time t .
+   938→The Convergence Condition (Global Truth): The system achieves global determinism if and only if all nodes converge on the
+   939→identical linear extension L .
+   940→lim(t→∞) V_N(t) = E ∀ N
+   941→6.2 The Crystallization Closure Operator (CC)
+   942→Because V_N(t)  is often incomplete, a node cannot simply sort V_N(t) . It must only crystallize events whose causal
+   943→past is fully known. We define the Crystallization Closure:
+   944→CC(V_N(t)) = { e ∈ V_N(t) | P*(e) ⊆ V_N(t) }
+   945→Where P*(e)  is the recursive transitive closure of all parents of e .
+   946→Invariant [C-04]: The Ordering Algebra must not return an event for crystallization unless it belongs to CC(V_N(t)) .
+   947→7. O(N) TOPOLOGICAL VERIFICATION (THE REACHABILITY ORACLE)
+   948→To prevent exponential recomputation during kernel verification, the kernel does not validate the entire DAG. It validates the
+   949→linear extension against a strictly bounded Causal Frontier.
+   950→• 
+   951→• 
+   952→• 
+   953→• 
+   954→• 
+   955→• 
+   956→• 
+   957→• 
+   958→• 
+   959→
+   960→--- Page 21 ---
+   961→7.1 The Causal Frontier (F)
+   962→F = { e ∈ E_crystallized | ∉ e' ∈ E_crystallized where e ∈ P(e') }
+   963→7.2 The O(n) Verification Algorithm
+   964→When the Kernel receives a candidate batch of ordered events B = [e₁, e₂, ..., eₖ]  from the Algebra, it verifies
+   965→topological validity in exactly O(|B|)  time.
+   966→Initialize processed_set = F .
+   967→For each event e_i  in batch B : 
+   968→Check P(e_i) ⊆ processed_set .
+   969→If yes, add e_i  to processed_set.
+   970→If no, throw CAUSAL_VIOLATION.
+   971→8. REDUCER HOMOMORPHISM OVER LINEARIZATIONS
+   972→For the system to yield identical state Σ  regardless of which valid topological sort L ∈ L(P)  is chosen, the Reducer f
+   973→must be a functor preserving equivalence classes of linearizations.
+   974→∀ L₁, L₂ ∈ L(P), f(L₁) = f(L₂)
+   975→8.1 Enforcement Constraint: Disjoint State Algebra
+   976→If two events e₁  and e₂  are concurrent ( e₁ ⊀ e₂ ∧ e₂ ⊀ e₁ ), their execution is independent. For f  to remain
+   977→homomorphic over them, they must not touch the same keys in the Blackboard state space. Let W(e)  be the set of
+   978→state keys mutated by event e .
+   979→∀ e₁, e₂ where e₁ ⊀ e₂ ∧ e₂ ⊀ e₁, W(e₁) ∩ W(e₂) = ∅
+   980→Kernel Enforcement: If the kernel detects a batch where two concurrent events attempt to mutate the same Blackboard slot, it
+   981→throws a STATE_HOMOMORPHISM_VIOLATION. Conflicting operations must be explicitly sequenced via parentIds in the
+   982→ExecIR.
+   983→1. 
+   984→2. 
+   985→◦ 
+   986→◦ 
+   987→◦ 
+   988→
+   989→--- Page 22 ---
+   990→9. IMPLEMENTATION: THE FINAL TOPOLOGICAL OBJECTS
+   991→9.1 Updated Types (topology.ts)
+   992→export type EventId = string;
+   993→export interface CausalEvent {
+   994→  id: EventId;
+   995→  traceId: string;
+   996→  parentIds: EventId[]; // Replaces single causationId
+   997→  action: Action;
+   998→  payload: unknown;
+   999→  hash: string;         // Computed over JCS({id, traceId, parentIds, action, payload})
+  1000→}
+  1001→export interface KernelMetaState {
+  1002→  lastAppliedSequence: number;
+  1003→  lastAppliedEventHash: string;
+  1004→  // The Reachability Oracle (The Frontier)
+  1005→  causalFrontier: Set<EventId>; 
+  1006→}
+  1007→9.2 The Topological Validator (validator.ts)
+  1008→The O(n)  batch verification logic that enforces the Closure and Homomorphic constraints.
+  1009→
+  1010→--- Page 23 ---
+  1011→export class TopologicalValidator {
+  1012→  /**
+  1013→   * Validates a crystallized batch from the Ordering Algebra.
+  1014→   * Enforces [O-03] Valid Extension in O(n) time using the Frontier.
+  1015→   */
+  1016→  public static validateBatch(
+  1017→    batch: CausalEvent[], 
+  1018→    currentFrontier: Set<EventId>, 
+  1019→    blackboardMutations: Map<string, EventId>
+  1020→  ): void {
+  1021→    const processedInBatch = new Set<EventId>();
+  1022→    const concurrentMutations = new Map<string, EventId>();
+  1023→    for (const event of batch) {
+  1024→      // 1. Verify Causal Closure (Parents must be in Frontier OR processed earlier in batch)
+  1025→      for (const parentId of event.parentIds) {
+  1026→        if (!currentFrontier.has(parentId) && !processedInBatch.has(parentId)) {
+  1027→          throw new Error(`CAUSAL_VIOLATION: Parent ${parentId} missing for event ${event.id}`);
+  1028→        }
+  1029→      }
+  1030→      // 2. Verify Homomorphic State Safety
+  1031→      // If this event mutates a state key, ensure no un-sequenced (concurrent) peer has mutated it.
+  1032→      const mutatedKeys = TopologicalValidator.getMutatedKeys(event);
+  1033→      for (const key of mutatedKeys) {
+  1034→        if (concurrentMutations.has(key)) {
+  1035→          throw new Error(`HOMOMORPHISM_VIOLATION: Concurrent write to key ${key}`);
+  1036→        }
+  1037→        concurrentMutations.set(key, event.id);
+  1038→      }
+  1039→      processedInBatch.add(event.id);
+  1040→    }
+  1041→  }
+  1042→  private static getMutatedKeys(event: CausalEvent): string[] {
+  1043→    // Extracts keys from payload (e.g., BLACKBOARD_WRITTEN)
+  1044→    // Implementation omitted for brevity
+  1045→    return [];
+  1046→  }
+  1047→}
+  1048→9.3 The Ordering Algebra Contract (algebra.ts)
+  1049→export interface OrderingAlgebra {
+  1050→  /**
+  1051→   * Injects a proposed intent into the Causal Cone.
+  1052→   * The Algebra MUST buffer this until its parents are satisfied.
+  1053→   */
+  1054→  propose(event: CausalEvent): void;
+  1055→  /**
+  1056→   * The Crystallization Operator (CC).
+  1057→   * MUST only return events whose full transitive closure is known.
+  1058→   * MUST sort concurrent events deterministically by SHA256(event.hash).
+  1059→   */
+  1060→  crystallize(): CausalEvent[];
+  1061→}
+  1062→DOCUMENT TYPE:  MASTER DOSSIER COMPILATION (UNABRIDGED) 
+  1063→CLASSIFICATION: INTERNAL ENGINEERING REFERENCE
+  1064→
+  1065→--- Page 24 ---
+  1066→REF: HPR-MASTER-UNABRIDGED · V1.0

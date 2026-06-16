@@ -1,0 +1,1183 @@
+     1→# Architecture Reference
+     2→
+     3→> Complete architectural documentation for Agent Studio OS — every file, every layer, every connection.
+     4→
+     5→---
+     6→
+     7→## Table of Contents
+     8→
+     9→1. [System Architecture](#1-system-architecture)
+    10→2. [Data Flow Diagrams](#2-data-flow-diagrams)
+    11→3. [Component Architecture](#3-component-architecture)
+    12→4. [Agent Engine](#4-agent-engine)
+    13→5. [API Layer — Complete Reference](#5-api-layer--complete-reference)
+    14→6. [Database Schema](#6-database-schema)
+    15→7. [State Management](#7-state-management)
+    16→8. [UI Component Tree](#8-ui-component-tree)
+    17→9. [File Reference — Every File in the Repo](#9-file-reference--every-file-in-the-repo)
+    18→10. [Design System](#10-design-system)
+    19→11. [Infrastructure](#11-infrastructure)
+    20→
+    21→---
+    22→
+    23→## 1. System Architecture
+    24→
+    25→### High-Level Architecture
+    26→
+    27→```
+    28→┌──────────────────────────────────────────────────────────────────────┐
+    29→│                         BROWSER (Client)                             │
+    30→│                                                                      │
+    31→│  ┌────────────────────────────────────────────────────────────────┐  │
+    32→│  │                    Agent Studio Shell                           │  │
+    33→│  │  ┌──────────┐  ┌──────────────────────┐  ┌─────────────────┐  │  │
+    34→│  │  │ Explorer  │  │   Module Viewport    │  │   Inspector     │  │  │
+    35→│  │  │ Sidebar   │  │ ┌────┐┌──────┐┌───┐ │  │   (Config)      │  │  │
+    36→│  │  │ (260px)   │  │ │Agent││Router ││Pipe│ │  │   (320px)      │  │  │
+    37→│  │  │           │  │ │Flow ││Engine ││line│ │  │                │  │  │
+    38→│  │  │ Agents    │  │ └────┘└──────┘└───┘ │  │  Basic          │  │  │
+    39→│  │  │ Skills    │  │                      │  │  Skills         │  │  │
+    40→│  │  │ Workflows │  │                      │  │  Orchestration  │  │  │
+    41→│  │  │ Templates │  │                      │  │  Reflection     │  │  │
+    42→│  │  │ Runs      │  │                      │  │  Memory         │  │  │
+    43→│  │  └──────────┘  └──────────────────────┘  └─────────────────┘  │  │
+    44→│  │                                                                │  │
+    45→│  │  Topbar: [Logo] [File|Edit|View|Help] [Tabs] [Status] [Toggles]│  │
+    46→│  └────────────────────────────────────────────────────────────────┘  │
+    47→│                                                                      │
+    48→│  Zustand Store ←──────── SSE Stream ────────────────────────┐       │
+    49→│  (agent-store.ts)                                            │       │
+    50→└──────────────────────────────────────────────────────────────┼───────┘
+    51→                                                               │
+    52→┌──────────────────────────────────────────────────────────────┼───────┐
+    53→│                    NEXT.JS SERVER (Port 3000)                 │       │
+    54→│                                                              │       │
+    55→│  ┌─────────────────────┐  ┌─────────────────────┐           │       │
+    56→│  │   App Router Pages   │  │    API Routes (30+) │           │       │
+    57→│  │   / → AgentStudio   │  │                     │           │       │
+    58→│  │                     │  │  /api/agent/*       │───────────┘       │
+    59→│  │                     │  │  /api/team/*        │                   │
+    60→│  │                     │  │  /api/template/*    │                   │
+    61→│  │                     │  │  /api/policy/*      │                   │
+    62→│  │                     │  │  /api/approval/*    │                   │
+    63→│  │                     │  │  /api/memory/*      │                   │
+    64→│  │                     │  │  /api/artifacts/*   │                   │
+    65→│  │                     │  │  /api/metrics/*     │                   │
+    66→│  │                     │  │  /api/timeline      │                   │
+    67→│  │                     │  │  /api/audit/*       │                   │
+    68→│  │                     │  │  /api/tools/*       │                   │
+    69→│  │                     │  │  /api/trigger/*     │                   │
+    70→│  │                     │  │  /api/task-graph/*  │                   │
+    71→│  └─────────────────────┘  └─────────┬───────────┘                   │
+    72→│                                     │                               │
+    73→│  ┌──────────────────────────────────┼─────────────────────────────┐ │
+    74→│  │                     Agent Engine  │                             │ │
+    75→│  │                                  ▼                             │ │
+    76→│  │  ┌──────────┐ ┌──────────┐ ┌───────────┐ ┌─────────────────┐ │ │
+    77→│  │  │ Planner  │ │ Executor │ │ Evaluator │ │ Orchestrator    │ │ │
+    78→│  │  │          │ │          │ │           │ │                 │ │ │
+    79→│  │  │ plan()   │ │ runStep()│ │ evaluate()│ │ 5 modes:        │ │ │
+    80→│  │  │ build()  │ │ tools[]  │ │ LLM judge │ │ single/seq/     │ │ │
+    81→│  │  │          │ │ verify() │ │           │ │ group/hier/par  │ │ │
+    82→│  │  └──────────┘ └──────────┘ └───────────┘ └─────────────────┘ │ │
+    83→│  │                                                              │ │
+    84→│  │  ┌──────────┐ ┌──────────┐ ┌───────────┐ ┌───────────────┐  │ │
+    85→│  │  │ Policy   │ │Reflection│ │ Metrics   │ │ System State  │  │ │
+    86→│  │  │ Engine   │ │ Loop     │ │ Collector │ │ Manager       │  │ │
+    87→│  │  └──────────┘ └──────────┘ └───────────┘ └───────────────┘  │ │
+    88→│  │                                                              │ │
+    89→│  │  ┌──────────┐ ┌──────────┐ ┌───────────┐ ┌───────────────┐  │ │
+    90→│  │  │ Memory   │ │Memory V2 │ │ Tool      │ │ ZAI Client    │  │ │
+    91→│  │  │ (V1)     │ │(3-tier)  │ │ Registry  │ │ (SDK wrapper) │  │ │
+    92→│  │  └──────────┘ └──────────┘ └───────────┘ └───────────────┘  │ │
+    93→│  └──────────────────────────────────────────────────────────────┘ │
+    94→│                                     │                             │
+    95→│  ┌──────────────────────────────────┼───────────────────────────┐ │
+    96→│  │                     Prisma ORM   ▼                           │ │
+    97→│  │                                                              │ │
+    98→│  │  SQLite: 16 models                                           │ │
+    99→│  │  Agent · AgentRun · Step · Team · AgentMemory · Artifact    │ │
+   100→│  │  PolicyRule · ApprovalRequest · AuditLog · TimelineEvent    │ │
+   101→│  │  ReflectionIteration · AgentTemplate · AgentTrigger          │ │
+   102→│  │  TaskNode · TaskEdge · TaskGraph                             │ │
+   103→│  └──────────────────────────────────────────────────────────────┘ │
+   104→└──────────────────────────────────────────────────────────────────────┘
+   105→
+   106→                          │
+   107→                          ▼
+   108→
+   109→┌──────────────────────────────────────────────────────────────────────┐
+   110→│                     EXTERNAL SERVICES                                │
+   111→│                                                                      │
+   112→│  ┌───────────────────┐  ┌───────────────────┐  ┌─────────────────┐  │
+   113→│  │   ZAI LLM API     │  │   ZAI Web Search  │  │ ZAI Page Reader │  │
+   114→│  │   (z-ai-web-dev-  │  │   (z-ai-web-dev-  │  │ (z-ai-web-dev-  │  │
+   115→│  │    sdk)            │  │    sdk)            │  │  sdk)           │  │
+   116→│  └───────────────────┘  └───────────────────┘  └─────────────────┘  │
+   117→└──────────────────────────────────────────────────────────────────────┘
+   118→```
+   119→
+   120→### Layer Boundaries
+   121→
+   122→```
+   123→┌─────────────────────────────────┐
+   124→│         Presentation Layer       │    React components, Framer Motion,
+   125→│    (src/components/)            │    shadcn/ui, React Flow, Zustand
+   126→├─────────────────────────────────┤
+   127→│         API Layer               │    Next.js API routes, SSE streaming,
+   128→│    (src/app/api/)               │    request validation, HTTP semantics
+   129→├─────────────────────────────────┤
+   130→│         Business Logic Layer    │    Agent engine, orchestrator, policy,
+   131→│    (src/lib/agent/)             │    reflection, memory, metrics, roles
+   132→├─────────────────────────────────┤
+   133→│         Data Access Layer       │    Prisma ORM, SQLite, schema migrations
+   134→│    (src/lib/db.ts, prisma/)     │
+   135→├─────────────────────────────────┤
+   136→│         External Services       │    ZAI SDK (LLM, Search, Page Reader)
+   137→│    (src/lib/agent/zai-client)   │
+   138→└─────────────────────────────────┘
+   139→```
+   140→
+   141→---
+   142→
+   143→## 2. Data Flow Diagrams
+   144→
+   145→### Agent Execution Flow
+   146→
+   147→```
+   148→User Clicks "Run"
+   149→       │
+   150→       ▼
+   151→┌──────────────┐     POST /api/agent/run     ┌──────────────────┐
+   152→│  Zustand     │ ──────────────────────────── │  API Route       │
+   153→│  startRun()  │                              │  run/route.ts    │
+   154→└──────────────┘                              └────────┬─────────┘
+   155→                                                       │
+   156→                                              Create AgentRun in DB
+   157→                                                       │
+   158→                                                       ▼
+   159→                                              ┌──────────────────┐
+   160→                                              │  Orchestrator    │
+   161→                                              │  .run()          │
+   162→                                              │                  │
+   163→                                              │  Mode dispatch:  │
+   164→                                              │  single/seq/     │
+   165→                                              │  group/hier/par  │
+   166→                                              └────────┬─────────┘
+   167→                                                       │
+   168→                                         ┌─────────────┼──────────────┐
+   169→                                         │             │              │
+   170→                                         ▼             ▼              ▼
+   171→                                   ┌──────────┐  ┌──────────┐  ┌──────────┐
+   172→                                   │ Agent 1  │  │ Agent 2  │  │ Agent N  │
+   173→                                   │ Run Loop │  │ Run Loop │  │ Run Loop │
+   174→                                   └────┬─────┘  └────┬─────┘  └────┬─────┘
+   175→                                        │             │              │
+   176→                              ┌─────────┴──┐   ┌─────┴──┐    ┌─────┴──┐
+   177→                              │  Per Step: │   │        │    │        │
+   178→                              │            │   │        │    │        │
+   179→                              │ 1. Plan    │   │  ...   │    │  ...   │
+   180→                              │    (LLM)   │   │        │    │        │
+   181→                              │ 2. Execute │   │        │    │        │
+   182→                              │    (Tool)  │   │        │    │        │
+   183→                              │ 3. Verify  │   │        │    │        │
+   184→                              │ 4. Record  │   │        │    │        │
+   185→                              │ 5. Emit    │   │        │    │        │
+   186→                              │    Event   │   │        │    │        │
+   187→                              └────────────┘   │        │    │        │
+   188→                                        │             │              │
+   189→                                        ▼             ▼              ▼
+   190→                              ┌──────────────────────────────────────────┐
+   191→                              │           SSE Event Stream               │
+   192→                              │   GET /api/agent/stream?runId=xxx       │
+   193→                              │                                          │
+   194→                              │   Events: status, plan, action, result, │
+   195→                              │   thinking, error, done, reflection,    │
+   196→                              │   policy, handoff, group_message        │
+   197→                              └──────────────────┬───────────────────────┘
+   198→                                                 │
+   199→                                                 ▼
+   200→                                        ┌──────────────────┐
+   201→                                        │  Zustand Store   │
+   202→                                        │  addEvent()      │
+   203→                                        │  setIsRunning()  │
+   204→                                        │  AgentRunView    │
+   205→                                        │  (real-time UI)  │
+   206→                                        └──────────────────┘
+   207→```
+   208→
+   209→### Policy Check Flow
+   210→
+   211→```
+   212→Agent Wants to Execute Tool
+   213→       │
+   214→       ▼
+   215→┌──────────────┐
+   216→│  Policy      │──── Check conditions against tool, role, risk level
+   217→│  Engine      │
+   218→│  .check()    │
+   219→└──────┬───────┘
+   220→       │
+   221→       ├── ALLOW ──────────────► Execute tool normally
+   222→       │
+   223→       ├── BLOCK ──────────────► Return error, emit "policy" event
+   224→       │
+   225→       ├── ASK_USER ──────────► Create ApprovalRequest in DB
+   226→       │                          │
+   227→       │                          ▼
+   228→       │                     ┌──────────────┐
+   229→       │                     │  Approval    │──── UI: ApprovalModal
+   230→       │                     │  Request     │     (pending in sidebar)
+   231→       │                     └──────┬───────┘
+   232→       │                            │
+   233→       │                     User Responds
+   234→       │                            │
+   235→       │                     ┌──────┴───────┐
+   236→       │                     │              │
+   237→       │                  Approved        Denied
+   238→       │                     │              │
+   239→       │                     ▼              ▼
+   240→       │               Execute tool    Return error
+   241→       │
+   242→       └── SHADOW ───────────► Execute tool + log audit (no block)
+   243→```
+   244→
+   245→### Memory Architecture
+   246→
+   247→```
+   248→┌─────────────────────────────────────────────────────────┐
+   249→│                    MemoryManager                         │
+   250→│                                                          │
+   251→│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
+   252→│  │   Session     │  │  Persistent  │  │   Artifact   │  │
+   253→│  │   (In-Memory) │  │  (Database)  │  │  (Database)  │  │
+   254→│  │               │  │              │  │              │  │
+   255→│  │  • Run-scoped │  │  • Cross-run │  │  • Named     │  │
+   256→│  │  • 24h expiry │  │  • Upsert    │  │  • Versioned │  │
+   257→│  │  • Fast       │  │  • Durable   │  │  • Content   │  │
+   258→│  │  • Ephemeral  │  │  • Key-value │  │  • Metadata  │  │
+   259→│  └──────────────┘  └──────────────┘  └──────────────┘  │
+   260→│                                                          │
+   261→│  API: get() · set() · delete() · list()                 │
+   262→│       clearSession() · listArtifacts() · saveArtifact() │
+   263→└─────────────────────────────────────────────────────────┘
+   264→```
+   265→
+   266→---
+   267→
+   268→## 3. Component Architecture
+   269→
+   270→### Module Routing
+   271→
+   272→```
+   273→AgentStudio (Shell)
+   274→    │
+   275→    ├── activeModule === "canvas"
+   276→    │   ├── AgentSidebar (Explorer)
+   277→    │   ├── AgentCanvas (React Flow)
+   278→    │   │   └── AgentNode (Custom Node)
+   279→    │   └── AgentInspector (Config Form)
+   280→    │
+   281→    ├── activeModule === "router"
+   282→    │   └── RoutingEngine (ε-Greedy + Q-Table)
+   283→    │
+   284→    ├── activeModule === "pipeline"
+   285→    │   └── PipelineStudio (DevOps Pipeline)
+   286→    │
+   287→    └── activeModule === "workflow"
+   288→        └── Coming Soon Placeholder
+   289→
+   290→Overlays (always mounted):
+   291→    ├── AgentBuilderWizard (Dialog)
+   292→    ├── ApprovalModal (AlertDialog)
+   293→    └── TeamBuilderDialog (Dialog)
+   294→```
+   295→
+   296→### UI Component Hierarchy
+   297→
+   298→```
+   299→AgentStudio
+   300→├── <header> (Topbar)
+   301→│   ├── Logo ("A" + "Agent Studio OS beta")
+   302→│   ├── <Menubar>
+   303→│   │   ├── File → AI Builder / New Agent / New Workflow / New Team
+   304→│   │   ├── Edit → Configuration / Routing Policies / Delete Agent
+   305→│   │   ├── View → Explorer ☑ / Inspector ☑ / Modules ▸
+   306→│   │   └── Help → About / Documentation / Keyboard Shortcuts
+   307→│   ├── <nav> (Module Tabs: Agents | Router | Pipeline | Studio)
+   308→│   ├── <SystemIndicator> (Status Dot + Label)
+   309→│   ├── Agent Count Badge
+   310→│   ├── Sidebar Toggle Button
+   311→│   └── Inspector Toggle Button
+   312→│
+   313→├── <main> (Content Area)
+   314→│   ├── Sidebar Strip (when collapsed, 32px)
+   315→│   │   └── Panel Open Button + Agent Dots
+   316→│   ├── Sidebar Panel (when open, 260px)
+   317→│   │   └── AgentSidebar
+   318→│   │       ├── FolderSection "Agents"
+   319→│   │       ├── FolderSection "Skills"
+   320→│   │       ├── FolderSection "Workflows"
+   321→│   │       ├── FolderSection "Templates" (collapsed)
+   322→│   │       └── FolderSection "Recent Runs" (collapsed)
+   323→│   ├── Center Content (flex-1)
+   324→│   │   ├── AgentCanvas (React Flow)
+   325→│   │   │   ├── AgentNode × N
+   326→│   │   │   ├── Edges (animated)
+   327→│   │   │   ├── Toolbar (Zoom, Layout)
+   328→│   │   │   └── AgentRunView (when running)
+   329→│   │   │       ├── Progress Bar
+   330→│   │   │       ├── Event Cards (animated)
+   331→│   │   │       └── ReflectionPanel
+   332→│   │   ├── RoutingEngine (when router module)
+   333→│   │   └── PipelineStudio (when pipeline module)
+   334→│   │       └── Pipeline Stages + SVG Connectors
+   335→│   ├── Inspector Strip (when collapsed, 32px)
+   336→│   │   └── Panel Open Button + "CFG" Label
+   337→│   └── Inspector Panel (when open, 320px)
+   338→│       └── AgentInspector
+   339→│           ├── Header (Role Badge + Run/Stop)
+   340→│           ├── Section "Basic" (Name, Goal, Personality)
+   341→│           ├── Section "Skills" (Tool Toggles)
+   342→│           ├── Section "Orchestration" (Role, Model, Mode)
+   343→│           ├── Section "Reflection" (Enable, Iterations, Criteria)
+   344→│           ├── Section "Memory & Output" (Memory Toggles, Max Steps, Format)
+   345→│           ├── Section "Memory" (MemoryInspector)
+   346→│           ├── Section "Danger Zone" (Delete Agent)
+   347→│           └── Footer (Test + Save)
+   348→│
+   349→├── AgentBuilderWizard (Dialog Overlay)
+   350→│   ├── Step 1: User Input
+   351→│   ├── Step 2: Building (Spinner)
+   352→│   └── Step 3: Result (Config Preview)
+   353→│
+   354→├── ApprovalModal (AlertDialog Overlay)
+   355→│   └── Approval Request + Approve/Deny Buttons
+   356→│
+   357→└── TeamBuilderDialog (Dialog Overlay)
+   358→    ├── Team Name Input
+   359→    ├── Orchestration Mode Grid
+   360→    ├── Agent Selection Checkboxes
+   361→    └── Create/Cancel Buttons
+   362→```
+   363→
+   364→---
+   365→
+   366→## 4. Agent Engine
+   367→
+   368→### Module Dependency Graph
+   369→
+   370→```
+   371→                    ┌────────────┐
+   372→                    │  zai-client│ ← Singleton ZAI SDK wrapper
+   373→                    │  (z-ai-    │
+   374→                    │  web-dev-  │
+   375→                    │  sdk)      │
+   376→                    └─────┬──────┘
+   377→                          │
+   378→              ┌───────────┼───────────┐
+   379→              │           │           │
+   380→              ▼           ▼           ▼
+   381→        ┌──────────┐ ┌──────────┐ ┌──────────┐
+   382→        │ Planner  │ │ Evaluator│ │ Tools    │
+   383→        │          │ │          │ │          │
+   384→        │ plan()   │ │evaluate()│ │execute() │
+   385→        │ build()  │ │          │ │verify()  │
+   386→        └────┬─────┘ └────┬─────┘ └────┬─────┘
+   387→             │             │             │
+   388→             │      ┌──────┴──────┐      │
+   389→             │      │             │      │
+   390→             ▼      ▼             ▼      ▼
+   391→        ┌──────────────────────────────────┐
+   392→        │           agent.ts               │
+   393→        │                                  │
+   394→        │  runAgent()  ← Main loop         │
+   395→        │  runStep()   ← Single step       │
+   396→        │  emitEvent() ← Event system      │
+   397→        │  stopRun()   ← Cancellation      │
+   398→        └──────────────┬───────────────────┘
+   399→                       │
+   400→              ┌────────┼────────┐
+   401→              │        │        │
+   402→              ▼        ▼        ▼
+   403→        ┌──────────┐ ┌──────┐ ┌───────────┐
+   404→        │ Memory   │ │Roles │ │ Policy    │
+   405→        │ Manager  │ │      │ │ Engine    │
+   406→        │ (V1/V2)  │ │      │ │           │
+   407→        └──────────┘ └──────┘ └─────┬─────┘
+   408→                                       │
+   409→                                       ▼
+   410→                                ┌──────────────┐
+   411→                                │ Orchestrator  │
+   412→                                │              │
+   413→                                │ 5 modes:     │
+   414→                                │ single       │
+   415→                                │ sequential   │
+   416→                                │ group        │
+   417→                                │ hierarchical │
+   418→                                │ parallel     │
+   419→                                └──────┬───────┘
+   420→                                       │
+   421→                              ┌────────┼────────┐
+   422→                              │        │        │
+   423→                              ▼        ▼        ▼
+   424→                         Reflection   Metrics  System
+   425→                         Loop        Collector State
+   426→                                                    Manager
+   427→```
+   428→
+   429→### Engine Modules Reference
+   430→
+   431→| Module | File | Singleton | Purpose |
+   432→|--------|------|-----------|---------|
+   433→| ZAI Client | `zai-client.ts` | Yes (`getZAI()`) | Lazy-initialized SDK wrapper with dedup lock |
+   434→| Types | `types.ts` | N/A | Central type definitions + Zod schemas |
+   435→| Planner | `planner.ts` | No | LLM-based action planning + agent building |
+   436→| Tools | `tools.ts` | No | 5 built-in tools + verification + metadata |
+   437→| Tool Registry | `tool-registry.ts` | Yes (`ToolRegistry`) | Advanced tool registration with zod validation |
+   438→| Agent Loop | `agent.ts` | No | Core execution loop + event system + concurrency |
+   439→| Evaluator | `evaluator.ts` | No | Goal completion evaluation (rule + LLM) |
+   440→| Orchestrator | `orchestrator.ts` | Yes (`getOrchestrator()`) | Multi-agent orchestration (5 modes) |
+   441→| Memory V1 | `memory.ts` | No | In-memory run-scoped store, 1h auto-cleanup |
+   442→| Memory V2 | `memory-v2.ts` | Yes (`memoryManager`) | 3-tier memory (session/persistent/artifact) |
+   443→| Roles | `roles.ts` | No | 6 roles with permissions + prompt modifiers |
+   444→| Policy Engine | `policy.ts` | Yes (`policyEngine`) | Condition matching + approval workflow + audit |
+   445→| Reflection | `reflection.ts` | No | Critic-generator iterative loop |
+   446→| Metrics | `metrics.ts` | Yes (`metricsCollector`) | Run + system metrics collection |
+   447→| System State | `system-state.ts` | Yes (`systemStateManager`) | System-wide state with pub/sub |
+   448→
+   449→### Tool System
+   450→
+   451→```
+   452→┌─────────────────────────────────────────────────────────┐
+   453→│                     Tool Registry                        │
+   454→│                                                          │
+   455→│  Built-in Tools:                                         │
+   456→│  ┌────────────┐ ┌────────────┐ ┌─────────────────────┐ │
+   457→│  │ web_search │ │ write_file │ │ execute_code         │ │
+   458→│  │            │ │            │ │                      │ │
+   459→│  │ ZAI Search │ │ Save to    │ │ Code execution with  │ │
+   460→│  │ API        │ │ memory     │ │ verification         │ │
+   461→│  └────────────┘ └────────────┘ └─────────────────────┘ │
+   462→│  ┌────────────┐ ┌────────────┐ ┌─────────────────────┐ │
+   463→│  │ browse_url │ │save_memory │ │ read_memory          │ │
+   464→│  │            │ │            │ │                      │ │
+   465→│  │ ZAI Page   │ │ Persistent │ │ Retrieve from        │ │
+   466→│  │ Reader     │ │ memory     │ │ memory tiers         │ │
+   467→│  └────────────┘ └────────────┘ └─────────────────────┘ │
+   468→│                                                          │
+   469→│  Verification Methods:                                   │
+   470→│  • json_schema   — Validate against JSON schema          │
+   471→│  • code_compiles — Check code compiles                   │
+   472→│  • url_reachable — HTTP HEAD check                       │
+   473→│  • regex_match   — Pattern matching                      │
+   474→│  • custom        — User-defined validator function        │
+   475→│                                                          │
+   476→│  Risk Levels: low · medium · high · critical             │
+   477→└─────────────────────────────────────────────────────────┘
+   478→```
+   479→
+   480→### Orchestration Modes
+   481→
+   482→```
+   483→┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+   484→│   SINGLE     │     │  SEQUENTIAL  │     │  PARALLEL    │
+   485→│              │     │              │     │              │
+   486→│  ┌───┐      │     │  ┌───┐ ┌───┐ │     │  ┌───┐      │
+   487→│  │ A │      │     │  │ A │→│ B │ │     │  │ A │ ┐    │
+   488→│  └───┘      │     │  └───┘ └───┘ │     │  └───┘ │    │
+   489→│             │     │              │     │  ┌───┐ │    │
+   490→│  One agent  │     │  Handoff     │     │  │ B │ ├─►  │
+   491→│  runs alone │     │  chain       │     │  └───┘ │    │
+   492→│             │     │              │     │  ┌───┐ │    │
+   493→│             │     │              │     │  │ C │ ┘    │
+   494→│             │     │              │     │  └───┘      │
+   495→│             │     │              │     │  Fan-out    │
+   496→│             │     │              │     │  Semaphore  │
+   497→└──────────────┘     └──────────────┘     └──────────────┘
+   498→
+   499→┌──────────────┐     ┌──────────────────────────────┐
+   500→│    GROUP     │     │       HIERARCHICAL            │
+   501→│              │     │                                │
+   502→│  ┌───┐ ┌───┐│     │         ┌───┐                  │
+   503→│  │ A │ │ B ││     │         │ M │ Manager           │
+   504→│  └─┬─┘ └─┬─┘│     │         └─┬─┘                  │
+   505→│    │     │  │     │       ┌───┼───┐                  │
+   506→│  ┌─▼─────▼─┐│     │     ┌─▼─┐┌─▼─┐┌▼──┐            │
+   507→│  │ Scratch ││     │     │ W1││ W2││W3 │ Workers     │
+   508→│  │  Pad    ││     │     └───┘└───┘└───┘            │
+   509→│  └─────────┘│     │       └───┼───┘                  │
+   510→│             │     │         ┌─▼─┐                    │
+   511→│  LLM picks  │     │         │Syn│ Synthesizer        │
+   512→│  speaker    │     │         └───┘                    │
+   513→└──────────────┘     └──────────────────────────────┘
+   514→```
+   515→
+   516→---
+   517→
+   518→## 5. API Layer — Complete Reference
+   519→
+   520→### Agent Endpoints
+   521→
+   522→| Method | Path | Handler File | Description |
+   523→|--------|------|-------------|-------------|
+   524→| `POST` | `/api/agent/create` | `api/agent/create/route.ts` | Create new agent with V1+V2 fields |
+   525→| `GET` | `/api/agent/list` | `api/agent/list/route.ts` | List all agents with run counts |
+   526→| `PATCH` | `/api/agent/update` | `api/agent/update/route.ts` | Update agent config or graphData |
+   527→| `DELETE` | `/api/agent/delete?id=` | `api/agent/delete/route.ts` | Delete agent (cascades runs+steps) |
+   528→| `POST` | `/api/agent/build` | `api/agent/build/route.ts` | Build agent from natural language via AI |
+   529→| `POST` | `/api/agent/run` | `api/agent/run/route.ts` | Start agent run (single or orchestrated) |
+   530→| `GET` | `/api/agent/runs` | `api/agent/runs/route.ts` | List runs (all, by agent, or specific run) |
+   531→| `POST` | `/api/agent/stop` | `api/agent/stop/route.ts` | Stop a running agent |
+   532→| `GET` | `/api/agent/stream` | `api/agent/stream/route.ts` | SSE stream for real-time events |
+   533→
+   534→### Team Endpoints
+   535→
+   536→| Method | Path | Handler File | Description |
+   537→|--------|------|-------------|-------------|
+   538→| `POST` | `/api/team/create` | `api/team/create/route.ts` | Create team with agents |
+   539→| `GET` | `/api/team/list` | `api/team/list/route.ts` | List teams with agents |
+   540→| `GET` | `/api/team/get?id=` | `api/team/get/route.ts` | Get team by ID |
+   541→| `PATCH` | `/api/team/update` | `api/team/update/route.ts` | Update team config |
+   542→| `POST` | `/api/team/run` | `api/team/run/route.ts` | Start team orchestration |
+   543→| `POST` | `/api/team/stop` | `api/team/stop/route.ts` | Stop team orchestration |
+   544→
+   545→### Template Endpoints
+   546→
+   547→| Method | Path | Handler File | Description |
+   548→|--------|------|-------------|-------------|
+   549→| `POST` | `/api/template/create` | `api/template/create/route.ts` | Create agent template |
+   550→| `GET` | `/api/template/list` | `api/template/list/route.ts` | List templates with filters |
+   551→| `GET` | `/api/template/get?id=` | `api/template/get/route.ts` | Get template by ID |
+   552→| `DELETE` | `/api/template/delete?id=` | `api/template/delete/route.ts` | Delete template |
+   553→| `POST` | `/api/template/instantiate` | `api/template/instantiate/route.ts` | Create agent from template |
+   554→
+   555→### Policy Endpoints
+   556→
+   557→| Method | Path | Handler File | Description |
+   558→|--------|------|-------------|-------------|
+   559→| `GET` | `/api/policy/list` | `api/policy/list/route.ts` | List policy rules |
+   560→| `POST` | `/api/policy/create` | `api/policy/create/route.ts` | Create policy rule |
+   561→| `PATCH` | `/api/policy/update` | `api/policy/update/route.ts` | Update policy rule |
+   562→| `DELETE` | `/api/policy/delete?id=` | `api/policy/delete/route.ts` | Delete policy rule |
+   563→
+   564→### Approval Endpoints
+   565→
+   566→| Method | Path | Handler File | Description |
+   567→|--------|------|-------------|-------------|
+   568→| `GET` | `/api/approval/list` | `api/approval/list/route.ts` | List pending approvals |
+   569→| `POST` | `/api/approval/respond` | `api/approval/respond/route.ts` | Approve or deny request |
+   570→
+   571→### Memory Endpoints
+   572→
+   573→| Method | Path | Handler File | Description |
+   574→|--------|------|-------------|-------------|
+   575→| `GET` | `/api/memory/get` | `api/memory/get/route.ts` | Retrieve memory value |
+   576→| `POST` | `/api/memory/set` | `api/memory/set/route.ts` | Write memory value |
+   577→| `GET` | `/api/memory/list` | `api/memory/list/route.ts` | List memory entries |
+   578→
+   579→### Artifact Endpoints
+   580→
+   581→| Method | Path | Handler File | Description |
+   582→|--------|------|-------------|-------------|
+   583→| `GET` | `/api/artifacts/list` | `api/artifacts/list/route.ts` | List agent artifacts |
+   584→| `GET` | `/api/artifacts/get` | `api/artifacts/get/route.ts` | Get specific artifact |
+   585→
+   586→### Metrics Endpoints
+   587→
+   588→| Method | Path | Handler File | Description |
+   589→|--------|------|-------------|-------------|
+   590→| `GET` | `/api/metrics/run` | `api/metrics/run/route.ts` | Run-level metrics |
+   591→| `GET` | `/api/metrics/system` | `api/metrics/system/route.ts` | System-wide metrics |
+   592→
+   593→### Other Endpoints
+   594→
+   595→| Method | Path | Handler File | Description |
+   596→|--------|------|-------------|-------------|
+   597→| `GET` | `/api/timeline` | `api/timeline/route.ts` | Timeline events for a run |
+   598→| `GET` | `/api/audit/list` | `api/audit/list/route.ts` | Audit log with filters |
+   599→| `GET` | `/api/tools/list` | `api/tools/list/route.ts` | List registered tools |
+   600→| `POST` | `/api/trigger/create` | `api/trigger/create/route.ts` | Create trigger |
+   601→| `GET` | `/api/trigger/list` | `api/trigger/list/route.ts` | List triggers |
+   602→| `PATCH` | `/api/trigger/update` | `api/trigger/update/route.ts` | Update trigger |
+   603→| `DELETE` | `/api/trigger/delete` | `api/trigger/delete/route.ts` | Delete trigger |
+   604→| `POST` | `/api/trigger/execute` | `api/trigger/execute/route.ts` | Execute trigger manually |
+   605→| `POST` | `/api/task-graph/create` | `api/task-graph/create/route.ts` | Create task graph |
+   606→| `GET` | `/api/task-graph/list` | `api/task-graph/list/route.ts` | List task graphs |
+   607→| `GET` | `/api/task-graph/get` | `api/task-graph/get/route.ts` | Get task graph |
+   608→| `PATCH` | `/api/task-graph/update` | `api/task-graph/update/route.ts` | Update task graph |
+   609→| `DELETE` | `/api/task-graph/delete` | `api/task-graph/delete/route.ts` | Delete task graph |
+   610→
+   611→---
+   612→
+   613→## 6. Database Schema
+   614→
+   615→### Entity Relationship Diagram
+   616→
+   617→```
+   618→┌──────────┐       ┌──────────────┐       ┌──────────┐
+   619→│  Agent   │───────│  AgentRun    │───────│   Step   │
+   620→│          │ 1   ∞ │              │ 1   ∞ │          │
+   621→│ id       │       │ id           │       │ id       │
+   622→│ name     │       │ agentId (FK) │       │ runId(FK)│
+   623→│ goal     │       │ status       │       │ stepNum  │
+   624→│ role     │       │ totalTokens  │       │ tool     │
+   625→│ model    │       │ totalLatency │       │ input    │
+   626→│ orchestr.│       │ metrics(JSON)│       │ result   │
+   627→│ tools    │       └──────┬───────┘       │ verify   │
+   628→│ graphData│              │               │ latency  │
+   629→└────┬─────┘              │               └──────────┘
+   630→     │                    │
+   631→     │ 1                  │ 1
+   632→     │                    │
+   633→     ∞                    ∞
+   634→┌──────────┐       ┌──────────────┐
+   635→│   Team   │       │TimelineEvent │
+   636→│          │       │              │
+   637→│ id       │       │ id           │
+   638→│ name     │       │ runId (FK)   │
+   639→│ mode     │       │ type         │
+   640→│ terminat.│       │ durationMs   │
+   641→│ sharedCtx│       │ tokenCount   │
+   642→└──────────┘       └──────────────┘
+   643→
+   644→
+   645→┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+   646→│ AgentMemory  │  │   Artifact   │  │ PolicyRule   │
+   647→│              │  │              │  │              │
+   648→│ id           │  │ id           │  │ id           │
+   649→│ agentId      │  │ agentId      │  │ name         │
+   650→│ tier         │  │ runId        │  │ condition(J) │
+   651→│ key          │  │ name         │  │ action       │
+   652→│ value (JSON) │  │ type         │  │ priority     │
+   653→│ expiresAt    │  │ content      │  │ enabled      │
+   654→│              │  │ metadata(J)  │  │              │
+   655→│ UNIQUE:      │  │ UNIQUE:      │  └──────────────┘
+   656→│ agentId+key  │  │ agentId+name │
+   657→│ +tier        │  │              │
+   658→└──────────────┘  └──────────────┘
+   659→
+   660→
+   661→┌───────────────────┐  ┌──────────────────┐  ┌──────────────┐
+   662→│ ApprovalRequest   │  │    AuditLog      │  │ Reflection   │
+   663→│                   │  │                  │  │ Iteration    │
+   664→│ id                │  │ id               │  │              │
+   665→│ agentId           │  │ agentId          │  │ id           │
+   666→│ runId             │  │ runId            │  │ runId (FK)   │
+   667→│ tool              │  │ action           │  │ iteration    │
+   668→│ input             │  │ details (JSON)   │  │ output       │
+   669→│ riskLevel         │  │ outcome          │  │ critique     │
+   670→│ status            │  │ riskLevel        │  │ approved     │
+   671→│ respondedAt       │  │                  │  │              │
+   672→│ respondedBy       │  │ IMMUTABLE        │  └──────────────┘
+   673→│ reason            │  └──────────────────┘
+   674→└───────────────────┘
+   675→
+   676→
+   677→┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+   678→│AgentTemplate │  │ AgentTrigger │  │  TaskGraph   │
+   679→│              │  │              │  │              │
+   680→│ id           │  │ id           │  │ id           │
+   681→│ name         │  │ agentId (FK) │  │ name         │
+   682→│ category     │  │ type         │  │ description  │
+   683→│ config (JSON)│  │ config (JSON)│  │              │
+   684→│ isPublic     │  │ enabled      │  │ ┌──────────┐ │
+   685→│ usageCount   │  │ lastRunAt    │  │ │TaskNode[]│ │
+   686→│              │  │ nextRunAt    │  │ │TaskEdge[]│ │
+   687→│              │  │ runCount     │  │ └──────────┘ │
+   688→└──────────────┘  └──────────────┘  └──────────────┘
+   689→```
+   690→
+   691→### Model Details
+   692→
+   693→| Model | PK | Unique Constraints | Indexes | JSON Fields |
+   694→|-------|----|--------------------|---------|-------------|
+   695→| Agent | id (cuid) | — | — | graphData, tools (csv) |
+   696→| AgentRun | id (cuid) | — | agentId | metrics |
+   697→| Step | id (cuid) | — | runId | verificationDetails |
+   698→| Team | id (cuid) | — | — | — |
+   699→| AgentMemory | id (cuid) | agentId+key+tier | — | value |
+   700→| Artifact | id (cuid) | agentId+name | — | metadata |
+   701→| PolicyRule | id (cuid) | — | — | condition |
+   702→| ApprovalRequest | id (cuid) | — | — | — |
+   703→| AuditLog | id (cuid) | — | — | details |
+   704→| TimelineEvent | id (cuid) | — | — | metadata |
+   705→| ReflectionIteration | id (cuid) | — | — | — |
+   706→| AgentTemplate | id (cuid) | — | — | config |
+   707→| AgentTrigger | id (cuid) | — | — | config |
+   708→| TaskNode | id (cuid) | — | graphId | config |
+   709→| TaskEdge | id (cuid) | — | graphId | condition |
+   710→| TaskGraph | id (cuid) | — | — | — |
+   711→
+   712→---
+   713→
+   714→## 7. State Management
+   715→
+   716→### Zustand Store Structure
+   717→
+   718→```
+   719→useAgentStore
+   720→├── Data State
+   721→│   ├── agents: AgentInfo[]           # All agents
+   722→│   ├── selectedAgentId: string|null  # Currently selected agent
+   723→│   ├── runs: RunInfo[]               # Recent runs
+   724→│   ├── currentRunId: string|null     # Active run
+   725→│   ├── events: AgentEvent[]          # Current run events
+   726→│   ├── error: string|null            # Global error
+   727→│   ├── teams: TeamInfo[]             # Agent teams
+   728→│   ├── policies: PolicyRuleInfo[]    # Policy rules
+   729→│   ├── pendingApprovals: ApprovalInfo[]  # Pending approvals
+   730→│   └── systemMetrics: SystemMetricsInfo|null  # System stats
+   731→│
+   732→├── Canvas State
+   733→│   ├── canvasNodes: Node[]           # React Flow nodes
+   734→│   └── canvasEdges: Edge[]           # React Flow edges
+   735→│
+   736→├── UI State
+   737→│   ├── viewMode: ViewMode            # canvas | builder | history
+   738→│   ├── activeModule: AppModule       # canvas | router | pipeline | workflow
+   739→│   ├── inspectorOpen: boolean        # Right panel visibility
+   740→│   ├── sidebarOpen: boolean          # Left panel visibility
+   741→│   ├── builderOpen: boolean          # Builder wizard visibility
+   742→│   ├── isBuilding: boolean           # Building agent in progress
+   743→│   └── isRunning: boolean            # Agent execution in progress
+   744→│
+   745→├── Sync Actions (15+ setters)
+   746→│   ├── setAgents, addAgent, updateAgent, removeAgent
+   747→│   ├── selectAgent (also sets inspectorOpen)
+   748→│   ├── setRuns, addRun, setCurrentRunId
+   749→│   ├── addEvent, clearEvents
+   750→│   ├── setCanvasNodes, setCanvasEdges
+   751→│   ├── setViewMode, setActiveModule
+   752→│   ├── setInspectorOpen, setSidebarOpen, setBuilderOpen
+   753→│   ├── setIsBuilding, setIsRunning, clearError
+   754→│
+   755→└── Async Actions (15+ API calls)
+   756→    ├── fetchAgents()                # GET /api/agent/list
+   757→    ├── fetchRuns(agentId?)          # GET /api/agent/runs
+   758→    ├── buildAgent(userInput)        # POST /api/agent/build
+   759→    ├── createAgent(data)            # POST /api/agent/create
+   760→    ├── deleteAgent(id)              # DELETE /api/agent/delete
+   761→    ├── startRun(agentId, goal?)     # POST /api/agent/run
+   762→    ├── stopRun(runId)               # POST /api/agent/stop
+   763→    ├── updateAgentConfig(id, data)  # PATCH /api/agent/update
+   764→    ├── fetchTeams()                 # GET /api/team/list
+   765→    ├── createTeam(data)             # POST /api/team/create
+   766→    ├── fetchPolicies()              # GET /api/policy/list
+   767→    ├── createPolicy(data)           # POST /api/policy/create
+   768→    ├── updatePolicy(id, data)       # PATCH /api/policy/update
+   769→    ├── deletePolicy(id)             # DELETE /api/policy/delete
+   770→    ├── fetchPendingApprovals()      # GET /api/approval/list
+   771→    ├── respondApproval(id, bool)    # POST /api/approval/respond
+   772→    ├── fetchSystemMetrics()         # GET /api/metrics/system
+   773→    └── runTeam(teamId, goal?)       # POST /api/team/run
+   774→```
+   775→
+   776→### SSE Event Flow
+   777→
+   778→```
+   779→Server (agent.ts)                Client (agent-studio.tsx)
+   780→    │                                    │
+   781→    │  emitEvent({ type: "plan" })       │
+   782→    │  ─────────────────────────────►    │  addEvent(data)
+   783→    │                                    │  → AgentRunView renders
+   784→    │  emitEvent({ type: "action" })     │
+   785→    │  ─────────────────────────────►    │  addEvent(data)
+   786→    │                                    │
+   787→    │  emitEvent({ type: "result" })     │
+   788→    │  ─────────────────────────────►    │  addEvent(data)
+   789→    │                                    │
+   790→    │  emitEvent({ type: "done" })       │
+   791→    │  ─────────────────────────────►    │  setIsRunning(false)
+   792→    │                                    │  fetchRuns()
+   793→    │                                    │  ES.close()
+   794→```
+   795→
+   796→---
+   797→
+   798→## 8. UI Component Tree
+   799→
+   800→### Custom Components (`src/components/agent/`)
+   801→
+   802→| Component | File | Client | Purpose |
+   803→|-----------|------|--------|---------|
+   804→| `AgentStudio` | `agent-studio.tsx` | Yes | **Root shell** — topbar, menubar, module routing, SSE streaming, keyboard shortcuts |
+   805→| `AgentCanvas` | `agent-canvas.tsx` | Yes | React Flow canvas with agent nodes, edges, toolbar, empty state |
+   806→| `AgentNode` | `agent-node.tsx` | Yes | Custom React Flow node — brutalist card, role color bar, status glow |
+   807→| `AgentSidebar` | `agent-sidebar.tsx` | Yes | Explorer tree — Agents, Skills, Workflows, Templates, Runs |
+   808→| `AgentInspector` | `agent-inspector.tsx` | Yes | Right panel config form — collapsible sections, debounced save |
+   809→| `AgentRunView` | `agent-run-view.tsx` | Yes | Real-time event stream — progress bar, animated event cards |
+   810→| `AgentBuilderWizard` | `agent-builder-wizard.tsx` | Yes | 3-step AI builder dialog |
+   811→| `TeamBuilder` | `team-builder.tsx` | Yes | Team creation dialog (also used from sidebar) |
+   812→| `PolicyDashboard` | `policy-dashboard.tsx` | Yes | Policy rule CRUD management |
+   813→| `RoutingEngine` | `routing-engine.tsx` | Yes | ε-Greedy routing visualization |
+   814→| `PipelineStudio` | `pipeline-studio.tsx` | Yes | DevOps pipeline visualization |
+   815→| `SystemIndicator` | `system-indicator.tsx` | Yes | Real-time status indicator (idle/running/approval/error) |
+   816→| `ApprovalModal` | `approval-modal.tsx` | Yes | Human-in-the-loop approval dialog |
+   817→| `MemoryInspector` | `memory-inspector.tsx` | Yes | Memory tier browser |
+   818→| `RunMetrics` | `run-metrics.tsx` | Yes | Post-run metrics display |
+   819→| `ReflectionPanel` | `reflection-panel.tsx` | Yes | Reflection iteration display |
+   820→| `RoleBadge` | `role-badge.tsx` | Yes | Role color badge component |
+   821→
+   822→### Pipeline Components (`src/components/pipeline/`)
+   823→
+   824→| Component | File | Purpose |
+   825→|-----------|------|---------|
+   826→| `PipelineStudio` | `pipeline-studio.tsx` | Pipeline visualization with SVG connectors and flow animations |
+   827→| — | `pipeline-data.ts` | Pipeline data structures and sample DevOps pipeline |
+   828→| — | `pipeline-icons.tsx` | Custom SVG icons for pipeline stages |
+   829→
+   830→### shadcn/ui Components (`src/components/ui/`) — 50 files
+   831→
+   832→All components use the "new-york" style variant with `borderRadius: 0` (neo-brutalist override):
+   833→
+   834→`accordion` · `alert` · `alert-dialog` · `aspect-ratio` · `avatar` · `badge` · `breadcrumb` · `button` · `calendar` · `card` · `carousel` · `chart` · `checkbox` · `collapsible` · `command` · `context-menu` · `dialog` · `drawer` · `dropdown-menu` · `form` · `hover-card` · `input` · `input-otp` · `label` · `menubar` · `navigation-menu` · `pagination` · `popover` · `progress` · `radio-group` · `resizable` · `scroll-area` · `select` · `separator` · `sheet` · `sidebar` · `skeleton` · `slider` · `sonner` · `switch` · `table` · `tabs` · `textarea` · `toast` · `toaster` · `toggle` · `toggle-group` · `tooltip`
+   835→
+   836→---
+   837→
+   838→## 9. File Reference — Every File in the Repo
+   839→
+   840→### Root Configuration
+   841→
+   842→| File | Purpose |
+   843→|------|---------|
+   844→| `package.json` | Project manifest — 37 production deps, 7 dev deps, bun scripts |
+   845→| `next.config.ts` | Next.js config — standalone output, ignore build errors, strict mode off |
+   846→| `tailwind.config.ts` | Tailwind CSS — dark mode class, HSL variable system, animate plugin |
+   847→| `tsconfig.json` | TypeScript — ES2017 target, strict (no implicit any off), path aliases |
+   848→| `postcss.config.mjs` | PostCSS — @tailwindcss/postcss plugin |
+   849→| `eslint.config.mjs` | ESLint — next core-web-vitals + typescript, permissive rules |
+   850→| `components.json` | shadcn/ui — new-york style, lucide icons, CSS variables |
+   851→| `Caddyfile` | Caddy reverse proxy — port 81→3000, XTransformPort routing |
+   852→| `bun.lock` | Bun dependency lock file |
+   853→
+   854→### `prisma/`
+   855→
+   856→| File | Purpose |
+   857→|------|---------|
+   858→| `schema.prisma` | Database schema — 16 models, SQLite provider, prisma-client-js generator |
+   859→
+   860→### `db/`
+   861→
+   862→| File | Purpose |
+   863→|------|---------|
+   864→| `custom.db` | SQLite database file (binary) |
+   865→
+   866→### `src/app/` — Pages & Layout
+   867→
+   868→| File | Purpose |
+   869→|------|---------|
+   870→| `layout.tsx` | Root layout — html.dark, IBM Plex Mono, Toaster |
+   871→| `page.tsx` | Home page — renders `<AgentStudio />` |
+   872→| `globals.css` | Global CSS — theme variables, React Flow overrides, pipeline animations |
+   873→| `api/route.ts` | Health check — `GET /api` → `{ message: "Hello, world!" }` |
+   874→
+   875→### `src/app/api/agent/`
+   876→
+   877→| File | Purpose |
+   878→|------|---------|
+   879→| `create/route.ts` | `POST` — Create agent with all V1+V2 fields |
+   880→| `list/route.ts` | `GET` — List all agents with run counts |
+   881→| `update/route.ts` | `PATCH` — Update agent config or graphData |
+   882→| `delete/route.ts` | `DELETE` — Delete agent + cascade runs/steps |
+   883→| `build/route.ts` | `POST` — Build agent from natural language via AI planner |
+   884→| `run/route.ts` | `POST` — Start single or orchestrated agent run |
+   885→| `runs/route.ts` | `GET` — List runs (all, by agent, or specific) |
+   886→| `stop/route.ts` | `POST` — Stop running agent |
+   887→| `stream/route.ts` | `GET` — SSE stream for real-time run events |
+   888→
+   889→### `src/app/api/team/`
+   890→
+   891→| File | Purpose |
+   892→|------|---------|
+   893→| `create/route.ts` | `POST` — Create team with agent IDs |
+   894→| `list/route.ts` | `GET` — List teams with agents |
+   895→| `get/route.ts` | `GET` — Get team by ID |
+   896→| `update/route.ts` | `PATCH` — Update team config |
+   897→| `run/route.ts` | `POST` — Start team orchestration |
+   898→| `stop/route.ts` | `POST` — Stop team orchestration |
+   899→
+   900→### `src/app/api/template/`
+   901→
+   902→| File | Purpose |
+   903→|------|---------|
+   904→| `create/route.ts` | `POST` — Create agent template |
+   905→| `list/route.ts` | `GET` — List templates with filters |
+   906→| `get/route.ts` | `GET` — Get template by ID |
+   907→| `delete/route.ts` | `DELETE` — Delete template |
+   908→| `instantiate/route.ts` | `POST` — Create agent from template |
+   909→
+   910→### `src/app/api/policy/`
+   911→
+   912→| File | Purpose |
+   913→|------|---------|
+   914→| `list/route.ts` | `GET` — List policy rules |
+   915→| `create/route.ts` | `POST` — Create policy rule |
+   916→| `update/route.ts` | `PATCH` — Update policy rule |
+   917→| `delete/route.ts` | `DELETE` — Delete policy rule |
+   918→
+   919→### `src/app/api/approval/`
+   920→
+   921→| File | Purpose |
+   922→|------|---------|
+   923→| `list/route.ts` | `GET` — List pending approval requests |
+   924→| `respond/route.ts` | `POST` — Approve or deny approval request |
+   925→
+   926→### `src/app/api/memory/`
+   927→
+   928→| File | Purpose |
+   929→|------|---------|
+   930→| `get/route.ts` | `GET` — Retrieve memory value by agentId, key, tier |
+   931→| `set/route.ts` | `POST` — Write memory value |
+   932→| `list/route.ts` | `GET` — List memory entries for agent/tier |
+   933→
+   934→### `src/app/api/artifacts/`
+   935→
+   936→| File | Purpose |
+   937→|------|---------|
+   938→| `list/route.ts` | `GET` — List artifacts for agent |
+   939→| `get/route.ts` | `GET` — Get specific artifact by agentId + name |
+   940→
+   941→### `src/app/api/metrics/`
+   942→
+   943→| File | Purpose |
+   944→|------|---------|
+   945→| `run/route.ts` | `GET` — Run-level metrics |
+   946→| `system/route.ts` | `GET` — System-wide metrics |
+   947→
+   948→### `src/app/api/` — Other
+   949→
+   950→| File | Purpose |
+   951→|------|---------|
+   952→| `timeline/route.ts` | `GET` — Timeline events for a run |
+   953→| `audit/list/route.ts` | `GET` — Audit log with filters |
+   954→| `tools/list/route.ts` | `GET` — List registered tools |
+   955→
+   956→### `src/app/api/trigger/`
+   957→
+   958→| File | Purpose |
+   959→|------|---------|
+   960→| `create/route.ts` | `POST` — Create trigger (cron/webhook/event) |
+   961→| `list/route.ts` | `GET` — List triggers with filters |
+   962→| `update/route.ts` | `PATCH` — Update trigger config/enabled |
+   963→| `delete/route.ts` | `DELETE` — Delete trigger |
+   964→| `execute/route.ts` | `POST` — Manually execute trigger |
+   965→
+   966→### `src/app/api/task-graph/`
+   967→
+   968→| File | Purpose |
+   969→|------|---------|
+   970→| `create/route.ts` | `POST` — Create task graph with nodes/edges |
+   971→| `list/route.ts` | `GET` — List all task graphs |
+   972→| `get/route.ts` | `GET` — Get task graph by ID |
+   973→| `update/route.ts` | `PATCH` — Update graph (replaces nodes/edges) |
+   974→| `delete/route.ts` | `DELETE` — Delete task graph (cascades) |
+   975→
+   976→### `src/lib/agent/` — Agent Engine
+   977→
+   978→| File | Purpose |
+   979→|------|---------|
+   980→| `types.ts` | Central type definitions + Zod schemas for the entire agent system |
+   981→| `zai-client.ts` | Singleton ZAI SDK wrapper with lazy init and dedup lock |
+   982→| `agent.ts` | Core agent execution loop, event system, concurrency control (max 5) |
+   983→| `planner.ts` | LLM-based action planning + agent building from natural language |
+   984→| `tools.ts` | 5 built-in tools (search, write, code, browser, finish) + verification |
+   985→| `tool-registry.ts` | Advanced tool registry with zod validation, 6 tools, 5 verification types |
+   986→| `evaluator.ts` | Goal completion evaluation (rule-based + LLM judge) |
+   987→| `orchestrator.ts` | Multi-agent orchestration engine (5 modes) |
+   988→| `memory.ts` | V1 in-memory run-scoped store, 1h auto-cleanup |
+   989→| `memory-v2.ts` | V2 3-tier memory manager (session/persistent/artifact) |
+   990→| `roles.ts` | 6 agent roles with permissions, prompt modifiers, default tools |
+   991→| `policy.ts` | Policy engine — condition matching, approval workflow, audit logging |
+   992→| `reflection.ts` | Critic-generator reflection loop with configurable iterations |
+   993→| `metrics.ts` | Run + system metrics collection (tokens, latency, tool usage) |
+   994→| `system-state.ts` | System-wide state manager with pub/sub |
+   995→
+   996→### `src/lib/` — Shared
+   997→
+   998→| File | Purpose |
+   999→|------|---------|
+  1000→| `utils.ts` | Tailwind class name merger — `cn()` combining clsx + tailwind-merge |
+  1001→| `db.ts` | Prisma client singleton — dev hot-reload safe with globalThis caching |
+  1002→
+  1003→### `src/store/`
+  1004→
+  1005→| File | Purpose |
+  1006→|------|---------|
+  1007→| `agent-store.ts` | Zustand global store — 20+ state fields, 15+ setters, 15+ async actions |
+  1008→
+  1009→### `src/hooks/`
+  1010→
+  1011→| File | Purpose |
+  1012→|------|---------|
+  1013→| `use-mobile.ts` | Responsive breakpoint hook — `useIsMobile()` for <768px |
+  1014→| `use-toast.ts` | Toast notification system — in-memory state with add/update/dismiss |
+  1015→
+  1016→### `src/components/agent/` — Custom UI
+  1017→
+  1018→| File | Purpose |
+  1019→|------|---------|
+  1020→| `agent-studio.tsx` | Root shell — topbar, menubar, module routing, SSE, shortcuts |
+  1021→| `agent-canvas.tsx` | React Flow canvas — nodes, edges, toolbar, empty state |
+  1022→| `agent-node.tsx` | Custom React Flow node — brutalist card, role color, status glow |
+  1023→| `agent-sidebar.tsx` | Explorer sidebar — collapsible tree with agents/skills/workflows/templates/runs |
+  1024→| `agent-inspector.tsx` | Config panel — collapsible sections, debounced auto-save |
+  1025→| `agent-run-view.tsx` | Execution view — real-time event stream with progress bar |
+  1026→| `agent-builder-wizard.tsx` | AI builder — 3-step wizard (input → building → result) |
+  1027→| `team-builder.tsx` | Team builder dialog — name, mode, agent selection |
+  1028→| `policy-dashboard.tsx` | Policy management — CRUD with condition builder |
+  1029→| `routing-engine.tsx` | Routing engine — ε-Greedy, Q-Table, telemetry |
+  1030→| `system-indicator.tsx` | System status — real-time indicator with tooltip metrics |
+  1031→| `approval-modal.tsx` | Approval dialog — human-in-the-loop for risky actions |
+  1032→| `memory-inspector.tsx` | Memory browser — 3-tier memory inspection |
+  1033→| `run-metrics.tsx` | Post-run metrics — tokens, latency, tool usage |
+  1034→| `reflection-panel.tsx` | Reflection display — critic-generator iterations |
+  1035→| `role-badge.tsx` | Role badge — color-coded role indicator |
+  1036→
+  1037→### `src/components/pipeline/`
+  1038→
+  1039→| File | Purpose |
+  1040→|------|---------|
+  1041→| `pipeline-studio.tsx` | Pipeline module — SVG connectors, animated flow, stage status |
+  1042→| `pipeline-data.ts` | Pipeline data models + sample DevOps pipeline data |
+  1043→| `pipeline-icons.tsx` | Custom SVG icons for pipeline stages |
+  1044→
+  1045→### `src/components/ui/` — shadcn/ui (50 files)
+  1046→
+  1047→Standard shadcn/ui primitives. See Section 8 for the full list.
+  1048→
+  1049→### `public/`
+  1050→
+  1051→| File | Purpose |
+  1052→|------|---------|
+  1053→| `robots.txt` | SEO robots file |
+  1054→| `logo.svg` | App logo SVG |
+  1055→| `agent-studio-hero.png` | Hero image for the app |
+  1056→
+  1057→### `examples/`
+  1058→
+  1059→| File | Purpose |
+  1060→|------|---------|
+  1061→| `websocket/frontend.tsx` | WebSocket frontend example code |
+  1062→| `websocket/server.ts` | WebSocket server example code |
+  1063→
+  1064→---
+  1065→
+  1066→## 10. Design System
+  1067→
+  1068→### Color Tokens
+  1069→
+  1070→```
+  1071→┌─────────────────────────────────────────────────────────┐
+  1072→│                    Color Palette                         │
+  1073→│                                                          │
+  1074→│  Backgrounds:                                            │
+  1075→│  ● #05070a  — Deepest (app background)                  │
+  1076→│  ● #0a0e14  — Panel strip (collapsed sidebar/inspector) │
+  1077→│  ● #0b1016  — Dropdown background                       │
+  1078→│  ● #0b1118  — Input background                          │
+  1079→│  ● #0c1219  — Tag/badge background                      │
+  1080→│  ● #0d131b  — Active agent row                          │
+  1081→│  ● #0f141b  — Panel background (sidebar, inspector)     │
+  1082→│  ● #101720  — Hover state                               │
+  1083→│  ● #141b23  — Header/footer background                  │
+  1084→│  ● #141c25  — Focus/hover background                    │
+  1085→│  ● #1a212b  — Elevated surface, badges                  │
+  1086→│                                                          │
+  1087→│  Borders:                                                │
+  1088→│  ● #000000  — Primary border (2px solid)                │
+  1089→│  ● #1b2430  — Subtle separator                          │
+  1090→│  ● #2a3441  — Standard border                            │
+  1091→│  ● #3a4553  — Active/highlight border                    │
+  1092→│                                                          │
+  1093→│  Text:                                                   │
+  1094→│  ● #d7dde5  — Primary text                              │
+  1095→│  ● #8a94a3  — Secondary/muted text                      │
+  1096→│  ● #5b6b81  — Tertiary/hint text                        │
+  1097→│  ● #475569  — Disabled text                              │
+  1098→│                                                          │
+  1099→│  Accents:                                                │
+  1100→│  ● #ffd60a  — Primary accent (yellow) — actions, active │
+  1101→│  ● #00d1ff  — Secondary accent (cyan) — info, running   │
+  1102→│  ● #22c55e  — Success (green) — completed, teams        │
+  1103→│  ● #f59e0b  — Warning (amber) — critic, pending        │
+  1104→│  ● #ef4444  — Error (red) — failed, delete, danger     │
+  1105→└─────────────────────────────────────────────────────────┘
+  1106→```
+  1107→
+  1108→### Shadow System
+  1109→
+  1110→```
+  1111→Shadow 2  → box-shadow: 2px 2px 0 #000    (buttons, cards)
+  1112→Shadow 4  → box-shadow: 4px 4px 0 #000    (dropdowns, dialogs)
+  1113→Shadow 6  → box-shadow: 6px 6px 0 #000    (hero elements, placeholders)
+  1114→```
+  1115→
+  1116→### Typography
+  1117→
+  1118→- **Font**: IBM Plex Mono (monospace)
+  1119→- **Sizes**: 8px (micro labels), 9px (hints), 10px (tags), 11px (body), 13px (headings)
+  1120→- **Transform**: `uppercase` + `tracking-wider/widest` on labels and section headers
+  1121→
+  1122→---
+  1123→
+  1124→## 11. Infrastructure
+  1125→
+  1126→### Reverse Proxy (Caddy)
+  1127→
+  1128→```
+  1129→┌──────────┐     ┌──────────┐     ┌──────────┐
+  1130→│  Client   │────►│  Caddy   │────►│  Next.js │
+  1131→│  (Browser)│     │  :81     │     │  :3000   │
+  1132→└──────────┘     └──────────┘     └──────────┘
+  1133→
+  1134→Caddyfile Rules:
+  1135→  - Port 81 → localhost:3000
+  1136→  - X-Forwarded headers
+  1137→  - ?XTransformPort=XXXX → localhost:XXXX
+  1138→    (for mini-services on custom ports)
+  1139→```
+  1140→
+  1141→### SSE Reconnection Strategy
+  1142→
+  1143→```
+  1144→Connection Lost
+  1145→       │
+  1146→       ▼
+  1147→Attempt 1: Wait 1s → Reconnect
+  1148→Attempt 2: Wait 2s → Reconnect
+  1149→Attempt 3: Wait 4s → Reconnect
+  1150→Attempt 4: Wait 8s → Reconnect
+  1151→Attempt 5: Wait 16s → Reconnect
+  1152→       │
+  1153→       ▼
+  1154→Max Attempts (5) Reached
+  1155→       │
+  1156→       ▼
+  1157→Set error state: "Connection lost after 5 attempts"
+  1158→```
+  1159→
+  1160→### Concurrency Control
+  1161→
+  1162→```
+  1163→┌─────────────────────────────────┐
+  1164→│    Agent Run Queue              │
+  1165→│                                 │
+  1166→│    Max concurrent runs: 5       │
+  1167→│                                 │
+  1168→│    ┌─────┐ ┌─────┐ ┌─────┐    │
+  1169→│    │Run 1│ │Run 2│ │Run 3│    │  ← Active
+  1170→│    └─────┘ └─────┘ └─────┘    │
+  1171→│    ┌─────┐ ┌─────┐             │
+  1172→│    │Run 4│ │Run 5│             │  ← Active
+  1173→│    └─────┘ └─────┘             │
+  1174→│    ┌─────┐                     │
+  1175→│    │Run 6│                     │  ← Queued
+  1176→│    └─────┘                     │
+  1177→└─────────────────────────────────┘
+  1178→```
+  1179→
+  1180→---
+  1181→
+  1182→*This document covers every file in the Agent Studio OS repository. Last updated: 2025-01-18.*
+  1183→

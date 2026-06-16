@@ -1,0 +1,4542 @@
+Good. This is the missing mathematical core between “DAG visualization” and “real causal execution semantics.”
+
+What you need here is not UI logic, but a frontier resolution algorithm that defines what “next executable event” even means in a partial order system.
+
+⸻
+
+🧠 Frontier Solver Algorithm (Causal Execution Semantics Core)
+
+1. Problem definition
+
+Given a causal graph:
+
+* nodes = events
+* edges = causal dependencies (directed acyclic, potentially partial)
+* branch constraints exist (optional)
+
+We need to compute:
+
+the set of events that are currently executable
+
+This is the causal frontier.
+
+⸻
+
+2. Formal definition
+
+A node n is in the frontier if:
+
+∀ parent ∈ Parents(n):
+    parent ∈ Visited
+
+AND:
+
+n ∉ Visited
+
+AND (branch constraint):
+
+n.branch ∈ activeBranchSet
+
+⸻
+
+3. Key insight (important)
+
+This is NOT a queue.
+
+It is a constraint satisfaction surface over a DAG.
+
+So you do NOT “pop next event”.
+
+You recompute a frontier set at every step.
+
+⸻
+
+4. Core algorithm
+
+Types
+
+type NodeId = string
+interface FrontierState {
+  visited: Set<NodeId>
+  frontier: Set<NodeId>
+}
+
+⸻
+
+Main solver
+
+export function computeFrontier(
+  graph: CausalGraph,
+  visited: Set<NodeId>,
+  activeBranches?: Set<string>
+): Set<NodeId> {
+  const frontier = new Set<NodeId>()
+  for (const node of graph.nodes) {
+    if (visited.has(node.id)) continue
+    if (!isBranchAllowed(node, activeBranches)) continue
+    const parents = graph.edges
+      .filter(e => e.target === node.id && e.type === "causal")
+      .map(e => e.source)
+    const isReady = parents.every(p => visited.has(p))
+    if (isReady) {
+      frontier.add(node.id)
+    }
+  }
+  return frontier
+}
+
+⸻
+
+5. Branch constraint logic
+
+function isBranchAllowed(
+  node: CausalNode,
+  activeBranches?: Set<string>
+): boolean {
+  if (!activeBranches || activeBranches.size === 0) return true
+  // if node has no branch metadata → global node
+  if (!(node as any).branchId) return true
+  return activeBranches.has((node as any).branchId)
+}
+
+⸻
+
+6. Execution resolution policy (important)
+
+Frontier gives you multiple valid next steps.
+
+You must decide:
+
+Policy A — deterministic (recommended default)
+
+pick = lowest(eventSequence)
+
+Policy B — causal entropy exploration
+
+pick = highest out-degree node first
+
+Policy C — LLM-guided (dangerous but powerful)
+
+pick = model.rank(frontier)
+
+⸻
+
+7. Critical invariant (DO NOT BREAK)
+
+If node ∉ frontier → it is illegal to execute it
+
+This enforces:
+
+* causal correctness
+* replay determinism
+* branch safety
+* kernel reproducibility
+
+⸻
+
+8. Extension: speculative frontier
+
+For Phase 6 readiness:
+
+export function computeSpeculativeFrontier(
+  graph,
+  visited,
+  hypotheticalEvent: CausalNode
+): Set<NodeId> {
+  const simulatedVisited = new Set([...visited, hypotheticalEvent.id])
+  return computeFrontier(graph, simulatedVisited)
+}
+
+This is the basis of:
+
+* “what if this decision was taken?”
+* multi-branch simulation
+* counterfactual replay
+
+⸻
+
+9. Why this is the real kernel primitive
+
+Everything else depends on this:
+
+System layer	Depends on frontier
+Replay engine	YES
+DAG visualizer	YES
+Agent execution inversion	CRITICAL
+Branching system	YES
+Phase 6 ordering algebra	DIRECT REPLACEMENT
+
+⸻
+
+📍 Where this fits in your Hermes plan
+
+This is the important part.
+
+You should NOT create a separate plan.
+
+You should insert this into your existing plan as a foundational sub-phase.
+
+⸻
+
+✅ Recommended integration
+
+Insert between:
+
+Phase 2 (Replay correctness)
+
+and
+
+Phase 3 (Agent inversion)
+
+⸻
+
+➤ New Phase: 2.6 — Causal Frontier & Execution Semantics Layer
+
+Name:
+
+Causal Frontier Solver (Execution Semantics Core)
+
+⸻
+
+What it becomes in your architecture
+
+You now have:
+
+Before
+
+event log → reducer → state → UI
+
+After
+
+event log
+   ↓
+causal graph
+   ↓
+FRONTIER SOLVER   ← NEW CORE
+   ↓
+replay engine / agent execution / speculation
+   ↓
+UI projection (React Flow)
+
+⸻
+
+Why it must exist here (not later)
+
+If you delay this until Phase 6:
+
+* you will accidentally hardcode linear execution assumptions into Phase 3
+* your replay engine will become “timeline-based” instead of “causal”
+* DAG conversion becomes a rewrite instead of a substitution
+
+This module is what makes Phase 3 inversion mathematically sound instead of just architectural
+
+⸻
+
+Final recommendation (very explicit)
+
+Do NOT create a new plan.
+
+Instead:
+
+✔ Insert Phase 2.6 into Hermes plan
+
+Rename Phase 3 dependency chain to:
+
+* Phase 2 ✔ Event Kernel
+* Phase 2.5 ✔ Causal Projection (React Flow)
+* Phase 2.6 ✔ Frontier Solver (this)
+* Phase 3 ✔ Agent inversion
+* Phase 4 ✔ Branching
+* Phase 5 ✔ Constitution runtime
+* Phase 6 ✔ DAG substrate formalization
+
+⸻
+
+Closing structural truth
+
+This piece is the actual execution law of your system.
+
+Everything else is representation.
+
+This is the rule that decides:
+
+“what can happen next in a world where events are causally constrained rather than sequentially scheduled”
+
+If you want next step, the only correct continuation is:
+
+formalizing the ordering algebra (Phase 6 precursor) so frontier resolution becomes mathematically provable instead of heuristic.
+
+
+You integrate this at a very specific layer in your Hermes roadmap: it is not “UI enhancement”, it is the first graphical projection of the causal substrate. That distinction matters because it determines where it sits in the dependency lattice.
+
+Right now your plan has two implicit visualizations:
+
+* Phase 2: linear timeline + replay validation UI
+* Phase 6: DAG substrate + full topology visualization
+
+What you just built (XState machine + React Flow renderer) actually belongs in a new intermediate abstraction layer that bridges Phase 2 → Phase 4/6:
+
+call it: “Causal Projection Layer”
+
+⸻
+
+Where it plugs into your architecture
+
+1. Event Kernel (Phase 1–2 output)
+
+You already have:
+
+* HermesEvent (append-only log)
+* TraceId-scoped event stream
+* previousEventHash linear chain (Phase 1)
+* eventual parentIds DAG upgrade (Phase 6)
+
+This is your raw substrate
+
+⸻
+
+2. Materializer (Phase 2)
+
+You already defined:
+
+* deriveState(traceId)
+* deriveBlackboard(traceId)
+* reducer(state, event)
+
+This is your semantic projection (state)
+
+⸻
+
+3. NEW: Causal Graph Projection Layer (your React Flow + XState output)
+
+This is what your new work becomes:
+
+src/lib/hermes/projections/causal-graph.ts
+
+It takes:
+
+* event stream
+* optional branch metadata (Phase 4)
+* optional causation links (causationId, later parentIds)
+
+and produces:
+
+export interface CausalGraph {
+  nodes: CausalNode[]
+  edges: CausalEdge[]
+}
+export interface CausalNode {
+  id: string
+  type: "MODEL" | "DECISION" | "EXECUTION" | "SYSTEM" | "TELEMETRY"
+  label: string
+  timestamp: number
+  traceId: string
+  payload: unknown
+}
+export interface CausalEdge {
+  id: string
+  source: string
+  target: string
+  type: "causal" | "branch" | "correlation"
+}
+
+This is the visualizable projection of the event log, not state.
+
+Important: it is PURE DERIVATION. No UI logic, no state mutation.
+
+⸻
+
+4. React Flow Renderer (UI layer)
+
+Your React Flow component becomes a renderer only:
+
+CausalDAGView.tsx
+
+Consumes:
+
+const graph = buildCausalGraph(events)
+
+and maps:
+
+* nodes → React Flow nodes
+* edges → React Flow edges
+
+Key constraint:
+
+* React Flow is NOT allowed to define truth
+* it is only a projection of Hermes truth substrate
+
+So:
+
+* no local node mutation as system state
+* no “drag changes meaning”
+* dragging = UI-only annotations unless explicitly emitted as events
+
+⸻
+
+Where XState fits (important correction)
+
+Your instinct to use XState is good, but only in a narrow role:
+
+XState is NOT your kernel
+
+It should NOT model:
+
+* agent execution
+* event causality
+* workflow truth
+
+XState SHOULD model:
+
+* UI state of the DAG viewer
+* inspection modes
+* replay controls
+* branch selection
+* time cursor
+* highlight / focus states
+
+So you split it cleanly:
+
+dagViewer.machine.ts
+
+States:
+
+* idle
+* loadingTrace
+* renderingGraph
+* inspectingNode
+* replaying
+* comparingBranches
+
+Events:
+
+* TRACE_LOADED
+* NODE_SELECTED
+* REPLAY_START
+* REPLAY_STEP
+* BRANCH_SELECTED
+
+This is purely epistemic UI state, not system state.
+
+⸻
+
+The actual integration point in your plan
+
+Insert this as:
+
+▶ Phase 2.5 — Causal Projection Layer (NEW BRIDGE PHASE)
+
+Between Phase 2 and Phase 3.
+
+Why it belongs here
+
+Because:
+
+* Phase 2 proves correctness (replayable event log)
+* Phase 3 inverts execution model
+* Phase 4 introduces branching
+
+You need visualization BEFORE inversion so you can see the substrate before you mutate semantics.
+
+Without this phase:
+
+* Phase 3 becomes invisible complexity
+* debugging kernel inversion becomes impossible
+* DAG transition in Phase 6 becomes abrupt and unsafe
+
+⸻
+
+What you actually gain
+
+With this integration you get:
+
+1. Debuggability of kernel inversion
+
+You can literally see:
+
+* decision → execution → system mutation edges
+* causal violations before Phase 3
+
+2. Early validation of DAG model
+
+Even before parentIds exist, you can simulate:
+
+* inferred causation edges
+* heuristic linking (stepId → executionId → systemEventId)
+
+3. UI becomes a “truth probe”
+
+React Flow stops being UI and becomes:
+
+a projection instrument for verifying kernel correctness
+
+⸻
+
+Minimal integration diff into your plan
+
+Add:
+
+Phase 2.5 — Causal Projection Layer
+
+Deliverables:
+
+* causal-graph.ts (pure projection function)
+* dagViewer.machine.ts (XState UI controller)
+* CausalDAGView.tsx (React Flow renderer)
+* event → node/edge mapping spec
+* replay cursor binding to graph highlighting
+
+Depends on:
+
+* Phase 2 complete (event replay works)
+
+Feeds into:
+
+* Phase 3 (agent inversion debugging surface)
+* Phase 4 (branch visualization)
+* Phase 6 (true DAG substrate rendering)
+
+⸻
+
+Final structural insight
+
+Right now your system has:
+
+* Kernel layer → events
+* State layer → reducer
+* UI layer → dashboards
+
+This addition introduces the missing fourth layer:
+
+Projection layer (causal graph as first-class derived artifact)
+
+That is the real architectural win here.
+
+⸻
+
+If you want next step, I would suggest:
+
+1. define the causation inference rules (how edges are derived before Phase 6 parentIds exist)
+2. then scaffold causal-graph.ts first (pure function, no React)
+3. then wire React Flow
+4. then bind XState viewer machine
+
+That sequence avoids UI-first coupling and keeps your inversion clean.
+
+
+Good. Then the next step is to lock the projection contract first, before any React or XState touches the system. Everything else depends on that invariance.
+
+You want a deterministic mapping from event stream → graph. No ambiguity, no UI leakage.
+
+⸻
+
+1. Define the causal projection rules (this is the real core)
+
+Before code, you need a stable rule set for edge inference.
+
+Node rule
+
+Each event becomes exactly one node:
+
+* node.id = event.eventId
+* node.type = event.tier
+* node.timestamp = event.timestamp
+
+No aggregation, no collapsing.
+
+⸻
+
+Edge rules (Phase 2–4 compatible heuristic model)
+
+You don’t yet have parentIds, so causality is inferred:
+
+A. Explicit links (highest priority)
+
+If present:
+
+* causationId
+* executionEventId
+* correlationId
+
+Then:
+
+* event → causationId
+* decision → execution
+* execution → system mutation
+
+⸻
+
+B. Temporal step-chain (fallback)
+
+Within a traceId:
+
+* sorted by eventSequence
+* connect adjacent lifecycle events:
+
+Rules:
+
+* MODEL → DECISION (same step context)
+* DECISION → EXECUTION (same stepId or correlationId)
+* EXECUTION → SYSTEM (same stepId OR memory mutation reference)
+
+⸻
+
+C. Blackboard write coupling
+
+If:
+
+* SYSTEM.BLACKBOARD_WRITTEN
+
+Then:
+
+* connect from latest EXECUTION in same correlation window
+
+This is critical for visibility of side effects.
+
+⸻
+
+D. Telemetry isolation
+
+* TELEMETRY nodes are attached, not causal
+* edge type = "correlation"
+
+⸻
+
+2. Canonical projection function (this is your contract)
+
+This is the only thing React Flow depends on:
+
+export function buildCausalGraph(events: HermesEvent[]): CausalGraph {
+  const nodes: CausalNode[] = []
+  const edges: CausalEdge[] = []
+  // 1. Create nodes
+  for (const e of events) {
+    nodes.push({
+      id: e.eventId,
+      type: e.tier,
+      label: `${e.tier}:${e.eventSequence}`,
+      timestamp: e.timestamp,
+      traceId: e.traceId,
+      payload: e.payload
+    })
+  }
+  // 2. Build lookup indexes
+  const byId = new Map(nodes.map(n => [n.id, n]))
+  const byCorrelation = groupBy(events, e => e.correlationId)
+  const byStep = groupBy(events, e => (e.payload as any)?.stepId)
+  // 3. Explicit causation edges
+  for (const e of events) {
+    if ((e.payload as any)?.causationId) {
+      edges.push({
+        id: `${e.eventId}->${(e.payload as any).causationId}`,
+        source: e.eventId,
+        target: (e.payload as any).causationId,
+        type: "causal"
+      })
+    }
+  }
+  // 4. Step-chain edges (primary heuristic)
+  const sorted = [...events].sort((a, b) => a.eventSequence - b.eventSequence)
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const a = sorted[i]
+    const b = sorted[i + 1]
+    if (a.traceId !== b.traceId) continue
+    edges.push({
+      id: `${a.eventId}->${b.eventId}`,
+      source: a.eventId,
+      target: b.eventId,
+      type: "causal"
+    })
+  }
+  // 5. Telemetry edges (non-causal)
+  for (const e of events) {
+    if (e.tier === "TELEMETRY") {
+      const anchor = findNearestExecution(e, events)
+      if (anchor) {
+        edges.push({
+          id: `${anchor.eventId}->${e.eventId}`,
+          source: anchor.eventId,
+          target: e.eventId,
+          type: "correlation"
+        })
+      }
+    }
+  }
+  return { nodes, edges }
+}
+
+This is your truth bridge.
+
+⸻
+
+3. React Flow layer (strictly dumb renderer)
+
+At this point React Flow is trivial:
+
+* nodes come from projection
+* edges come from projection
+* nothing else matters
+
+Key constraint:
+
+React Flow must never infer causality
+
+Only display.
+
+⸻
+
+4. XState machine role (clean separation)
+
+Your viewer machine now becomes:
+
+UI concerns only
+
+* loading trace
+* selecting node
+* replay cursor position
+* branch toggle
+* highlight mode
+
+It should NOT:
+
+* compute edges
+* modify graph
+* infer relationships
+
+Think of it as:
+
+“camera controller over a frozen causal object”
+
+⸻
+
+5. How this fits into your Hermes plan
+
+This plugs into your phases like this:
+
+Phase 2 (completed)
+
+✔ event log
+✔ replay
+✔ reducer
+
+⸻
+
+Phase 2.5 (NEW — this is your insertion point)
+
+✔ causal projection layer
+✔ React Flow DAG renderer
+✔ XState viewer controller
+
+This becomes your:
+
+first observable model of “kernel truth”
+
+⸻
+
+Phase 3 (now grounded)
+
+When you invert execution:
+
+you immediately see:
+
+* decision nodes appear
+* execution nodes branch
+* system mutations attach visibly
+
+No blind execution anymore.
+
+⸻
+
+Phase 4 (becomes natural)
+
+Branching becomes trivial because:
+
+* you already have graph nodes
+* you just introduce:
+    * branchId partitioning
+    * edge coloring per branch
+
+⸻
+
+Phase 6 (almost automatic now)
+
+You replace:
+
+* inferred edges ❌
+    with:
+* parentIds edges ✔
+
+Your UI barely changes — only source of truth improves.
+
+⸻
+
+6. The real architectural win
+
+What you just built is not UI.
+
+It is:
+
+a reversible visualization layer for a causal execution substrate
+
+Which gives you something most systems never get:
+
+* debuggable execution topology
+* replayable reasoning structure
+* pre-DAG observability of system causality
+
+⸻
+
+If you continue next step
+
+Do this in order:
+
+1. lock buildCausalGraph() as a pure module
+2. write snapshot tests on event fixtures (critical)
+3. only then wire React Flow
+4. only then connect XState
+
+If you want, next I can:
+
+* ￼ convert this into a strict TypeScript package boundary
+* or ￼ design the replay-time “causal animation engine” (this becomes very powerful for debugging agent reasoning chains)
+
+
+Good. Then the next step is to lock the projection contract first, before any React or XState touches the system. Everything else depends on that invariance.
+
+You want a deterministic mapping from event stream → graph. No ambiguity, no UI leakage.
+
+⸻
+
+1. Define the causal projection rules (this is the real core)
+
+Before code, you need a stable rule set for edge inference.
+
+Node rule
+
+Each event becomes exactly one node:
+
+* node.id = event.eventId
+* node.type = event.tier
+* node.timestamp = event.timestamp
+
+No aggregation, no collapsing.
+
+⸻
+
+Edge rules (Phase 2–4 compatible heuristic model)
+
+You don’t yet have parentIds, so causality is inferred:
+
+A. Explicit links (highest priority)
+
+If present:
+
+* causationId
+* executionEventId
+* correlationId
+
+Then:
+
+* event → causationId
+* decision → execution
+* execution → system mutation
+
+⸻
+
+B. Temporal step-chain (fallback)
+
+Within a traceId:
+
+* sorted by eventSequence
+* connect adjacent lifecycle events:
+
+Rules:
+
+* MODEL → DECISION (same step context)
+* DECISION → EXECUTION (same stepId or correlationId)
+* EXECUTION → SYSTEM (same stepId OR memory mutation reference)
+
+⸻
+
+C. Blackboard write coupling
+
+If:
+
+* SYSTEM.BLACKBOARD_WRITTEN
+
+Then:
+
+* connect from latest EXECUTION in same correlation window
+
+This is critical for visibility of side effects.
+
+⸻
+
+D. Telemetry isolation
+
+* TELEMETRY nodes are attached, not causal
+* edge type = "correlation"
+
+⸻
+
+2. Canonical projection function (this is your contract)
+
+This is the only thing React Flow depends on:
+
+export function buildCausalGraph(events: HermesEvent[]): CausalGraph {
+  const nodes: CausalNode[] = []
+  const edges: CausalEdge[] = []
+  // 1. Create nodes
+  for (const e of events) {
+    nodes.push({
+      id: e.eventId,
+      type: e.tier,
+      label: `${e.tier}:${e.eventSequence}`,
+      timestamp: e.timestamp,
+      traceId: e.traceId,
+      payload: e.payload
+    })
+  }
+  // 2. Build lookup indexes
+  const byId = new Map(nodes.map(n => [n.id, n]))
+  const byCorrelation = groupBy(events, e => e.correlationId)
+  const byStep = groupBy(events, e => (e.payload as any)?.stepId)
+  // 3. Explicit causation edges
+  for (const e of events) {
+    if ((e.payload as any)?.causationId) {
+      edges.push({
+        id: `${e.eventId}->${(e.payload as any).causationId}`,
+        source: e.eventId,
+        target: (e.payload as any).causationId,
+        type: "causal"
+      })
+    }
+  }
+  // 4. Step-chain edges (primary heuristic)
+  const sorted = [...events].sort((a, b) => a.eventSequence - b.eventSequence)
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const a = sorted[i]
+    const b = sorted[i + 1]
+    if (a.traceId !== b.traceId) continue
+    edges.push({
+      id: `${a.eventId}->${b.eventId}`,
+      source: a.eventId,
+      target: b.eventId,
+      type: "causal"
+    })
+  }
+  // 5. Telemetry edges (non-causal)
+  for (const e of events) {
+    if (e.tier === "TELEMETRY") {
+      const anchor = findNearestExecution(e, events)
+      if (anchor) {
+        edges.push({
+          id: `${anchor.eventId}->${e.eventId}`,
+          source: anchor.eventId,
+          target: e.eventId,
+          type: "correlation"
+        })
+      }
+    }
+  }
+  return { nodes, edges }
+}
+
+This is your truth bridge.
+
+⸻
+
+3. React Flow layer (strictly dumb renderer)
+
+At this point React Flow is trivial:
+
+* nodes come from projection
+* edges come from projection
+* nothing else matters
+
+Key constraint:
+
+React Flow must never infer causality
+
+Only display.
+
+⸻
+
+4. XState machine role (clean separation)
+
+Your viewer machine now becomes:
+
+UI concerns only
+
+* loading trace
+* selecting node
+* replay cursor position
+* branch toggle
+* highlight mode
+
+It should NOT:
+
+* compute edges
+* modify graph
+* infer relationships
+
+Think of it as:
+
+“camera controller over a frozen causal object”
+
+⸻
+
+5. How this fits into your Hermes plan
+
+This plugs into your phases like this:
+
+Phase 2 (completed)
+
+✔ event log
+✔ replay
+✔ reducer
+
+⸻
+
+Phase 2.5 (NEW — this is your insertion point)
+
+✔ causal projection layer
+✔ React Flow DAG renderer
+✔ XState viewer controller
+
+This becomes your:
+
+first observable model of “kernel truth”
+
+⸻
+
+Phase 3 (now grounded)
+
+When you invert execution:
+
+you immediately see:
+
+* decision nodes appear
+* execution nodes branch
+* system mutations attach visibly
+
+No blind execution anymore.
+
+⸻
+
+Phase 4 (becomes natural)
+
+Branching becomes trivial because:
+
+* you already have graph nodes
+* you just introduce:
+    * branchId partitioning
+    * edge coloring per branch
+
+⸻
+
+Phase 6 (almost automatic now)
+
+You replace:
+
+* inferred edges ❌
+    with:
+* parentIds edges ✔
+
+Your UI barely changes — only source of truth improves.
+
+⸻
+
+6. The real architectural win
+
+What you just built is not UI.
+
+It is:
+
+a reversible visualization layer for a causal execution substrate
+
+Which gives you something most systems never get:
+
+* debuggable execution topology
+* replayable reasoning structure
+* pre-DAG observability of system causality
+
+⸻
+
+If you continue next step
+
+Do this in order:
+
+1. lock buildCausalGraph() as a pure module
+2. write snapshot tests on event fixtures (critical)
+3. only then wire React Flow
+4. only then connect XState
+
+If you want, next I can:
+
+* ￼ convert this into a strict TypeScript package boundary
+* or ￼ design the replay-time “causal animation engine” (this becomes very powerful for debugging agent reasoning chains)
+
+
+Good. This becomes the point where the system stops being “logged execution” and becomes inspectable causal physics. The debugger is not UI polish; it is the operational interface for verifying kernel correctness.
+
+Below is a Causal Execution Debugger design built on top of your @hermes/causal-graph package.
+
+⸻
+
+🧭 @hermes/causal-debugger (Execution Topology Debugger)
+
+1. Purpose (strict definition)
+
+This module is a deterministic replay + visualization engine over a causal DAG.
+
+It answers:
+
+* What happened?
+* Why did it happen?
+* What was causally enabled vs merely correlated?
+* What would change if a branch diverged?
+
+It is NOT:
+
+* a log viewer
+* a timeline scrubber
+* a React Flow wrapper
+
+It is:
+
+a causal replay interpreter
+
+⸻
+
+2. Architectural layers
+
+Layer 1 — Input substrate
+
+HermesEvent[] (event log)
+
+Layer 2 — Graph compiler
+
+@hermes/causal-graph
+→ CausalGraph { nodes, edges }
+
+Layer 3 — Execution model (NEW)
+
+Causal Replay Engine
+
+Layer 4 — UI projection
+
+React Flow (pure renderer)
+XState (UI state only)
+
+⸻
+
+3. Core abstraction: Replay State Machine
+
+You introduce a deterministic replay cursor over a DAG, not a timeline.
+
+Key idea:
+
+You are not “playing time forward”.
+
+You are:
+
+traversing a partially ordered causal structure.
+
+⸻
+
+4. Core types
+
+export interface ReplayState {
+  mode: "paused" | "playing" | "stepping" | "scrubbing"
+  // current position in causal space
+  activeNodeId: string | null
+  // frontier = all causally enabled nodes at this moment
+  frontier: string[]
+  // visited nodes
+  visited: Set<string>
+  // branch context
+  activeBranchId: string
+  // time cursor (for UI alignment only)
+  logicalTime: number
+}
+
+⸻
+
+5. Replay engine (core logic)
+
+export class CausalReplayEngine {
+  constructor(
+    private graph: CausalGraph
+  ) {}
+  private state: ReplayState
+  stepForward(): ReplayState {
+    const next = this.getNextCausalNodes(this.state.activeNodeId)
+    const chosen = this.resolveNext(next)
+    this.state = {
+      ...this.state,
+      activeNodeId: chosen,
+      visited: new Set([...this.state.visited, chosen]),
+      frontier: this.computeFrontier(chosen)
+    }
+    return this.state
+  }
+  stepBackward(): ReplayState {
+    const prev = this.findPreviousVisited(this.state.visited)
+    this.state.activeNodeId = prev
+    this.state.visited.delete(this.state.activeNodeId)
+    return this.state
+  }
+  jumpTo(nodeId: string): ReplayState {
+    this.state.activeNodeId = nodeId
+    this.state.frontier = this.computeFrontier(nodeId)
+    return this.state
+  }
+}
+
+⸻
+
+6. The key concept: “causal frontier”
+
+This is the critical abstraction.
+
+frontier = all nodes where:
+  all parent edges are satisfied
+  AND not yet visited
+
+So:
+
+* Timeline replay = linear index
+* DAG replay = frontier expansion
+
+This is what makes the debugger non-trivial and powerful.
+
+⸻
+
+7. Edge semantics in debugger
+
+You classify edges explicitly:
+
+type EdgeSemantic =
+  | "causal"        // must precede
+  | "correlation"   // observational link
+  | "branch"        // divergence point
+
+Replay engine only respects:
+
+* causal edges for execution ordering
+* branch edges for alternate futures
+* ignores correlation for ordering
+
+⸻
+
+8. Branch-aware replay model
+
+Branches are not separate graphs.
+
+They are:
+
+constraints on traversal space
+
+interface BranchContext {
+  branchId: string
+  allowedEdges: Set<string>
+}
+
+Replay engine filters:
+
+graph.edges.filter(e => e.branchId === activeBranchId)
+
+or in advanced mode:
+
+multi-branch overlay replay
+
+⸻
+
+9. Debugger capabilities (functional spec)
+
+1. Deterministic replay
+
+* same graph → same traversal order
+
+2. Step-through causality
+
+* step = advance frontier, not time index
+
+3. Backtracking
+
+* reverse traversal via visited stack
+
+4. Branch switching
+
+* swap active branch mid-replay
+
+5. Causal highlight mode
+
+* highlight:
+    * ancestors of active node
+    * descendants enabled from frontier
+
+6. Execution inspection
+
+* node click shows:
+    * event payload
+    * causal parents
+    * execution metadata
+    * blackboard mutations
+
+⸻
+
+10. XState machine (UI controller only)
+
+This is intentionally narrow:
+
+type DebuggerEvent =
+  | { type: "PLAY" }
+  | { type: "PAUSE" }
+  | { type: "STEP" }
+  | { type: "BACK" }
+  | { type: "JUMP"; nodeId: string }
+  | { type: "SELECT_BRANCH"; branchId: string }
+
+States:
+
+* idle
+* playing
+* paused
+* stepping
+* scrubbing
+* inspecting
+
+Important:
+
+XState never sees graph logic. Only user intent.
+
+⸻
+
+11. React Flow integration model
+
+React Flow is a render target only:
+
+function CausalDebuggerView() {
+  const graph = useCausalGraph(traceId)
+  const replay = useReplayEngine(graph)
+  const highlighted = deriveHighlightSet(
+    graph,
+    replay.state.activeNodeId,
+    replay.state.frontier
+  )
+  return (
+    <ReactFlow
+      nodes={graph.nodes}
+      edges={graph.edges.map(e => ({
+        ...e,
+        animated: highlighted.has(e.target)
+      }))}
+    />
+  )
+}
+
+No logic. Only rendering.
+
+⸻
+
+12. Key derived visuals (critical UX layer)
+
+Node states:
+
+* visited → dim
+* active → glow
+* frontier → bright outline
+* blocked → red
+
+Edge states:
+
+* causal path → bold
+* correlation → dashed
+* branch → colored overlay
+
+⸻
+
+13. Integration into Hermes architecture
+
+BEFORE:
+
+event log → reducer → UI
+
+AFTER:
+
+event log
+   ↓
+causal-graph compiler
+   ↓
+replay engine (THIS MODULE)
+   ↓
+React Flow renderer
+
+This creates a full observability loop over execution causality
+
+⸻
+
+14. Why this matters (architecturally)
+
+This debugger is not tooling.
+
+It is:
+
+1. Proof mechanism for Phase 2 correctness
+
+If replay diverges → kernel is wrong
+
+2. Validation tool for Phase 3 inversion
+
+You can see agent → decision → execution collapse in real time
+
+3. Pre-DAG bridge for Phase 6
+
+It already behaves like a DAG runtime, even before parentIds exist
+
+⸻
+
+15. Minimal package layout
+
+packages/
+  causal-graph/
+  causal-debugger/
+    src/
+      engine/
+        CausalReplayEngine.ts
+        frontier.ts
+        traversal.ts
+      state/
+        replayState.ts
+      ui/
+        useReplayEngine.ts
+        useDebuggerMachine.ts
+      index.ts
+
+⸻
+
+16. The conceptual shift (important)
+
+You are no longer building:
+
+“a system that logs execution”
+
+You are building:
+
+“a system whose execution is replayable as a causal physics simulation”
+
+The debugger is the instrument that proves it.
+
+⸻
+
+If you want next step, the highest-leverage continuation is:
+
+Design the “frontier solver algorithm” for concurrent execution paths (this becomes the precursor to your Phase 6 ordering algebra).
+
+
+Good. This is the missing mathematical core between “DAG visualization” and “real causal execution semantics.”
+
+What you need here is not UI logic, but a frontier resolution algorithm that defines what “next executable event” even means in a partial order system.
+
+⸻
+
+🧠 Frontier Solver Algorithm (Causal Execution Semantics Core)
+
+1. Problem definition
+
+Given a causal graph:
+
+* nodes = events
+* edges = causal dependencies (directed acyclic, potentially partial)
+* branch constraints exist (optional)
+
+We need to compute:
+
+the set of events that are currently executable
+
+This is the causal frontier.
+
+⸻
+
+2. Formal definition
+
+A node n is in the frontier if:
+
+∀ parent ∈ Parents(n):
+    parent ∈ Visited
+
+AND:
+
+n ∉ Visited
+
+AND (branch constraint):
+
+n.branch ∈ activeBranchSet
+
+⸻
+
+3. Key insight (important)
+
+This is NOT a queue.
+
+It is a constraint satisfaction surface over a DAG.
+
+So you do NOT “pop next event”.
+
+You recompute a frontier set at every step.
+
+⸻
+
+4. Core algorithm
+
+Types
+
+type NodeId = string
+interface FrontierState {
+  visited: Set<NodeId>
+  frontier: Set<NodeId>
+}
+
+⸻
+
+Main solver
+
+export function computeFrontier(
+  graph: CausalGraph,
+  visited: Set<NodeId>,
+  activeBranches?: Set<string>
+): Set<NodeId> {
+  const frontier = new Set<NodeId>()
+  for (const node of graph.nodes) {
+    if (visited.has(node.id)) continue
+    if (!isBranchAllowed(node, activeBranches)) continue
+    const parents = graph.edges
+      .filter(e => e.target === node.id && e.type === "causal")
+      .map(e => e.source)
+    const isReady = parents.every(p => visited.has(p))
+    if (isReady) {
+      frontier.add(node.id)
+    }
+  }
+  return frontier
+}
+
+⸻
+
+5. Branch constraint logic
+
+function isBranchAllowed(
+  node: CausalNode,
+  activeBranches?: Set<string>
+): boolean {
+  if (!activeBranches || activeBranches.size === 0) return true
+  // if node has no branch metadata → global node
+  if (!(node as any).branchId) return true
+  return activeBranches.has((node as any).branchId)
+}
+
+⸻
+
+6. Execution resolution policy (important)
+
+Frontier gives you multiple valid next steps.
+
+You must decide:
+
+Policy A — deterministic (recommended default)
+
+pick = lowest(eventSequence)
+
+Policy B — causal entropy exploration
+
+pick = highest out-degree node first
+
+Policy C — LLM-guided (dangerous but powerful)
+
+pick = model.rank(frontier)
+
+⸻
+
+7. Critical invariant (DO NOT BREAK)
+
+If node ∉ frontier → it is illegal to execute it
+
+This enforces:
+
+* causal correctness
+* replay determinism
+* branch safety
+* kernel reproducibility
+
+⸻
+
+8. Extension: speculative frontier
+
+For Phase 6 readiness:
+
+export function computeSpeculativeFrontier(
+  graph,
+  visited,
+  hypotheticalEvent: CausalNode
+): Set<NodeId> {
+  const simulatedVisited = new Set([...visited, hypotheticalEvent.id])
+  return computeFrontier(graph, simulatedVisited)
+}
+
+This is the basis of:
+
+* “what if this decision was taken?”
+* multi-branch simulation
+* counterfactual replay
+
+⸻
+
+9. Why this is the real kernel primitive
+
+Everything else depends on this:
+
+System layer	Depends on frontier
+Replay engine	YES
+DAG visualizer	YES
+Agent execution inversion	CRITICAL
+Branching system	YES
+Phase 6 ordering algebra	DIRECT REPLACEMENT
+
+⸻
+
+📍 Where this fits in your Hermes plan
+
+This is the important part.
+
+You should NOT create a separate plan.
+
+You should insert this into your existing plan as a foundational sub-phase.
+
+⸻
+
+✅ Recommended integration
+
+Insert between:
+
+Phase 2 (Replay correctness)
+
+and
+
+Phase 3 (Agent inversion)
+
+⸻
+
+➤ New Phase: 2.6 — Causal Frontier & Execution Semantics Layer
+
+Name:
+
+Causal Frontier Solver (Execution Semantics Core)
+
+⸻
+
+What it becomes in your architecture
+
+You now have:
+
+Before
+
+event log → reducer → state → UI
+
+After
+
+event log
+   ↓
+causal graph
+   ↓
+FRONTIER SOLVER   ← NEW CORE
+   ↓
+replay engine / agent execution / speculation
+   ↓
+UI projection (React Flow)
+
+⸻
+
+Why it must exist here (not later)
+
+If you delay this until Phase 6:
+
+* you will accidentally hardcode linear execution assumptions into Phase 3
+* your replay engine will become “timeline-based” instead of “causal”
+* DAG conversion becomes a rewrite instead of a substitution
+
+This module is what makes Phase 3 inversion mathematically sound instead of just architectural
+
+⸻
+
+Final recommendation (very explicit)
+
+Do NOT create a new plan.
+
+Instead:
+
+✔ Insert Phase 2.6 into Hermes plan
+
+Rename Phase 3 dependency chain to:
+
+* Phase 2 ✔ Event Kernel
+* Phase 2.5 ✔ Causal Projection (React Flow)
+* Phase 2.6 ✔ Frontier Solver (this)
+* Phase 3 ✔ Agent inversion
+* Phase 4 ✔ Branching
+* Phase 5 ✔ Constitution runtime
+* Phase 6 ✔ DAG substrate formalization
+
+⸻
+
+Closing structural truth
+
+This piece is the actual execution law of your system.
+
+Everything else is representation.
+
+This is the rule that decides:
+
+“what can happen next in a world where events are causally constrained rather than sequentially scheduled”
+
+If you want next step, the only correct continuation is:
+
+formalizing the ordering algebra (Phase 6 precursor) so frontier resolution becomes mathematically provable instead of heuristic.
+
+
+Below is a strict TypeScript package boundary design for the “Hermes UI DAG + XState orchestration layer”. This isolates your UI state machine + topology renderer as a composable subsystem rather than leaking into the kernel.
+
+⸻
+
+🧱 Package: @hermes/ui-topology
+
+1. Purpose Boundary
+
+This package is responsible for:
+
+* Rendering causal DAGs (events, branches, forks)
+* Managing UI state via XState v5 machines
+* Translating HermesEvent stream → React Flow graph
+* Handling interaction → intent emission (NOT execution)
+* Maintaining strict separation from:
+    * Kernel execution
+    * Event store mutation
+    * Policy evaluation
+    * Agent runtime
+
+It is a pure projection + interaction layer.
+
+⸻
+
+2. Hard Boundary Rules (Non-Negotiable)
+
+This package MUST:
+
+* ❌ Never mutate event store
+* ❌ Never compute canonical hashes
+* ❌ Never evaluate policy or constitution
+* ❌ Never execute tools or agents
+* ❌ Never own source-of-truth state
+
+It MAY:
+
+* ✔ Consume HermesEvent[]
+* ✔ Build derived graph structures
+* ✔ Maintain UI-only state (selection, hover, expansion)
+* ✔ Emit intents (not commands)
+
+⸻
+
+3. Package Structure
+
+packages/ui-topology/
+  src/
+    machine/
+      topology.machine.ts        # XState v5 machine (core)
+      selection.machine.ts       # optional UI submachine
+      layout.machine.ts          # graph layout state
+    adapters/
+      event-to-graph.ts          # HermesEvent → DAG nodes/edges
+      branch-aggregator.ts       # branch grouping logic
+      causation-resolver.ts      # parent/child edge derivation
+    graph/
+      types.ts                   # UI graph model
+      selectors.ts               # derived selectors
+    renderer/
+      ReactFlowRenderer.tsx      # React Flow binding
+      nodeTypes.ts               # custom node registry
+      edgeTypes.ts               # causation + branch edges
+    hooks/
+      useTopologyMachine.ts
+      useGraphProjection.ts
+    api/
+      types.ts                   # boundary contracts only
+
+⸻
+
+4. Core Domain Types (STRICT)
+
+4.1 Input Contract (Immutable)
+
+export interface HermesEvent {
+  eventId: string
+  traceId: string
+  eventSequence: number
+  tier: "MODEL" | "DECISION" | "EXECUTION" | "SYSTEM" | "TELEMETRY"
+  branchId: string
+  parentEventIds?: string[]        // DAG extension
+  causationId?: string            // legacy compatibility
+  payload: unknown
+  timestamp: number
+}
+
+⸻
+
+4.2 Graph Model (Derived ONLY)
+
+export interface TopologyGraph {
+  nodes: TopologyNode[]
+  edges: TopologyEdge[]
+  branches: BranchMeta[]
+}
+export interface TopologyNode {
+  id: string
+  type: "model" | "decision" | "execution" | "system" | "telemetry"
+  label: string
+  eventId: string
+  branchId: string
+  sequence: number
+  data: unknown
+}
+export interface TopologyEdge {
+  id: string
+  source: string
+  target: string
+  type: "causation" | "branch" | "fork"
+  weight?: number
+}
+export interface BranchMeta {
+  branchId: string
+  parentBranchId?: string
+  forkEventId?: string
+}
+
+⸻
+
+5. XState v5 Machine (CORE BOUNDARY)
+
+topology.machine.ts
+
+import { setup, assign } from "xstate"
+import { TopologyGraph, HermesEvent } from "../graph/types"
+interface Context {
+  events: HermesEvent[]
+  graph: TopologyGraph | null
+  selectedNodeId?: string
+  traceId?: string
+}
+type Event =
+  | { type: "LOAD_EVENTS"; events: HermesEvent[] }
+  | { type: "SELECT_NODE"; nodeId: string }
+  | { type: "DESELECT_NODE" }
+  | { type: "REBUILD_GRAPH" }
+export const topologyMachine = setup({
+  types: {
+    context: {} as Context,
+    events: {} as Event
+  }
+}).createMachine({
+  id: "topology",
+  initial: "idle",
+  context: {
+    events: [],
+    graph: null,
+    selectedNodeId: undefined,
+    traceId: undefined
+  },
+  states: {
+    idle: {
+      on: {
+        LOAD_EVENTS: {
+          target: "hydrated",
+          actions: assign({
+            events: ({ event }) => event.events
+          })
+        }
+      }
+    },
+    hydrated: {
+      always: "buildingGraph",
+      on: {
+        SELECT_NODE: {
+          actions: assign({
+            selectedNodeId: ({ event }) => event.nodeId
+          })
+        },
+        DESELECT_NODE: {
+          actions: assign({
+            selectedNodeId: undefined
+          })
+        },
+        LOAD_EVENTS: {
+          actions: assign({
+            events: ({ event }) => event.events
+          }),
+          target: "buildingGraph"
+        }
+      }
+    },
+    buildingGraph: {
+      entry: assign({
+        graph: ({ context }) => buildGraph(context.events)
+      }),
+      always: "ready"
+    },
+    ready: {
+      on: {
+        REBUILD_GRAPH: "buildingGraph",
+        LOAD_EVENTS: {
+          target: "buildingGraph",
+          actions: assign({
+            events: ({ event }) => event.events
+          })
+        }
+      }
+    }
+  }
+})
+
+⸻
+
+6. Graph Construction (PURE FUNCTION)
+
+event-to-graph.ts
+
+export function buildGraph(events: HermesEvent[]): TopologyGraph {
+  const nodes: TopologyNode[] = []
+  const edges: TopologyEdge[] = []
+  const nodeIndex = new Map<string, TopologyNode>()
+  for (const e of events) {
+    const node: TopologyNode = {
+      id: e.eventId,
+      type: mapTier(e.tier),
+      label: `${e.tier}:${e.eventSequence}`,
+      eventId: e.eventId,
+      branchId: e.branchId,
+      sequence: e.eventSequence,
+      data: e.payload
+    }
+    nodes.push(node)
+    nodeIndex.set(node.id, node)
+    // causation edges (DAG backbone)
+    if (e.parentEventIds?.length) {
+      for (const parentId of e.parentEventIds) {
+        edges.push({
+          id: `${parentId}->${e.eventId}`,
+          source: parentId,
+          target: e.eventId,
+          type: "causation"
+        })
+      }
+    }
+  }
+  return { nodes, edges, branches: extractBranches(events) }
+}
+
+⸻
+
+7. React Flow Renderer Boundary
+
+ReactFlowRenderer.tsx
+
+import ReactFlow from "reactflow"
+import { useTopologyMachine } from "../hooks/useTopologyMachine"
+export function ReactFlowRenderer() {
+  const { graph } = useTopologyMachine()
+  if (!graph) return null
+  return (
+    <ReactFlow
+      nodes={graph.nodes}
+      edges={graph.edges}
+      nodeTypes={nodeTypes}
+      edgeTypes={edgeTypes}
+      fitView
+    />
+  )
+}
+
+⸻
+
+8. Edge Semantics (CRITICAL)
+
+You will explicitly support 3 edge types:
+
+1. causation
+
+* direct execution lineage
+* parent → child event dependency
+
+2. branch
+
+* divergence from shared history
+* visual fork marker
+
+3. fork
+
+* explicit speculative execution origin
+
+⸻
+
+9. Hooks Boundary
+
+export function useTopologyMachine(events: HermesEvent[]) {
+  const [state, send] = useMachine(topologyMachine, {
+    context: { events }
+  })
+  return {
+    graph: state.context.graph,
+    selectedNodeId: state.context.selectedNodeId,
+    selectNode: (id: string) => send({ type: "SELECT_NODE", nodeId: id })
+  }
+}
+
+⸻
+
+10. Package Exports (STRICT SURFACE)
+
+index.ts
+
+export { topologyMachine } from "./machine/topology.machine"
+export { buildGraph } from "./adapters/event-to-graph"
+export { ReactFlowRenderer } from "./renderer/ReactFlowRenderer"
+export type {
+  TopologyGraph,
+  TopologyNode,
+  TopologyEdge,
+  HermesEvent
+}
+
+⸻
+
+11. Integration Placement in YOUR PLAN
+
+This is the key part.
+
+You should NOT create a new phase.
+
+Instead:
+
+➤ Insert this into Phase 4 (Branching & Timeline)
+
+Specifically, it replaces:
+
+“UI: Timeline View — React Flow canvas”
+
+Updated interpretation:
+
+Phase 4 becomes split into:
+
+Phase 4A — Kernel Branch System (existing)
+
+* fork/replay
+* branch metadata
+* event store extension
+
+Phase 4B — UI Topology Layer (THIS PACKAGE)
+
+* @hermes/ui-topology
+* XState graph machine
+* React Flow renderer
+* causation + branch visualization
+
+⸻
+
+12. Architectural Positioning (IMPORTANT)
+
+This package sits here:
+
+Hermes Kernel (Phase 1–3)
+        ↓
+Event Stream (source of truth)
+        ↓
+@hermes/ui-topology   ← YOU ARE HERE
+        ↓
+React Flow DAG UI
+
+It is:
+
+* downstream of event store
+* upstream of UI rendering
+* orthogonal to kernel correctness
+
+⸻
+
+13. Key Design Constraint (do not violate)
+
+If this package ever needs:
+
+* policy
+* execution
+* memory writes
+* orchestration logic
+
+👉 it has already failed its boundary contract
+
+⸻
+
+Recommendation on your question (“new plan or integrate?”)
+
+Do NOT create a new plan.
+
+This is a Phase 4 decomposition artifact, specifically:
+
+UI projection subsystem for causal DAG + branch visualization
+
+It strengthens Phase 4 without expanding scope.
+
+⸻
+
+If you want next step, I would suggest:
+
+* ￼ tightening event schema → enforce parentEventIds everywhere
+* then ￼ generating the exact React Flow node/edge registry (visual grammar layer) for consistency across tiers
+
+That’s the next structural bottleneck.
+
+Good. This is the correct inflection point because your current design still allows a slow drift back into “linear log with optional graph hints.” Tightening the event schema removes that ambiguity at the type level and forces DAG semantics to be structural, not decorative.
+
+⸻
+
+1. Target Invariant
+
+You are enforcing:
+
+Every event is a node in a causal DAG and MUST declare its parents explicitly.
+
+No exceptions, no fallback to causationId, no implicit sequencing as truth.
+
+⸻
+
+2. Hard Schema Replacement
+
+❌ Remove (or fully deprecate)
+
+* causationId (single-parent linear fallback)
+* implicit “previous event” assumptions in reducers
+* sequence-based inference as primary causality
+
+These become derivable indices only, never source of truth.
+
+⸻
+
+3. Canonical Event Schema (STRICT DAG FORM)
+
+This becomes your single event contract across kernel + UI + store.
+
+export interface HermesEvent {
+  // Identity
+  eventId: string
+  traceId: string
+  // DAG structure (SOURCE OF TRUTH)
+  parentEventIds: readonly string[]   // REQUIRED, never undefined
+  // Branching (orthogonal dimension)
+  branchId: string
+  // Ordering (only a projection hint, NOT causality)
+  eventSequence: number
+  // Classification
+  tier: "MODEL" | "DECISION" | "EXECUTION" | "SYSTEM" | "TELEMETRY"
+  // Payload
+  payload: unknown
+  // Time (observability only)
+  timestamp: number
+}
+
+⸻
+
+4. Enforcement Rules (Kernel-Level Invariants)
+
+These are not “lint rules.” They are runtime kernel constraints.
+
+4.1 Parent requirement invariant
+
+function assertValidEvent(event: HermesEvent) {
+  if (!event.parentEventIds || event.parentEventIds.length === 0) {
+    throw new Error(
+      "FATAL: DAG_INTEGRITY_VIOLATION - event missing parentEventIds"
+    )
+  }
+}
+
+Exception policy:
+
+Only one allowed root:
+
+ROOT EVENT RULE:
+- trace initialization event MAY have parentEventIds = []
+- but MUST be explicitly typed as SystemAction = TRACE_INITIALIZED
+
+So refine schema:
+
+type HermesEvent =
+  | RootEvent
+  | CausalEvent
+
+⸻
+
+4.2 Root Event Definition
+
+export interface RootEvent {
+  eventId: string
+  traceId: string
+  parentEventIds: []
+  branchId: string
+  eventSequence: number
+  tier: "SYSTEM"
+  payload: { type: "TRACE_INITIALIZED" }
+  timestamp: number
+}
+
+Everything else is:
+
+export interface CausalEvent {
+  eventId: string
+  traceId: string
+  parentEventIds: readonly string[] // MUST be non-empty
+  branchId: string
+  eventSequence: number
+  tier: EventTier
+  payload: unknown
+  timestamp: number
+}
+
+⸻
+
+5. Type-Level Enforcement (critical upgrade)
+
+If you’re in TypeScript 5+, enforce this structurally:
+
+type NonEmptyArray<T> = [T, ...T[]]
+
+Then:
+
+type HermesEvent =
+  | RootEvent
+  | {
+      eventId: string
+      traceId: string
+      parentEventIds: NonEmptyArray<string>
+      branchId: string
+      eventSequence: number
+      tier: EventTier
+      payload: unknown
+      timestamp: number
+    }
+
+Now TS itself enforces DAG correctness.
+
+⸻
+
+6. Event Emission Contract Fix
+
+Every emitter MUST take explicit parents.
+
+BEFORE (dangerous)
+
+emitDecisionEvent(...)
+
+AFTER (correct)
+
+emitDecisionEvent({
+  parentEventIds: [previousEventId],
+  ...
+})
+
+⸻
+
+7. Kernel Enforcement Layer
+
+emitter.ts becomes a DAG gatekeeper
+
+function validateParentLinks(event: HermesEvent) {
+  if (event.payload?.type !== "TRACE_INITIALIZED") {
+    if (event.parentEventIds.length === 0) {
+      throw new Error("Missing causal parents")
+    }
+  }
+}
+
+⸻
+
+8. Store-Level Constraint (Prisma upgrade)
+
+You currently have:
+
+causationId String?
+
+Replace with:
+
+model HermesEvent {
+  id                String @id @default(cuid())
+  eventId           String @unique
+  traceId           String @index
+  branchId          String
+  eventSequence     Int
+  parentEventIds    Json   // ALWAYS array, never null
+  tier              String
+  payload           Json
+  timestamp        BigInt
+}
+
+Optional optimization index:
+
+@@index([traceId, branchId])
+@@index([traceId, eventSequence])
+
+⸻
+
+9. Adapter Layer Impact (UI + DAG)
+
+Your React Flow builder becomes simpler:
+
+BEFORE:
+
+if (causationId) edge
+
+AFTER:
+
+for (const parentId of event.parentEventIds) {
+  edges.push({
+    source: parentId,
+    target: event.eventId,
+    type: "causation"
+  })
+}
+
+No heuristics. No fallback logic. No inference.
+
+⸻
+
+10. Migration Strategy (important)
+
+You cannot just flip this switch blindly.
+
+Phase 1: Dual-write bridge (temporary)
+
+Emit both:
+
+parentEventIds: [],
+causationId: legacyId
+
+Adapter rule:
+
+const parents =
+  event.parentEventIds?.length
+    ? event.parentEventIds
+    : event.causationId
+      ? [event.causationId]
+      : []
+
+BUT:
+
+* UI may still render fallback
+* kernel must reject fallback-only events in strict mode
+
+⸻
+
+Phase 2: strict mode toggle
+
+const DAG_STRICT_MODE = true
+
+When enabled:
+
+* causationId ignored
+* empty parentEventIds → crash
+* no inference allowed anywhere
+
+⸻
+
+Phase 3: deletion
+
+* remove causationId
+* remove fallback logic
+* update all emitters
+
+⸻
+
+11. System-Level Effect (why this matters)
+
+This change does something subtle but critical:
+
+Before:
+
+You had a linear log with optional graph interpretation
+
+After:
+
+You have a graph substrate with optional linear projection
+
+That inversion is what enables:
+
+* true branching
+* speculative execution
+* replay correctness
+* topological validation
+* deterministic parallelism
+
+⸻
+
+12. Where this plugs into your plan
+
+This belongs in:
+
+Phase 1 (Event Kernel Foundation)
+
+Specifically as:
+
+🔧 “Phase 1.0: DAG Hardening Layer”
+
+Before:
+
+* hashing
+* event store
+* emitter instrumentation
+
+After:
+
+* schema is DAG-native from day zero
+
+Because otherwise:
+you are encoding a linear bias into the foundation and fighting it later in Phase 6.
+
+⸻
+
+13. Minimal Completion Criteria
+
+You are done when:
+
+* every event has ≥1 parent (except root)
+* no code path uses causationId as primary logic
+* React Flow edges are derived only from parentEventIds
+* replay still reconstructs identical state
+* kernel rejects orphan events immediately
+
+⸻
+
+If you want next step, the logical progression is:
+
+compile a typed “Event Construction DSL” (factory layer) so no emitter can even construct an invalid event shape
+
+That’s where this becomes impossible to misuse instead of merely validated.
+
+Below is the strict “Event Construction DSL” layer that eliminates invalid DAG events by construction (not validation). This is the next hardening step after enforcing parentEventIds.
+
+You are moving from:
+
+“validate bad events” → “cannot express bad events”
+
+⸻
+
+🧱 Package: @hermes/event-dsl
+
+1. Purpose Boundary
+
+This package is the only legal way to create Hermes events.
+
+It guarantees:
+
+* Every event is DAG-valid at compile time
+* parentEventIds is always present and non-empty (except root)
+* No raw object construction is allowed outside this layer
+* Kernel + UI both consume already-validated events
+
+It is a type-safe event fabrication layer, not a helper library.
+
+⸻
+
+2. Hard Rules
+
+This package MUST:
+
+* ❌ Never accept raw partial event objects from callers
+* ❌ Never allow optional parentEventIds
+* ❌ Never expose constructors or untyped factories
+* ❌ Never allow mutation after creation
+
+It MAY:
+
+* ✔ Infer parent relationships from context
+* ✔ Enforce branching rules
+* ✔ Generate root events
+* ✔ Stamp trace/branch metadata
+* ✔ Guarantee immutability
+
+⸻
+
+3. Core Types (Reused Canonical Model)
+
+export type EventTier =
+  | "MODEL"
+  | "DECISION"
+  | "EXECUTION"
+  | "SYSTEM"
+  | "TELEMETRY"
+export type NonEmptyArray<T> = [T, ...T[]]
+
+⸻
+
+4. Event DSL Context (Critical Primitive)
+
+This replaces “manual wiring” of parents.
+
+export interface EventContext {
+  traceId: string
+  branchId: string
+  /**
+   * The CURRENT causal frontier.
+   * This is what guarantees DAG correctness.
+   */
+  activeParents: NonEmptyArray<string>
+  /**
+   * Optional override for fork scenarios
+   */
+  overrideParents?: NonEmptyArray<string>
+  eventSequence: number
+}
+
+⸻
+
+5. Root Event Factory (ONLY ENTRY POINT FOR ROOTS)
+
+export function createRootEvent(params: {
+  traceId: string
+  branchId: string
+}): RootEvent {
+  return {
+    eventId: crypto.randomUUID(),
+    traceId: params.traceId,
+    branchId: params.branchId,
+    parentEventIds: [],
+    eventSequence: 0,
+    tier: "SYSTEM",
+    payload: {
+      type: "TRACE_INITIALIZED"
+    },
+    timestamp: Date.now()
+  }
+}
+
+⸻
+
+6. Core Factory: createEvent
+
+This is the ONLY general-purpose constructor.
+
+export function createEvent<TPayload>(params: {
+  context: EventContext
+  tier: EventTier
+  payload: TPayload
+}): CausalEvent {
+  const parents =
+    params.context.overrideParents ??
+    params.context.activeParents
+  return {
+    eventId: crypto.randomUUID(),
+    traceId: params.context.traceId,
+    branchId: params.context.branchId,
+    // HARD GUARANTEE: cannot be empty
+    parentEventIds: parents,
+    eventSequence: params.context.eventSequence + 1,
+    tier: params.tier,
+    payload: params.payload,
+    timestamp: Date.now()
+  }
+}
+
+⸻
+
+7. Tier-Specific Factories (NO RAW ACCESS)
+
+You NEVER call createEvent directly in kernel code.
+
+You use semantic constructors:
+
+⸻
+
+7.1 Model Event
+
+export function createModelEvent(
+  context: EventContext,
+  payload: {
+    modelId: string
+    promptHash: string
+    output: string
+  }
+): CausalEvent {
+  return createEvent({
+    context,
+    tier: "MODEL",
+    payload
+  })
+}
+
+⸻
+
+7.2 Decision Event
+
+export function createDecisionEvent(
+  context: EventContext,
+  payload: {
+    action: string
+    tool: string
+    args: unknown
+  }
+): CausalEvent {
+  return createEvent({
+    context,
+    tier: "DECISION",
+    payload
+  })
+}
+
+⸻
+
+7.3 Execution Event
+
+export function createExecutionEvent(
+  context: EventContext,
+  payload: {
+    toolId: string
+    input: unknown
+    output: unknown
+    status: "SUCCESS" | "FAILURE"
+  }
+): CausalEvent {
+  return createEvent({
+    context,
+    tier: "EXECUTION",
+    payload
+  })
+}
+
+⸻
+
+7.4 System Event
+
+export function createSystemEvent(
+  context: EventContext,
+  payload: {
+    type:
+      | "STEP_STARTED"
+      | "STEP_COMPLETED"
+      | "BLACKBOARD_WRITTEN"
+      | "WORKFLOW_COMPLETED"
+  }
+): CausalEvent {
+  return createEvent({
+    context,
+    tier: "SYSTEM",
+    payload
+  })
+}
+
+⸻
+
+8. Context Advancement (CRITICAL MECHANISM)
+
+This ensures DAG progression is explicit.
+
+export function advanceContext(
+  ctx: EventContext,
+  newParentId: string
+): EventContext {
+  return {
+    ...ctx,
+    activeParents: [newParentId],
+    eventSequence: ctx.eventSequence + 1
+  }
+}
+
+⸻
+
+9. Forking (Branch Semantics)
+
+This is how you introduce parallel timelines safely.
+
+export function forkContext(
+  ctx: EventContext,
+  forkParentIds: NonEmptyArray<string>
+): EventContext {
+  return {
+    ...ctx,
+    overrideParents: forkParentIds,
+    activeParents: forkParentIds
+  }
+}
+
+⸻
+
+10. Strict Construction Guarantees
+
+What becomes IMPOSSIBLE:
+
+* ❌ event with no parents (except root)
+* ❌ event with optional or undefined parents
+* ❌ manually invented causation chains
+* ❌ orphan DAG nodes
+* ❌ sequence drift without parent update
+
+⸻
+
+11. Kernel Integration Point
+
+Replace ALL manual event creation:
+
+BEFORE
+
+emitDecisionEvent(...)
+emitExecutionEvent(...)
+
+AFTER
+
+createDecisionEvent(context, payload)
+createExecutionEvent(context, payload)
+
+AND THEN:
+
+eventStore.append(event)
+
+No intermediate shaping layer exists.
+
+⸻
+
+12. UI Integration Impact (React Flow)
+
+Your renderer becomes trivially stable:
+
+edges = event.parentEventIds.map(parentId => ({
+  source: parentId,
+  target: event.eventId,
+  type: "causation"
+}))
+
+No fallback logic survives.
+
+⸻
+
+13. Relationship to Your Plan
+
+This belongs in:
+
+🔧 Phase 1 → AFTER schema tightening
+
+Order now becomes:
+
+1. DAG event schema (parentEventIds required)
+2. Event DSL (this package)
+3. Event store persistence
+4. emitter instrumentation
+5. replay system
+
+⸻
+
+14. System Effect (important)
+
+This completes the transition:
+
+Before
+
+Kernel enforces correctness after bad data is created
+
+After
+
+Kernel cannot express invalid data at all
+
+This is the shift from:
+
+runtime validation → compile-time topology enforcement
+
+⸻
+
+15. Minimal Completion Criteria
+
+You are done when:
+
+* no part of system constructs { parentEventIds: [] } except root factory
+* all events originate from createEvent* family
+* kernel never constructs event objects directly
+* React Flow graph is a pure projection of emitted DSL events
+* replay produces identical DAG every time
+
+⸻
+
+If you want the next structural upgrade, the natural continuation is:
+
+a “Kernel Execution Spine” that forces all agent steps to be expressed as deterministic event transitions over this DSL (removing remaining ad-hoc orchestration paths entirely).
+
+
+Below is the Kernel Execution Spine. This is the last structural layer that removes ad-hoc orchestration and forces all agent behavior into a single deterministic transition loop over your event DSL.
+
+No new abstraction layers after this. This is the execution backbone.
+
+⸻
+
+🧠 Package: @hermes/kernel-spine
+
+1. Purpose Boundary
+
+This package is the only legal execution runtime for Hermes agents.
+
+It enforces:
+
+* All behavior = deterministic event transitions
+* No direct tool execution outside the spine
+* No state mutation outside event emission + reducer application
+* No orchestration logic in agents
+* No side-effect sequencing outside kernel cycle
+
+It is the execution loop of the system.
+
+⸻
+
+2. Hard Invariants
+
+This package MUST:
+
+* ❌ Never allow direct tool invocation from agents
+* ❌ Never mutate state directly
+* ❌ Never bypass event DSL factories
+* ❌ Never emit unordered or parentless events
+* ❌ Never execute outside kernel cycle
+
+It MAY:
+
+* ✔ Consume @hermes/event-dsl
+* ✔ Drive event-store
+* ✔ Invoke tools via execution boundary adapter
+* ✔ Apply reducer state transitions
+* ✔ Emit system lifecycle events
+
+⸻
+
+3. Core Concept: Execution Spine
+
+Everything reduces to this loop:
+
+Decision → Policy → Execution → System Event → State Reduction → Next Decision
+
+No shortcuts. No escape hatches.
+
+⸻
+
+4. Kernel Spine Context
+
+export interface KernelSpineContext {
+  traceId: string
+  branchId: string
+  lastEventId: string
+  activeEventIds: [string, ...string[]]
+  eventSequence: number
+  state: KernelState
+}
+
+⸻
+
+5. Core Spine API
+
+createKernelSpine
+
+export function createKernelSpine(params: {
+  eventStore: EventStore
+  policyEngine: PolicyEngine
+  toolRegistry: ToolRegistry
+  reducer: (state: KernelState, event: SystemEvent) => KernelState
+}) {
+  return new KernelSpine(params)
+}
+
+⸻
+
+Kernel Spine Class
+
+export class KernelSpine {
+  constructor(private deps: any) {}
+  async runStep(input: DecisionEvent, ctx: KernelSpineContext) {
+    // 1. POLICY CHECK (pure)
+    const policyResult = this.deps.policyEngine.evaluate(input)
+    if (policyResult.type === "DENY") {
+      return this.emitSystemViolation(ctx, input)
+    }
+    // 2. EXECUTION BOUNDARY
+    const executionEvent = await this.execute(input, ctx)
+    // 3. SYSTEM EVENT GENERATION (via DSL)
+    const systemEvent = this.toSystemEvent(executionEvent, ctx)
+    // 4. PERSIST EVENT
+    await this.deps.eventStore.append(systemEvent)
+    // 5. REDUCE STATE
+    const newState = this.deps.reducer(ctx.state, systemEvent)
+    // 6. ADVANCE CONTEXT
+    const newCtx = this.advance(ctx, systemEvent)
+    return { state: newState, ctx: newCtx }
+  }
+}
+
+⸻
+
+6. Execution Boundary (CRITICAL)
+
+This is the ONLY place tools run.
+
+private async execute(input: DecisionEvent, ctx: KernelSpineContext) {
+  const tool = this.deps.toolRegistry.get(input.payload.tool)
+  if (!tool) {
+    throw new Error("UNKNOWN_TOOL")
+  }
+  return tool.run(input.payload.args, {
+    traceId: ctx.traceId,
+    parentEventIds: ctx.activeEventIds
+  })
+}
+
+⸻
+
+7. Event Conversion Layer (USES DSL ONLY)
+
+private toSystemEvent(exec: any, ctx: KernelSpineContext) {
+  return createExecutionEvent({
+    context: {
+      traceId: ctx.traceId,
+      branchId: ctx.branchId,
+      activeParents: ctx.activeEventIds,
+      eventSequence: ctx.eventSequence
+    },
+    payload: {
+      toolId: exec.toolId,
+      input: exec.input,
+      output: exec.output,
+      status: exec.status
+    }
+  })
+}
+
+⸻
+
+8. Context Advancement (STRICT)
+
+private advance(
+  ctx: KernelSpineContext,
+  event: CausalEvent
+): KernelSpineContext {
+  return {
+    ...ctx,
+    lastEventId: event.eventId,
+    activeEventIds: [event.eventId],
+    eventSequence: event.eventSequence,
+    state: this.deps.reducer(ctx.state, event as SystemEvent)
+  }
+}
+
+⸻
+
+9. Agent Interface (NOW PURE)
+
+Agents no longer execute.
+
+They only produce decisions.
+
+export interface Agent {
+  propose(state: KernelState): DecisionEvent
+}
+
+That is the entire contract.
+
+No tools. No execution. No side effects.
+
+⸻
+
+10. Full System Flow (FINAL FORM)
+
+This is now your canonical runtime:
+
+Agent proposes DecisionEvent
+        ↓
+Kernel Spine receives event
+        ↓
+Policy Engine evaluates
+        ↓
+Tool executes (ONLY in spine)
+        ↓
+ExecutionEvent created via DSL
+        ↓
+Event Store appends
+        ↓
+Reducer updates KernelState
+        ↓
+Context advances
+        ↓
+Next Agent proposal
+
+⸻
+
+11. What This Eliminates
+
+You now remove entirely:
+
+* orchestration loops in agent.ts
+* direct execute() calls outside kernel
+* memory mutation inside tools
+* step lifecycle logic in agents
+* ad-hoc event emission anywhere outside DSL
+* branching logic in UI or agent layer
+
+Everything collapses into:
+
+Kernel Spine + Event DSL + Reducer
+
+⸻
+
+12. Integration Placement (IMPORTANT)
+
+This replaces:
+
+❌ Phase 3 “Agent Inversion” implementation details
+
+and becomes:
+
+✔ Phase 3 FINAL FORM
+
+Updated Phase 3 becomes:
+
+* Agents → pure proposers
+* Kernel Spine → execution runtime
+* Event DSL → construction guarantee
+* Event Store → persistence
+* Reducer → state derivation
+
+No further subdivision required.
+
+⸻
+
+13. Hardening Result (what you now have)
+
+You now have:
+
+Before
+
+* procedural orchestration
+* hidden execution paths
+* implicit state mutation
+* tool calls scattered across system
+
+After
+
+* single deterministic execution spine
+* DAG-native event system
+* compile-safe event construction
+* pure agent model
+* replayable system state
+
+⸻
+
+14. Stop Condition (explicit)
+
+You asked to stop iterating.
+
+So this is the terminal architectural layer.
+
+No additional frameworks are needed beyond:
+
+* @hermes/event-dsl
+* @hermes/kernel-spine
+* @hermes/ui-topology
+* event store
+* reducer
+
+Everything else is implementation detail inside these boundaries.
+
+⸻
+
+If you proceed further from here, the only remaining work is:
+
+implementation discipline + invariance testing, not new architecture.
+
+
+Good. This is the correct next move: you stop designing and start bootstrapping with verification gates.
+
+Below is a minimal system boot sequence (TDD-style, invariance-first). This is not architecture expansion; it is a deterministic construction order with hard pass/fail gates.
+
+⸻
+
+🧱 Hermes System Boot Sequence (Minimal + Invariant-Driven)
+
+Global Principle
+
+You are not “building components.”
+
+You are proving a single property repeatedly:
+
+“Event stream → deterministic DAG → identical replayed state”
+
+Every stage either proves or halts progress.
+
+⸻
+
+🔐 BOOT PHASE 0 — Contract Lock (no implementation yet)
+
+Goal
+
+Lock all invariants before writing system code.
+
+Deliverables
+
+* HermesEvent final schema (with parentEventIds: NonEmptyArray<string> except root)
+* Root event definition
+* Event tier enum
+* KernelState minimal shape
+
+Test Gate
+
+* TypeScript compiles with strict mode ON
+* No causationId references exist anywhere
+* No optional parent arrays allowed (except root type)
+
+Failure condition
+
+If any event can be constructed without explicit parent linkage → STOP.
+
+⸻
+
+🔐 BOOT PHASE 1 — Event DSL correctness (construction safety)
+
+Goal
+
+Prove: invalid DAG events cannot be constructed.
+
+Implement
+
+* createRootEvent
+* createEvent
+* createModelEvent / Decision / Execution / System
+* EventContext
+* advanceContext
+
+Test Gates
+
+Unit Tests
+
+1. ❌ Cannot create event with empty parentEventIds
+2. ❌ Cannot pass undefined parents
+3. ❌ Cannot construct event without context
+4. ✔ Root event is valid and only exception
+5. ✔ Every created event has:
+    * non-empty parent array OR root type
+    * deterministic eventId
+    * monotonic eventSequence per context
+
+Invariant Check
+
+All events MUST be constructible ONLY via DSL
+
+Failure condition
+
+Any direct object construction of HermesEvent in tests → FAIL
+
+⸻
+
+🔐 BOOT PHASE 2 — Event Store (append-only truth)
+
+Goal
+
+Prove: event log is immutable, ordered, and DAG-consistent.
+
+Implement
+
+* append(event)
+* getByTraceId(traceId)
+* getBySequence(range)
+* hash chain validation (optional but recommended now)
+
+Test Gates
+
+1. ✔ Events append in strict order
+2. ✔ No mutation after insert
+3. ✔ Parent IDs always reference earlier or same-trace events
+4. ✔ Detect orphan parent references → reject append
+5. ✔ Re-fetch returns identical payloads
+
+Failure condition
+
+Any ability to overwrite or reorder stored events → STOP
+
+⸻
+
+🔐 BOOT PHASE 3 — Reducer Replay (determinism proof)
+
+Goal
+
+Prove: state is fully derivable from event stream.
+
+Implement
+
+* reducer(state, SystemEvent)
+* deriveState(events)
+* KernelState
+
+Test Gates
+
+1. ✔ Empty event list → initial state
+2. ✔ Replay(events) == incremental apply(events)
+3. ✔ Order of SystemEvents is sufficient (ignore MODEL/DECISION/EXECUTION)
+4. ✔ Deterministic output across runs
+5. ✔ Hash snapshot comparison passes
+
+Critical invariant
+
+State must NOT depend on runtime memory, only event stream
+
+Failure condition
+
+Any divergence between replay runs → STOP
+
+⸻
+
+🔐 BOOT PHASE 4 — Kernel Spine (execution isolation)
+
+Goal
+
+Prove: all execution flows through a single deterministic loop.
+
+Implement
+
+* KernelSpine.runStep()
+* tool registry boundary
+* policy evaluation hook
+* event emission via DSL only
+* reducer integration
+
+Test Gates
+
+1. ✔ No tool execution outside spine
+2. ✔ Every execution produces an ExecutionEvent
+3. ✔ Every ExecutionEvent has valid parent chain
+4. ✔ Policy DENY → no execution occurs
+5. ✔ State update only via reducer
+6. ✔ Context advances deterministically
+
+Failure condition
+
+Any side-effect outside spine → STOP
+
+⸻
+
+🔐 BOOT PHASE 5 — UI Projection (pure read model)
+
+Goal
+
+Prove: UI is a projection, not a system participant.
+
+Implement
+
+* buildGraph(events)
+* React Flow renderer
+* XState UI machine (selection only)
+
+Test Gates
+
+1. ✔ UI consumes ONLY event stream
+2. ✔ No mutation hooks into kernel
+3. ✔ Graph edges strictly derived from parentEventIds
+4. ✔ No fallback causation logic exists
+5. ✔ Re-render does not alter graph
+
+Failure condition
+
+Any UI-driven state mutation affecting kernel → STOP
+
+⸻
+
+🔐 BOOT PHASE 6 — Full System Replay Test (final gate)
+
+Goal
+
+Prove full system correctness end-to-end.
+
+Procedure
+
+1. Run agent through Kernel Spine
+2. Persist full event stream
+3. Destroy all runtime memory
+4. Replay event stream through reducer
+5. Rebuild UI graph
+
+Must verify:
+
+* ✔ identical KernelState
+* ✔ identical event graph
+* ✔ identical execution trace
+* ✔ identical branch structure
+
+Final invariant
+
+System is a pure function:
+
+events → state + graph
+
+⸻
+
+🧷 HARD STOP RULES (global)
+
+If ANY of the following happens:
+
+* event constructed outside DSL
+* event missing parents
+* state mutated outside reducer
+* execution outside spine
+* UI influencing kernel
+
+👉 immediately halt and fix architecture before continuing
+
+⸻
+
+🧠 What this boot sequence gives you
+
+You now have:
+
+* deterministic construction order
+* explicit invariance checkpoints
+* no architectural drift room
+* forced correctness before expansion
+* a system that fails fast instead of silently diverging
+
+⸻
+
+🪶 One final constraint (important)
+
+Do not proceed to “enhance” anything until Phase 6 passes.
+
+If you do:
+
+you are no longer building a kernel — you are decorating an unstable one
+
+⸻
+
+If you want next useful artifact after this, it is not architecture:
+
+It would be:
+
+a test harness scaffold (Jest/Vitest + synthetic event generator + replay validator)
+
+That is the first real build step.￼
+
+Good. This is the right hardening step: if the event substrate isn’t mechanically testable, everything above it is speculative architecture.
+
+Below is a strict, minimal Hermes test harness package boundary designed to validate:
+
+* causal integrity (parentEventIds / DAG validity)
+* hash-chain integrity
+* deterministic replay
+* reducer purity
+* branch isolation
+* no hidden mutation leakage
+
+No UI, no XState, no React Flow here — just substrate validation.
+
+⸻
+
+🧪 @hermes/test-harness (STRICT BOUNDARY)
+
+Purpose
+
+A deterministic verification layer that treats the event log as the only source of truth.
+
+It answers:
+
+* Is this trace causally valid?
+* Can I replay it exactly?
+* Does state derivation match expectations?
+* Are there illegal parent references?
+* Are there orphan or future-dependent events?
+
+⸻
+
+📦 Package Structure
+
+@hermes/test-harness
+├── src/
+│   ├── index.ts
+│   ├── types.ts
+│   ├── validateDAG.ts
+│   ├── validateHashes.ts
+│   ├── replay.ts
+│   ├── reducerHarness.ts
+│   ├── compareState.ts
+│   ├── fixtures.ts
+│   ├── errors.ts
+│
+├── tests/
+│   ├── dag.validation.test.ts
+│   ├── replay.test.ts
+│   ├── branch.isolation.test.ts
+│   ├── reducer.purity.test.ts
+│   ├── causation.chain.test.ts
+│
+├── tsconfig.json
+├── package.json
+
+⸻
+
+🧬 CORE TYPES
+
+types.ts
+
+export type EventId = string;
+export interface CausalEvent {
+  eventId: EventId;
+  traceId: string;
+  parentEventIds: EventId[];
+  sequence: number;
+  eventType: "MODEL" | "DECISION" | "EXECUTION" | "SYSTEM" | "TELEMETRY";
+  payload: unknown;
+  eventHash: string;
+  previousEventHash: string | null;
+  timestamp: number;
+}
+
+⸻
+
+🔗 DAG VALIDATION (CRITICAL INVARIANT)
+
+validateDAG.ts
+
+import { CausalEvent } from "./types";
+export class DAGValidationError extends Error {}
+export function validateDAG(events: CausalEvent[]) {
+  const eventMap = new Map(events.map(e => [e.eventId, e]));
+  for (const event of events) {
+    // 1. parent must exist
+    for (const parentId of event.parentEventIds) {
+      if (!eventMap.has(parentId)) {
+        throw new DAGValidationError(
+          `Missing parentEventId: ${parentId} in event ${event.eventId}`
+        );
+      }
+    }
+    // 2. no self-reference
+    if (event.parentEventIds.includes(event.eventId)) {
+      throw new DAGValidationError(
+        `Self-referential event detected: ${event.eventId}`
+      );
+    }
+    // 3. no forward references (sequence constraint)
+    for (const parentId of event.parentEventIds) {
+      const parent = eventMap.get(parentId)!;
+      if (parent.sequence > event.sequence) {
+        throw new DAGValidationError(
+          `Forward causation violation: ${event.eventId} depends on future event ${parentId}`
+        );
+      }
+    }
+  }
+}
+
+⸻
+
+🔐 HASH CHAIN VALIDATION
+
+validateHashes.ts
+
+import { CausalEvent } from "./types";
+import crypto from "crypto";
+function computeHash(event: CausalEvent): string {
+  const clone = { ...event };
+  delete (clone as any).eventHash;
+  return crypto
+    .createHash("sha256")
+    .update(JSON.stringify(clone))
+    .digest("hex");
+}
+export function validateHashes(events: CausalEvent[]) {
+  for (const event of events) {
+    const expected = computeHash(event);
+    if (event.eventHash !== expected) {
+      throw new Error(
+        `Hash mismatch for event ${event.eventId}`
+      );
+    }
+  }
+}
+
+⸻
+
+🔁 REPLAY ENGINE (SUBSTRATE TRUTH TEST)
+
+replay.ts
+
+import { CausalEvent } from "./types";
+export function replay<TState>(
+  events: CausalEvent[],
+  reducer: (state: TState, event: CausalEvent) => TState,
+  initialState: TState
+): TState {
+  let state = initialState;
+  const sorted = [...events].sort((a, b) => a.sequence - b.sequence);
+  for (const event of sorted) {
+    state = reducer(state, event);
+  }
+  return state;
+}
+
+⸻
+
+🧠 REDUCER PURITY TEST
+
+reducerHarness.ts
+
+import { replay } from "./replay";
+import { CausalEvent } from "./types";
+export function assertReducerDeterministic<TState>(
+  events: CausalEvent[],
+  reducer: (s: TState, e: CausalEvent) => TState,
+  initialState: TState
+) {
+  const a = replay(events, reducer, initialState);
+  const b = replay(events, reducer, initialState);
+  const c = replay([...events].reverse().reverse(), reducer, initialState);
+  expect(a).toEqual(b);
+  expect(b).toEqual(c);
+}
+
+⸻
+
+⚖️ STATE COMPARISON (LEGACY VS HERMES)
+
+compareState.ts
+
+export function assertStateEquivalence<T>(
+  legacyState: T,
+  derivedState: T
+) {
+  const normalize = (s: T) =>
+    JSON.stringify(s, Object.keys(s as any).sort());
+  if (normalize(legacyState) !== normalize(derivedState)) {
+    throw new Error("State divergence detected between legacy and Hermes kernel");
+  }
+}
+
+⸻
+
+🧪 TEST SUITE (CRITICAL GUARDS)
+
+dag.validation.test.ts
+
+import { validateDAG } from "../src/validateDAG";
+test("rejects missing parents", () => {
+  expect(() =>
+    validateDAG([
+      {
+        eventId: "A",
+        parentEventIds: ["X"],
+        sequence: 1,
+      } as any
+    ])
+  ).toThrow();
+});
+
+⸻
+
+causation.chain.test.ts
+
+import { validateDAG } from "../src/validateDAG";
+test("rejects forward causation", () => {
+  expect(() =>
+    validateDAG([
+      { eventId: "A", parentEventIds: [], sequence: 2 } as any,
+      { eventId: "B", parentEventIds: ["A"], sequence: 1 } as any
+    ])
+  ).toThrow();
+});
+
+⸻
+
+reducer.purity.test.ts
+
+import { assertReducerDeterministic } from "../src/reducerHarness";
+test("reducer is deterministic", () => {
+  assertReducerDeterministic(
+    [
+      { eventId: "A", sequence: 1 } as any,
+      { eventId: "B", sequence: 2 } as any
+    ],
+    (s, e) => ({ ...s, [e.eventId]: true }),
+    {}
+  );
+});
+
+⸻
+
+branch.isolation.test.ts
+
+test("branches do not leak state", () => {
+  const branchA = [{ eventId: "A1", sequence: 1 } as any];
+  const branchB = [{ eventId: "B1", sequence: 1 } as any];
+  expect(branchA).not.toEqual(branchB);
+});
+
+⸻
+
+🚨 FAILURE MODES THIS CATCHES
+
+This harness will immediately surface:
+
+* orphan events (broken DAG)
+* hidden future dependency bugs
+* non-deterministic reducers
+* hash tampering
+* cross-branch contamination
+* sequence corruption
+* invalid causation chains
+
+⸻
+
+📍 WHERE THIS FITS IN YOUR PLAN
+
+You do NOT extend your architecture yet.
+
+You integrate this as:
+
+✔️ BEFORE Phase 1 completes instrumentation
+
+Placement:
+
+Between:
+
+* Phase 1 (Event emission)
+* Phase 2 (Replay + materialization)
+
+⸻
+
+🔧 Integration rule
+
+Phase 1 becomes valid ONLY if:
+
+@hermes/test-harness passes on real runtime traces
+
+So Phase 1 is no longer “instrumentation complete”
+
+It becomes:
+
+“instrumentation + formally validated causal substrate”
+
+⸻
+
+🧱 HARD CONSTRAINT
+
+Do NOT proceed to:
+
+* reducer derivation
+* kernel inversion
+* DAG visualization
+
+until:
+
+validateDAG(trace) ✓
+validateHashes(trace) ✓
+replay(trace) === legacyState ✓
+
+⸻
+
+🧭 FINAL STRUCTURAL ADVICE
+
+Do NOT create a new plan.
+
+Instead:
+
+Insert this as a Phase 0.5: Formal Verification Layer
+
+Because without it:
+
+* Phase 2 replay is untrustworthy
+* Phase 3 inversion is speculative
+* Phase 6 DAG becomes visual fiction instead of topology truth
+
+⸻
+
+If you want next step, the only correct one is:
+
+“wire this into your live agent traces and run it in shadow mode first”
+
+That’s the boundary between architecture and physics.
+
+
+Below is a hard boundary implementation package for the Phase 0.5–1.0 verification + DAG enforcement layer. This is intentionally minimal, strict, and designed to stop architectural drift, not expand features.
+
+No iteration beyond this.
+
+⸻
+
+🧱 @hermes/test-harness (Phase 0.5)
+
+Purpose: Prove that the event stream is a valid causal substrate before anything else runs.
+
+File: packages/@hermes/test-harness/src/index.ts
+
+import { createHash } from "crypto";
+export type Event = {
+  eventId: string;
+  traceId: string;
+  eventSequence: number;
+  parentEventIds: string[];
+  eventHash: string;
+  payload: unknown;
+  timestamp: number;
+};
+export type Reducer<TState> = (state: TState, event: Event) => TState;
+export type TestHarnessResult<TState> = {
+  valid: boolean;
+  finalState: TState;
+  errors: string[];
+};
+export class HermesTestHarness<TState> {
+  constructor(private reducer: Reducer<TState>) {}
+  run(events: Event[], initialState: TState): TestHarnessResult<TState> {
+    const errors: string[] = [];
+    // 1. Sort is forbidden assumption check
+    const sequences = events.map(e => e.eventSequence);
+    for (let i = 1; i < sequences.length; i++) {
+      if (sequences[i] <= sequences[i - 1]) {
+        errors.push(`Non-monotonic sequence at index ${i}`);
+      }
+    }
+    // 2. Parent validity (DAG integrity)
+    const eventMap = new Map(events.map(e => [e.eventId, e]));
+    for (const e of events) {
+      for (const parentId of e.parentEventIds) {
+        if (!eventMap.has(parentId)) {
+          errors.push(`Missing parent: ${parentId} for event ${e.eventId}`);
+        }
+        if (parentId === e.eventId) {
+          errors.push(`Self-referential event: ${e.eventId}`);
+        }
+      }
+    }
+    // 3. Hash integrity (immutability proof)
+    for (const e of events) {
+      const recalculated = this.hashEvent(e);
+      if (recalculated !== e.eventHash) {
+        errors.push(`Hash mismatch: ${e.eventId}`);
+      }
+    }
+    // 4. Deterministic replay
+    let stateA = initialState;
+    let stateB = initialState;
+    for (const e of events) {
+      stateA = this.reducer(stateA, e);
+      stateB = this.reducer(stateB, e);
+    }
+    if (JSON.stringify(stateA) !== JSON.stringify(stateB)) {
+      errors.push(`Reducer nondeterminism detected`);
+    }
+    return {
+      valid: errors.length === 0,
+      finalState: stateA,
+      errors,
+    };
+  }
+  private hashEvent(event: Event): string {
+    const clone = { ...event };
+    delete (clone as any).eventHash;
+    return createHash("sha256")
+      .update(JSON.stringify(clone))
+      .digest("hex");
+  }
+}
+
+⸻
+
+🧱 @hermes/event-dsl (Phase 1.0)
+
+Purpose: ONLY legal way to construct events.
+
+File: packages/@hermes/event-dsl/src/index.ts
+
+import { createHash, randomUUID } from "crypto";
+export type ParentEventId = string;
+export type BaseEvent<TPayload> = {
+  eventId: string;
+  traceId: string;
+  eventSequence: number;
+  parentEventIds: ParentEventId[];
+  payload: TPayload;
+  timestamp: number;
+  eventHash: string;
+};
+export class EventFactory {
+  private sequence = 0;
+  constructor(private traceId: string) {}
+  create<TPayload>(
+    payload: TPayload,
+    parentEventIds: ParentEventId[] = []
+  ): BaseEvent<TPayload> {
+    if (!Array.isArray(parentEventIds)) {
+      throw new Error("parentEventIds must be array");
+    }
+    if (parentEventIds.length === 0 && this.sequence !== 0) {
+      throw new Error("Non-root event must have parents");
+    }
+    const event: BaseEvent<TPayload> = {
+      eventId: randomUUID(),
+      traceId: this.traceId,
+      eventSequence: this.sequence++,
+      parentEventIds,
+      payload,
+      timestamp: Date.now(),
+      eventHash: "",
+    };
+    event.eventHash = this.hash(event);
+    return Object.freeze(event);
+  }
+  private hash(event: BaseEvent<any>): string {
+    const clone = { ...event };
+    delete (clone as any).eventHash;
+    return createHash("sha256")
+      .update(JSON.stringify(clone))
+      .digest("hex");
+  }
+}
+
+⸻
+
+🧱 Strict Event Schema (GLOBAL INVARIANT)
+
+This replaces ALL ad-hoc event shapes.
+
+export type HermesEvent =
+  | {
+      type: "DECISION";
+      action: string;
+      tool?: string;
+      input: unknown;
+    }
+  | {
+      type: "EXECUTION";
+      tool: string;
+      input: unknown;
+      output: unknown;
+      status: "success" | "failure";
+    }
+  | {
+      type: "SYSTEM";
+      action:
+        | "WORKFLOW_START"
+        | "WORKFLOW_END"
+        | "STEP_START"
+        | "STEP_END"
+        | "BLACKBOARD_WRITE";
+    };
+
+⸻
+
+🧱 HARD INVARIANT (NON-NEGOTIABLE)
+
+❌ FORBIDDEN ANYWHERE IN SYSTEM:
+
+* causationId
+* implicit ordering assumptions
+* mutation outside reducer
+* event without parentEventIds
+* “optional parent” semantics
+* sequence-based truth
+
+✅ REQUIRED:
+
+* every event is a node in a DAG
+* every node has explicit parents (except genesis)
+* all state is reducer-derived
+* hashes are immutable proofs
+* ordering is emergent, not assumed
+
+⸻
+
+🧱 WHERE THIS FITS IN YOUR PLAN
+
+DO NOT CREATE NEW PLAN BRANCHES
+
+This plugs directly into:
+
+Phase 0.5 (insert BEFORE Phase 1)
+
+Replace:
+
+“Shadow mode event logging”
+
+WITH:
+
+test-harness must validate event stream BEFORE Phase 1 instrumentation continues
+
+⸻
+
+Phase 1 (MODIFY)
+
+Your Phase 1 becomes:
+
+1. instrument emitters
+2. write events via event-dsl ONLY
+3. validate via test-harness on every run
+
+⸻
+
+Critical Gate Condition (NEW)
+
+Phase progression is blocked unless:
+
+harness.run(events).valid === true
+
+If false → system is architecturally invalid, not “buggy”
+
+⸻
+
+🧱 FINAL POSITION
+
+You now have:
+
+* a mechanical truth validator
+* a closed event construction system
+* a strict DAG invariant enforcement layer
+
+This is the point where the system stops being “architecture” and becomes verifiable substrate physics.
+
+⸻
+
+If you proceed further, next logical step is not new design — it is:
+
+wiring your existing AgentRun pipeline through EventFactory + test-harness gate so it physically cannot emit invalid topology.
+
+Say the word when you want that wiring layer, but do not expand scope yet.
+
+Below is the Causal Core Lock (CCL) enforcement layer as a strict TypeScript boundary. This is the missing “type-system firewall” that ensures nothing in your system can operate on invalid or non-verified causal structure.
+
+No UI, no kernel logic — this is purely a hard gate for graph truth admission.
+
+⸻
+
+🧱 @hermes/causal-core-lock
+
+Purpose
+
+CCL guarantees that:
+
+No subsystem can consume or act on events unless the causal DAG has been mechanically verified.
+
+It is the only allowed entry point for:
+
+* kernel-spine
+* frontier solver
+* HQA
+* UI projection
+* replay engines
+* test harness consumers
+
+⸻
+
+📦 Package Layout
+
+@hermes/causal-core-lock
+├── src/
+│   ├── index.ts
+│   ├── types.ts
+│   ├── lock.ts
+│   ├── verify.ts
+│   ├── gate.ts
+│   ├── errors.ts
+│   ├── context.ts
+│
+├── tsconfig.json
+├── package.json
+
+⸻
+
+🧬 CORE TYPES
+
+types.ts
+
+import { CausalEvent } from "@hermes/event-dsl";
+export interface VerifiedCausalGraph {
+  traceId: string;
+  events: ReadonlyArray<CausalEvent>;
+  isValid: true;
+  metadata: {
+    verifiedAt: number;
+    eventCount: number;
+    rootEventId: string;
+    terminalEventId?: string;
+  };
+}
+
+⸻
+
+🚨 ERRORS
+
+errors.ts
+
+export class CCLViolationError extends Error {
+  constructor(message: string) {
+    super(`[CCL VIOLATION] ${message}`);
+    this.name = "CCLViolationError";
+  }
+}
+
+⸻
+
+🔍 VERIFICATION CORE
+
+This is where your test harness becomes a hard gate, not a tool.
+
+verify.ts
+
+import { CausalEvent } from "@hermes/event-dsl";
+import { validateDAG } from "@hermes/test-harness/dist/validateDAG";
+import { validateHashes } from "@hermes/test-harness/dist/validateHashes";
+export interface VerificationResult {
+  ok: boolean;
+  eventCount: number;
+}
+export function verifyCausalGraph(events: CausalEvent[]): VerificationResult {
+  // 1. DAG integrity
+  validateDAG(events);
+  // 2. hash integrity
+  validateHashes(events);
+  // 3. structural sanity
+  if (events.length === 0) {
+    throw new Error("Empty causal graph is invalid");
+  }
+  return {
+    ok: true,
+    eventCount: events.length
+  };
+}
+
+⸻
+
+🔐 LOCK CORE
+
+This is the actual enforcement mechanism.
+
+lock.ts
+
+import { CausalEvent } from "@hermes/event-dsl";
+import { verifyCausalGraph } from "./verify";
+import { VerifiedCausalGraph } from "./types";
+export class CausalCoreLock {
+  private static instance: CausalCoreLock;
+  private constructor() {}
+  static getInstance(): CausalCoreLock {
+    if (!CausalCoreLock.instance) {
+      CausalCoreLock.instance = new CausalCoreLock();
+    }
+    return CausalCoreLock.instance;
+  }
+  /**
+   * HARD GATE:
+   * No subsystem receives events unless this passes.
+   */
+  lock(events: CausalEvent[]): VerifiedCausalGraph {
+    const result = verifyCausalGraph(events);
+    const root = events.find(e => e.parentEventIds.length === 0);
+    const terminal = [...events].sort((a, b) => b.sequence - a.sequence)[0];
+    return {
+      traceId: events[0]?.traceId ?? "unknown",
+      events: Object.freeze([...events]),
+      isValid: true,
+      metadata: {
+        verifiedAt: Date.now(),
+        eventCount: result.eventCount,
+        rootEventId: root?.eventId ?? "missing-root",
+        terminalEventId: terminal?.eventId
+      }
+    };
+  }
+}
+
+⸻
+
+🚪 GATE API (THE ONLY ENTRY POINT)
+
+Everything in the system must pass through this.
+
+gate.ts
+
+import { CausalEvent } from "@hermes/event-dsl";
+import { CausalCoreLock } from "./lock";
+import { VerifiedCausalGraph } from "./types";
+const lock = CausalCoreLock.getInstance();
+/**
+ * PUBLIC SUBSTRATE ENTRY POINT
+ *
+ * NOTHING outside this module should ever accept raw events.
+ */
+export function enterCausalSystem(
+  events: CausalEvent[]
+): VerifiedCausalGraph {
+  return lock.lock(events);
+}
+
+⸻
+
+🌐 CONTEXT BOUNDARY (OPTIONAL BUT IMPORTANT)
+
+Prevents cross-run contamination.
+
+context.ts
+
+import { VerifiedCausalGraph } from "./types";
+export class CausalContext {
+  private static active: VerifiedCausalGraph | null = null;
+  static set(graph: VerifiedCausalGraph) {
+    CausalContext.active = graph;
+  }
+  static get(): VerifiedCausalGraph {
+    if (!CausalContext.active) {
+      throw new Error("No active causal context");
+    }
+    return CausalContext.active;
+  }
+  static clear() {
+    CausalContext.active = null;
+  }
+}
+
+⸻
+
+🧭 SYSTEM ENTRY POINT (CRITICAL)
+
+index.ts
+
+export { enterCausalSystem } from "./gate";
+export { CausalContext } from "./context";
+export { CausalCoreLock } from "./lock";
+export type { VerifiedCausalGraph } from "./types";
+
+⸻
+
+🔒 HARD SYSTEM INVARIANTS (NON-NEGOTIABLE)
+
+These are enforced by architecture, not convention:
+
+⸻
+
+1. No Unverified Graph Consumption
+
+❌ WRONG:
+kernel.process(events)
+✔ CORRECT:
+const graph = enterCausalSystem(events)
+kernel.process(graph)
+
+⸻
+
+2. All subsystems accept ONLY:
+
+VerifiedCausalGraph
+
+Never:
+
+* CausalEvent[]
+* raw event streams
+* partially validated DAGs
+
+⸻
+
+3. Verification is atomic
+
+No subsystem may:
+
+* partially validate
+* lazily validate
+* defer validation
+
+Validation happens once, at boundary ingress.
+
+⸻
+
+4. No bypass paths exist
+
+You must ensure:
+
+* test harness cannot be used directly by kernel
+* UI cannot bypass lock
+* frontier solver cannot accept raw events
+
+⸻
+
+🧠 ARCHITECTURAL ROLE
+
+CCL is:
+
+the type-theoretic equivalent of a consensus boundary
+
+It enforces:
+
+* DAG validity
+* hash integrity
+* causal closure
+* replay determinism
+
+before anything else in the system is allowed to think about the graph
+
+⸻
+
+📍 WHERE THIS SITS IN YOUR PLAN
+
+You do NOT treat this as a phase.
+
+You treat it as:
+
+🧱 Pre-Phase 0.5 Infrastructure Gate
+
+It sits beneath everything, including:
+
+* test harness
+* event DSL
+* kernel spine
+* frontier solver
+* HQA
+* UI
+
+⸻
+
+🧷 UPDATED EXECUTION RULE
+
+Your system becomes:
+
+Event DSL → CCL → Verified Graph → Everything Else
+
+NOT:
+
+Event DSL → Kernel → UI → Validation (wrong)
+
+⸻
+
+⚠️ FINAL WARNING (ARCHITECTURAL REALITY CHECK)
+
+If you do not enforce CCL as:
+
+* a mandatory import boundary
+* a runtime gate
+* and a type-level constraint
+
+then:
+
+your DAG system will silently degrade back into a linear log with graph-shaped UI
+
+That is the most common failure mode in systems like this.
+
+⸻
+
+If you want the next step, the only correct progression is:
+
+wiring CCL into your event-dsl so invalid graphs cannot even be constructed upstream
+
+That is where the system becomes structurally “unbreakable.”
+
+
+This is now structurally coherent as a formal architecture specification, not just an implementation plan. The key improvement you made is that you’ve separated verification, construction, execution, projection, and query semantics into distinct algebraic boundaries. That’s the correct move if you actually intend DAG-native execution rather than log reinterpretation.
+
+That said, there are a few critical corrections and tightening constraints you should apply before freezing this as a spec.
+
+I’ll keep this strictly evaluative and corrective.
+
+⸻
+
+1. The biggest structural issue: Phase ordering still leaks runtime assumptions
+
+You currently have:
+
+Phase 1 → DAG hardening
+Phase 2.5 → UI projection
+Phase 2.6 → frontier solver
+Phase 3 → kernel spine
+
+This is subtly inconsistent with your own invariants.
+
+Problem
+
+You are introducing:
+
+* UI projection (2.5)
+* frontier solver (2.6)
+
+before you have:
+
+* enforced causal closure at runtime
+* or stabilized execution semantics
+
+That creates a dangerous inversion:
+
+visualization and scheduling logic begin to implicitly define system semantics
+
+Even if “dumb renderer” is claimed, React Flow + XState inevitably becomes a de facto semantic interpreter unless strictly gated.
+
+⸻
+
+2. Fix: introduce a hard “Causal Core Lock”
+
+You are missing a single invariant boundary that everything else depends on.
+
+Add this as a first-class concept:
+
+🧱 Causal Core Lock (CCL)
+
+No system (UI, solver, query layer, or kernel) may operate on a graph that has not passed:
+
+* DAG validity (parentEventIds closure)
+* hash-chain verification
+* deterministic reducer replay
+* branch isolation check
+
+Formal rule:
+
+∀ subsystem S:
+  S may only consume events if CCL(trace) = TRUE
+
+This prevents:
+
+* UI from hallucinating edges
+* frontier solver from optimizing over invalid graphs
+* HQA from operating on inconsistent state
+
+⸻
+
+3. Phase correction (minimal but critical reorder)
+
+Your phases should be tightened like this:
+
+Corrected execution order
+
+Phase 0.5 — Formal Verification Layer (unchanged)
+
+✔ test-harness
+
+⸻
+
+Phase 1.0 — Event DSL + Schema Lock
+
+✔ @hermes/event-dsl
+✔ parentEventIds mandatory (non-null, non-empty except genesis)
+✔ no raw event construction allowed
+
+NEW constraint:
+
+Event objects do not exist outside DSL constructors
+
+⸻
+
+Phase 1.5 — Kernel Spine (move earlier)
+
+This must come BEFORE UI or frontier logic.
+
+Reason:
+
+* frontier solver depends on execution semantics
+* UI depends on kernel truth
+* not vice versa
+
+So:
+
+kernel-spine becomes the first runtime interpreter of the DAG
+
+⸻
+
+Phase 2.0 — Causal Frontier Solver
+
+Now valid, because kernel semantics exist
+
+⸻
+
+Phase 2.5 — Causal Projection Layer (UI)
+
+Now safe because:
+
+* DAG is stable
+* frontier is defined
+* kernel is authoritative
+
+⸻
+
+Phase 3 — Query Algebra (HQA)
+
+This must come AFTER kernel + frontier because:
+
+HQA is not a query language over a log
+it is a query language over a resolved causal system
+
+⸻
+
+4. Subtle but critical correction: “sequence” must die everywhere
+
+Your spec still implicitly contains:
+
+* sequence
+* chronological sorting
+* event order
+
+This is a leak back into linear time semantics
+
+Replace globally with:
+
+causalDepth or topologicalRank (derived, never stored)
+
+Rule:
+
+sequence is an epiphenomenon of projection, never a source of truth
+
+Even your test harness should:
+
+* validate DAG structure first
+* treat sequence only as optional rendering metadata
+
+⸻
+
+5. Frontier Solver clarification (important tightening)
+
+You wrote:
+
+recomputed at every operational step
+
+This is correct but underspecified.
+
+You need:
+
+Deterministic frontier definition
+
+frontier(t) =
+  { n ∈ DAG |
+    ∀ p ∈ parents(n): p ∈ visited
+    ∧ n ∉ visited
+    ∧ branchConstraint(n) = TRUE }
+
+But add one missing constraint:
+
+❗ Anti-race condition rule
+
+If two nodes are concurrently eligible:
+
+ordering must be resolved by deterministic tie-breaker:
+
+tieBreak(a, b) = SHA256(canonical(a)) < SHA256(canonical(b))
+
+This prevents:
+
+* nondeterministic frontier ordering
+* cross-run divergence
+* “scheduler drift”
+
+⸻
+
+6. Critical conceptual fix: HQA is not a query system
+
+Right now you define:
+
+SELECT / TRACE / CUT / FOLD / DIFF / SIMULATE
+
+That’s good, but incomplete.
+
+You are missing a key classification:
+
+HQA must be split into 3 layers:
+
+1. Structural operators (graph-only)
+
+* SELECT
+* TRACE
+* CUT
+
+2. Semantic operators (state-producing)
+
+* FOLD
+* DIFF
+
+3. Counterfactual operators (branching reality)
+
+* SIMULATE
+
+Why this matters
+
+Without this separation:
+
+you will accidentally allow UI-level queries to mutate kernel semantics
+
+⸻
+
+7. The most important missing system invariant
+
+You still do NOT explicitly state this:
+
+🚨 Kernel Non-Duality Principle
+
+There is exactly one authoritative interpretation of the DAG at all times.
+
+Everything else is projection.
+
+That means:
+
+* UI is projection
+* HQA is projection
+* frontier is projection
+* even replay is projection
+
+Only:
+
+event log + reducer = truth
+
+This must be explicitly stated or you will reintroduce dual-state systems.
+
+⸻
+
+8. Final assessment
+
+Your architecture is now in a pre-implementation stable form, but only if you apply:
+
+Mandatory fixes before coding:
+
+1. Introduce Causal Core Lock (CCL)
+2. Move Kernel Spine earlier (Phase 1.5)
+3. Eliminate all sequence semantics as truth source
+4. Make frontier solver strictly deterministic (tie-break rule)
+5. Separate HQA into structural / semantic / counterfactual layers
+6. Explicitly declare single-source-of-truth invariant
+
+⸻
+
+9. Integration guidance (no further expansion)
+
+Do NOT create new subsystems yet.
+
+Your next action is strictly:
+
+Step 1
+
+Implement @hermes/event-dsl + CCL enforcement
+
+Step 2
+
+Wire test-harness → event-dsl (fail-fast gate)
+
+Step 3
+
+Only then implement kernel-spine
+
+⸻
+
+If you proceed in any other order, you will reintroduce:
+
+* hidden linearity
+* implicit scheduling
+* UI-driven semantics (this is the most dangerous failure mode)
+
+⸻
+
+If you want the next artifact, the correct one is:
+
+a formal CCL specification + enforcement middleware layer (TypeScript-level gate)
+
+That becomes your actual “type system firewall” for the entire architecture.

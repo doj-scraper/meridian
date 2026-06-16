@@ -1,0 +1,827 @@
+     1→"use client";
+     2→
+     3→import { useEffect, useRef, useCallback, useState } from "react";
+     4→import { motion, AnimatePresence } from "framer-motion";
+     5→import { useAgentStore, type AgentEvent, type AppModule } from "@/store/agent-store";
+     6→import { AgentSidebar } from "./agent-sidebar";
+     7→import { AgentCanvas } from "./agent-canvas";
+     8→import { AgentInspector } from "./agent-inspector";
+     9→import { AgentBuilderWizard } from "./agent-builder-wizard";
+    10→import { SystemIndicator } from "./system-indicator";
+    11→import { ApprovalModal } from "./approval-modal";
+    12→import { RoutingEngine } from "./routing-engine";
+    13→import { PipelineStudio } from "@/components/pipeline/pipeline-studio";
+    14→import { Button } from "@/components/ui/button";
+    15→import {
+    16→  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose,
+    17→} from "@/components/ui/dialog";
+    18→import { Input } from "@/components/ui/input";
+    19→import { Label } from "@/components/ui/label";
+    20→import { Checkbox } from "@/components/ui/checkbox";
+    21→import { ScrollArea } from "@/components/ui/scroll-area";
+    22→import {
+    23→  Menubar,
+    24→  MenubarMenu,
+    25→  MenubarTrigger,
+    26→  MenubarContent,
+    27→  MenubarItem,
+    28→  MenubarSeparator,
+    29→  MenubarCheckboxItem,
+    30→  MenubarSub,
+    31→  MenubarSubTrigger,
+    32→  MenubarSubContent,
+    33→  MenubarShortcut,
+    34→} from "@/components/ui/menubar";
+    35→import {
+    36→  PanelLeftClose,
+    37→  PanelLeftOpen,
+    38→  PanelRightClose,
+    39→  PanelRightOpen,
+    40→  Workflow,
+    41→  Route,
+    42→  GitBranch,
+    43→  Palette,
+    44→  Sparkles,
+    45→  Bot,
+    46→  Users,
+    47→  Settings,
+    48→  Keyboard,
+    49→  Info,
+    50→  FileText,
+    51→  Loader2,
+    52→} from "lucide-react";
+    53→import { useToast } from "@/hooks/use-toast";
+    54→
+    55→// SSE reconnection constants
+    56→const MAX_RECONNECT_ATTEMPTS = 5;
+    57→const BASE_RECONNECT_DELAY_MS = 1000;
+    58→const MAX_RECONNECT_DELAY_MS = 30000;
+    59→
+    60→// V2 event types that the SSE handler recognizes
+    61→const V2_EVENT_TYPES = new Set<string>([
+    62→  "status", "plan", "action", "result", "thinking",
+    63→  "error", "done", "reflection", "policy", "handoff", "group_message",
+    64→]);
+    65→
+    66→const NAV_ITEMS: { key: AppModule; label: string; icon: React.ReactNode }[] = [
+    67→  { key: "canvas", label: "Agents", icon: <Workflow size={12} /> },
+    68→  { key: "router", label: "Router", icon: <Route size={12} /> },
+    69→  { key: "pipeline", label: "Pipeline", icon: <GitBranch size={12} /> },
+    70→  { key: "workflow", label: "Studio", icon: <Palette size={12} /> },
+    71→];
+    72→
+    73→export function AgentStudio() {
+    74→  const {
+    75→    fetchAgents,
+    76→    fetchRuns,
+    77→    currentRunId,
+    78→    addEvent,
+    79→    clearEvents,
+    80→    setIsRunning,
+    81→    sidebarOpen,
+    82→    inspectorOpen,
+    83→    setSidebarOpen,
+    84→    setInspectorOpen,
+    85→    selectedAgentId,
+    86→    selectAgent,
+    87→    agents,
+    88→    error,
+    89→    clearError,
+    90→    deleteAgent,
+    91→    builderOpen,
+    92→    setBuilderOpen,
+    93→    activeModule,
+    94→    setActiveModule,
+    95→  } = useAgentStore();
+    96→
+    97→  const { toast } = useToast();
+    98→  const [teamBuilderOpen, setTeamBuilderOpen] = useState(false);
+    99→
+   100→  const eventSourceRef = useRef<EventSource | null>(null);
+   101→  const reconnectAttemptsRef = useRef<number>(0);
+   102→  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+   103→  const isCleaningUpRef = useRef<boolean>(false);
+   104→  const connectSSERef = useRef<(runId: string) => void>(() => {});
+   105→
+   106→  // Keyboard shortcuts
+   107→  useEffect(() => {
+   108→    const handler = (e: KeyboardEvent) => {
+   109→      if ((e.ctrlKey || e.metaKey) && e.key === "b") {
+   110→        e.preventDefault();
+   111→        setSidebarOpen(!sidebarOpen);
+   112→      }
+   113→      if ((e.ctrlKey || e.metaKey) && e.key === "i") {
+   114→        e.preventDefault();
+   115→        setInspectorOpen(!inspectorOpen);
+   116→      }
+   117→    };
+   118→    window.addEventListener("keydown", handler);
+   119→    return () => window.removeEventListener("keydown", handler);
+   120→  }, [sidebarOpen, inspectorOpen, setSidebarOpen, setInspectorOpen]);
+   121→
+   122→  // Show toast notification when error state is set
+   123→  useEffect(() => {
+   124→    if (error) {
+   125→      toast({ title: "Error", description: error, variant: "destructive" });
+   126→    }
+   127→  }, [error, toast]);
+   128→
+   129→  const handleClearError = useCallback(() => {
+   130→    if (error) clearError();
+   131→  }, [error, clearError]);
+   132→
+   133→  const getReconnectDelay = useCallback((attempt: number): number => {
+   134→    const delay = BASE_RECONNECT_DELAY_MS * Math.pow(2, attempt);
+   135→    return Math.min(delay, MAX_RECONNECT_DELAY_MS);
+   136→  }, []);
+   137→
+   138→  const closeEventSource = useCallback(() => {
+   139→    isCleaningUpRef.current = true;
+   140→    if (reconnectTimeoutRef.current) {
+   141→      clearTimeout(reconnectTimeoutRef.current);
+   142→      reconnectTimeoutRef.current = null;
+   143→    }
+   144→    if (eventSourceRef.current) {
+   145→      eventSourceRef.current.close();
+   146→      eventSourceRef.current = null;
+   147→    }
+   148→    reconnectAttemptsRef.current = 0;
+   149→  }, []);
+   150→
+   151→  const attemptReconnect = useCallback(
+   152→    (runId: string) => {
+   153→      if (isCleaningUpRef.current) return;
+   154→      const attempt = reconnectAttemptsRef.current;
+   155→      if (attempt >= MAX_RECONNECT_ATTEMPTS) {
+   156→        useAgentStore.setState({
+   157→          isRunning: false,
+   158→          error: `Connection lost after ${MAX_RECONNECT_ATTEMPTS} reconnection attempts`,
+   159→        });
+   160→        return;
+   161→      }
+   162→      const delay = getReconnectDelay(attempt);
+   163→      reconnectAttemptsRef.current += 1;
+   164→      reconnectTimeoutRef.current = setTimeout(() => {
+   165→        if (isCleaningUpRef.current) return;
+   166→        connectSSERef.current(runId);
+   167→      }, delay);
+   168→    },
+   169→    [getReconnectDelay]
+   170→  );
+   171→
+   172→  const connectSSE = useCallback(
+   173→    (runId: string) => {
+   174→      if (isCleaningUpRef.current) return;
+   175→      if (eventSourceRef.current) {
+   176→        eventSourceRef.current.close();
+   177→        eventSourceRef.current = null;
+   178→      }
+   179→      const url = `/api/agent/stream?runId=${encodeURIComponent(runId)}`;
+   180→      const es = new EventSource(url);
+   181→      eventSourceRef.current = es;
+   182→
+   183→      es.onmessage = (event) => {
+   184→        try {
+   185→          const data: AgentEvent = JSON.parse(event.data);
+   186→          addEvent(data);
+   187→          reconnectAttemptsRef.current = 0;
+   188→          if (data.type === "done") {
+   189→            setIsRunning(false);
+   190→            es.close();
+   191→            eventSourceRef.current = null;
+   192→            fetchRuns();
+   193→          }
+   194→          if (data.type === "error") {
+   195→            useAgentStore.setState({ error: data.message });
+   196→          }
+   197→        } catch (parseError) {
+   198→          console.error("SSE parse error:", parseError);
+   199→        }
+   200→      };
+   201→
+   202→      es.onerror = () => {
+   203→        es.close();
+   204→        eventSourceRef.current = null;
+   205→        if (!isCleaningUpRef.current) {
+   206→          attemptReconnect(runId);
+   207→        }
+   208→      };
+   209→    },
+   210→    [addEvent, setIsRunning, fetchRuns, attemptReconnect]
+   211→  );
+   212→
+   213→  useEffect(() => {
+   214→    connectSSERef.current = connectSSE;
+   215→  }, [connectSSE]);
+   216→
+   217→  useEffect(() => {
+   218→    if (!currentRunId) return;
+   219→    isCleaningUpRef.current = false;
+   220→    reconnectAttemptsRef.current = 0;
+   221→    clearEvents();
+   222→    connectSSE(currentRunId);
+   223→    return () => {
+   224→      closeEventSource();
+   225→    };
+   226→  }, [currentRunId, clearEvents, connectSSE, closeEventSource]);
+   227→
+   228→  useEffect(() => {
+   229→    return () => {
+   230→      isCleaningUpRef.current = true;
+   231→      closeEventSource();
+   232→    };
+   233→  }, [closeEventSource]);
+   234→
+   235→  return (
+   236→    <div className="h-screen w-full flex flex-col overflow-hidden" style={{ background: "#05070a" }} onClick={handleClearError}>
+   237→      {/* ═══ TOPBAR ═══ */}
+   238→      <header
+   239→        className="h-11 flex items-center shrink-0 relative z-10"
+   240→        style={{
+   241→          background: "#0f141b",
+   242→          borderBottom: "2px solid #000",
+   243→          boxShadow: "0 2px 0 #000",
+   244→        }}
+   245→      >
+   246→        {/* Logo — always clean, never crushed */}
+   247→        <div className="flex items-center gap-2.5 px-3 shrink-0">
+   248→          <div
+   249→            className="w-6 h-6 grid place-items-center text-xs font-bold shrink-0"
+   250→            style={{
+   251→              background: "#ffd60a",
+   252→              border: "2px solid #000",
+   253→              boxShadow: "2px 2px 0 #000",
+   254→              color: "#000",
+   255→            }}
+   256→          >
+   257→            A
+   258→          </div>
+   259→          <span className="text-[13px] font-semibold tracking-wide whitespace-nowrap" style={{ color: "#d7dde5" }}>
+   260→            Agent Studio OS{" "}
+   261→            <span style={{ color: "#8a94a3", fontWeight: 400 }}>beta</span>
+   262→          </span>
+   263→        </div>
+   264→
+   265→        {/* ═══ MENUBAR ═══ */}
+   266→        <Menubar className="h-7 ml-1 gap-0 border-0 bg-transparent p-0 shadow-none" style={{ background: "transparent" }}>
+   267→          {/* FILE */}
+   268→          <MenubarMenu>
+   269→            <MenubarTrigger
+   270→              className="text-[11px] font-medium tracking-wider uppercase px-2 py-1 h-7"
+   271→              style={{ color: "#8a94a3" }}
+   272→            >
+   273→              File
+   274→            </MenubarTrigger>
+   275→            <MenubarContent
+   276→              className="min-w-[180px]"
+   277→              style={{
+   278→                background: "#0b1016",
+   279→                border: "2px solid #000",
+   280→                borderRadius: 0,
+   281→                boxShadow: "4px 4px 0 #000",
+   282→                color: "#d7dde5",
+   283→              }}
+   284→            >
+   285→              <MenubarItem
+   286→                className="text-[11px] gap-2 focus:bg-[#141c25] focus:text-[#d7dde5]"
+   287→                onClick={() => setBuilderOpen(true)}
+   288→              >
+   289→                <Sparkles size={12} style={{ color: "#ffd60a" }} />
+   290→                AI Builder
+   291→                <MenubarShortcut className="text-[9px]" style={{ color: "#5b6b81" }}>⌘N</MenubarShortcut>
+   292→              </MenubarItem>
+   293→              <MenubarItem
+   294→                className="text-[11px] gap-2 focus:bg-[#141c25] focus:text-[#d7dde5]"
+   295→                onClick={() => {
+   296→                  const store = useAgentStore.getState();
+   297→                  store.createAgent({
+   298→                    name: "New Agent",
+   299→                    goal: "Define a goal for this agent",
+   300→                    personality: "helpful assistant",
+   301→                    tools: ["search"],
+   302→                    maxSteps: 10,
+   303→                    autoRun: false,
+   304→                    outputFormat: "markdown",
+   305→                    role: "general",
+   306→                    orchestrationMode: "single",
+   307→                  } as any).then((a) => { if (a) store.selectAgent(a.id); });
+   308→                }}
+   309→              >
+   310→                <Bot size={12} style={{ color: "#8a94a3" }} />
+   311→                New Agent
+   312→              </MenubarItem>
+   313→              <MenubarSeparator style={{ background: "#1b2430" }} />
+   314→              <MenubarItem
+   315→                className="text-[11px] gap-2 focus:bg-[#141c25] focus:text-[#d7dde5]"
+   316→                onClick={() => setActiveModule("workflow")}
+   317→              >
+   318→                <Workflow size={12} style={{ color: "#8a94a3" }} />
+   319→                New Workflow
+   320→              </MenubarItem>
+   321→              <MenubarItem
+   322→                className="text-[11px] gap-2 focus:bg-[#141c25] focus:text-[#d7dde5]"
+   323→                onClick={() => setTeamBuilderOpen(true)}
+   324→              >
+   325→                <Users size={12} style={{ color: "#22c55e" }} />
+   326→                New Team
+   327→              </MenubarItem>
+   328→            </MenubarContent>
+   329→          </MenubarMenu>
+   330→
+   331→          {/* EDIT */}
+   332→          <MenubarMenu>
+   333→            <MenubarTrigger
+   334→              className="text-[11px] font-medium tracking-wider uppercase px-2 py-1 h-7"
+   335→              style={{ color: "#8a94a3" }}
+   336→            >
+   337→              Edit
+   338→            </MenubarTrigger>
+   339→            <MenubarContent
+   340→              className="min-w-[180px]"
+   341→              style={{
+   342→                background: "#0b1016",
+   343→                border: "2px solid #000",
+   344→                borderRadius: 0,
+   345→                boxShadow: "4px 4px 0 #000",
+   346→                color: "#d7dde5",
+   347→              }}
+   348→            >
+   349→              <MenubarItem
+   350→                className="text-[11px] gap-2 focus:bg-[#141c25] focus:text-[#d7dde5]"
+   351→                onClick={() => { if (selectedAgentId) setInspectorOpen(true); }}
+   352→                disabled={!selectedAgentId}
+   353→              >
+   354→                <Settings size={12} style={{ color: "#8a94a3" }} />
+   355→                Configuration
+   356→                <MenubarShortcut className="text-[9px]" style={{ color: "#5b6b81" }}>⌘I</MenubarShortcut>
+   357→              </MenubarItem>
+   358→              <MenubarItem
+   359→                className="text-[11px] gap-2 focus:bg-[#141c25] focus:text-[#d7dde5]"
+   360→                onClick={() => setActiveModule("router")}
+   361→              >
+   362→                <Route size={12} style={{ color: "#8a94a3" }} />
+   363→                Routing Policies
+   364→              </MenubarItem>
+   365→              <MenubarSeparator style={{ background: "#1b2430" }} />
+   366→              <MenubarItem
+   367→                className="text-[11px] gap-2 focus:bg-[#141c25] focus:text-[#ef4444]"
+   368→                disabled={!selectedAgentId}
+   369→                onClick={() => {
+   370→                  if (selectedAgentId) {
+   371→                    deleteAgent(selectedAgentId);
+   372→                    selectAgent(null);
+   373→                  }
+   374→                }}
+   375→              >
+   376→                Delete Agent
+   377→              </MenubarItem>
+   378→            </MenubarContent>
+   379→          </MenubarMenu>
+   380→
+   381→          {/* VIEW */}
+   382→          <MenubarMenu>
+   383→            <MenubarTrigger
+   384→              className="text-[11px] font-medium tracking-wider uppercase px-2 py-1 h-7"
+   385→              style={{ color: "#8a94a3" }}
+   386→            >
+   387→              View
+   388→            </MenubarTrigger>
+   389→            <MenubarContent
+   390→              className="min-w-[200px]"
+   391→              style={{
+   392→                background: "#0b1016",
+   393→                border: "2px solid #000",
+   394→                borderRadius: 0,
+   395→                boxShadow: "4px 4px 0 #000",
+   396→                color: "#d7dde5",
+   397→              }}
+   398→            >
+   399→              <MenubarCheckboxItem
+   400→                checked={sidebarOpen}
+   401→                onCheckedChange={setSidebarOpen}
+   402→                className="text-[11px] gap-2 focus:bg-[#141c25] focus:text-[#d7dde5]"
+   403→              >
+   404→                Explorer
+   405→                <MenubarShortcut className="text-[9px] ml-auto" style={{ color: "#5b6b81" }}>⌘B</MenubarShortcut>
+   406→              </MenubarCheckboxItem>
+   407→              <MenubarCheckboxItem
+   408→                checked={inspectorOpen}
+   409→                onCheckedChange={setInspectorOpen}
+   410→                className="text-[11px] gap-2 focus:bg-[#141c25] focus:text-[#d7dde5]"
+   411→              >
+   412→                Inspector
+   413→                <MenubarShortcut className="text-[9px] ml-auto" style={{ color: "#5b6b81" }}>⌘I</MenubarShortcut>
+   414→              </MenubarCheckboxItem>
+   415→              <MenubarSeparator style={{ background: "#1b2430" }} />
+   416→              <MenubarSub>
+   417→                <MenubarSubTrigger className="text-[11px] gap-2 focus:bg-[#141c25] focus:text-[#d7dde5]">
+   418→                  Modules
+   419→                </MenubarSubTrigger>
+   420→                <MenubarSubContent
+   421→                  className="min-w-[160px]"
+   422→                  style={{
+   423→                    background: "#0b1016",
+   424→                    border: "2px solid #000",
+   425→                    borderRadius: 0,
+   426→                    boxShadow: "4px 4px 0 #000",
+   427→                    color: "#d7dde5",
+   428→                  }}
+   429→                >
+   430→                  {NAV_ITEMS.map((item) => (
+   431→                    <MenubarItem
+   432→                      key={item.key}
+   433→                      className="text-[11px] gap-2 focus:bg-[#141c25] focus:text-[#d7dde5]"
+   434→                      onClick={() => setActiveModule(item.key)}
+   435→                    >
+   436→                      {item.icon}
+   437→                      <span className={activeModule === item.key ? "font-semibold" : ""} style={{ color: activeModule === item.key ? "#ffd60a" : "#d7dde5" }}>
+   438→                        {item.label}
+   439→                      </span>
+   440→                      {activeModule === item.key && (
+   441→                        <span className="ml-auto text-[8px] tracking-wider" style={{ color: "#ffd60a" }}>●</span>
+   442→                      )}
+   443→                    </MenubarItem>
+   444→                  ))}
+   445→                </MenubarSubContent>
+   446→              </MenubarSub>
+   447→            </MenubarContent>
+   448→          </MenubarMenu>
+   449→
+   450→          {/* HELP */}
+   451→          <MenubarMenu>
+   452→            <MenubarTrigger
+   453→              className="text-[11px] font-medium tracking-wider uppercase px-2 py-1 h-7"
+   454→              style={{ color: "#8a94a3" }}
+   455→            >
+   456→              Help
+   457→            </MenubarTrigger>
+   458→            <MenubarContent
+   459→              className="min-w-[180px]"
+   460→              style={{
+   461→                background: "#0b1016",
+   462→                border: "2px solid #000",
+   463→                borderRadius: 0,
+   464→                boxShadow: "4px 4px 0 #000",
+   465→                color: "#d7dde5",
+   466→              }}
+   467→            >
+   468→              <MenubarItem className="text-[11px] gap-2 focus:bg-[#141c25] focus:text-[#d7dde5]">
+   469→                <Info size={12} style={{ color: "#8a94a3" }} />
+   470→                About Agent Studio OS
+   471→              </MenubarItem>
+   472→              <MenubarItem className="text-[11px] gap-2 focus:bg-[#141c25] focus:text-[#d7dde5]">
+   473→                <FileText size={12} style={{ color: "#8a94a3" }} />
+   474→                Documentation
+   475→              </MenubarItem>
+   476→              <MenubarSeparator style={{ background: "#1b2430" }} />
+   477→              <MenubarItem className="text-[11px] gap-2 focus:bg-[#141c25] focus:text-[#d7dde5]">
+   478→                <Keyboard size={12} style={{ color: "#8a94a3" }} />
+   479→                Keyboard Shortcuts
+   480→              </MenubarItem>
+   481→            </MenubarContent>
+   482→          </MenubarMenu>
+   483→        </Menubar>
+   484→
+   485→        {/* Module nav tabs — compact */}
+   486→        <nav className="flex gap-0.5 ml-2">
+   487→          {NAV_ITEMS.map((item) => (
+   488→            <button
+   489→              key={item.key}
+   490→              onClick={() => setActiveModule(item.key)}
+   491→              className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium tracking-wider transition-all uppercase"
+   492→              style={{
+   493→                color: activeModule === item.key ? "#ffd60a" : "#5b6b81",
+   494→                background: activeModule === item.key ? "#1a212b" : "transparent",
+   495→                border: activeModule === item.key ? "1px solid #2a3441" : "1px solid transparent",
+   496→              }}
+   497→            >
+   498→              {item.icon}
+   499→              <span className="hidden sm:inline">{item.label}</span>
+   500→            </button>
+   501→          ))}
+   502→        </nav>
+   503→
+   504→        {/* Right side — status + toggles */}
+   505→        <div className="ml-auto flex items-center gap-2 px-2">
+   506→          <SystemIndicator />
+   507→
+   508→          <div
+   509→            className="px-2 py-0.5 text-[9px] tracking-wider hidden md:block"
+   510→            style={{
+   511→              border: "1px solid #2a3441",
+   512→              background: "#1a212b",
+   513→              color: "#8a94a3",
+   514→            }}
+   515→          >
+   516→            {agents.length} AGENT{agents.length !== 1 ? "S" : ""}
+   517→          </div>
+   518→
+   519→          {/* Sidebar toggle */}
+   520→          <button
+   521→            onClick={() => setSidebarOpen(!sidebarOpen)}
+   522→            className="w-7 h-7 flex items-center justify-center transition-colors"
+   523→            style={{ color: sidebarOpen ? "#d7dde5" : "#5b6b81" }}
+   524→            title={sidebarOpen ? "Close Explorer (⌘B)" : "Open Explorer (⌘B)"}
+   525→          >
+   526→            {sidebarOpen ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={14} />}
+   527→          </button>
+   528→          {/* Inspector toggle */}
+   529→          <button
+   530→            onClick={() => setInspectorOpen(!inspectorOpen)}
+   531→            className="w-7 h-7 flex items-center justify-center transition-colors"
+   532→            style={{ color: inspectorOpen ? "#d7dde5" : "#5b6b81" }}
+   533→            title={inspectorOpen ? "Close Inspector (⌘I)" : "Open Inspector (⌘I)"}
+   534→          >
+   535→            {inspectorOpen ? <PanelRightClose size={14} /> : <PanelRightOpen size={14} />}
+   536→          </button>
+   537→        </div>
+   538→      </header>
+   539→
+   540→      {/* ═══ MAIN CONTENT ═══ */}
+   541→      <div className="flex-1 flex min-h-0">
+   542→        {activeModule === "canvas" && (
+   543→          <>
+   544→            {/* Left Sidebar with collapse strip */}
+   545→            <AnimatePresence initial={false}>
+   546→              {sidebarOpen ? (
+   547→                <motion.div
+   548→                  key="sidebar"
+   549→                  initial={{ width: 0, opacity: 0 }}
+   550→                  animate={{ width: 260, opacity: 1 }}
+   551→                  exit={{ width: 0, opacity: 0 }}
+   552→                  transition={{ duration: 0.2, ease: "easeInOut" }}
+   553→                  className="overflow-hidden shrink-0"
+   554→                >
+   555→                  <AgentSidebar />
+   556→                </motion.div>
+   557→              ) : (
+   558→                <motion.div
+   559→                  key="sidebar-strip"
+   560→                  initial={{ width: 0 }}
+   561→                  animate={{ width: 32 }}
+   562→                  exit={{ width: 0 }}
+   563→                  transition={{ duration: 0.15, ease: "easeInOut" }}
+   564→                  className="shrink-0 flex flex-col items-center pt-2"
+   565→                  style={{ background: "#0a0e14", borderRight: "2px solid #000" }}
+   566→                >
+   567→                  <button
+   568→                    onClick={() => setSidebarOpen(true)}
+   569→                    className="w-6 h-6 flex items-center justify-center transition-colors"
+   570→                    style={{ color: "#5b6b81" }}
+   571→                    title="Open Explorer (⌘B)"
+   572→                  >
+   573→                    <PanelLeftOpen size={12} />
+   574→                  </button>
+   575→                  <div className="mt-2 flex flex-col gap-1.5">
+   576→                    {agents.slice(0, 8).map((agent) => (
+   577→                      <div
+   578→                        key={agent.id}
+   579→                        className="w-2 h-2"
+   580→                        style={{
+   581→                          background: selectedAgentId === agent.id ? "#ffd60a" : "#2a3441",
+   582→                          border: "1px solid #000",
+   583→                        }}
+   584→                        title={agent.name}
+   585→                      />
+   586→                    ))}
+   587→                  </div>
+   588→                </motion.div>
+   589→              )}
+   590→            </AnimatePresence>
+   591→
+   592→            {/* Center Canvas / Run View */}
+   593→            <AgentCanvas />
+   594→
+   595→            {/* Right Inspector with collapse strip */}
+   596→            <AnimatePresence initial={false}>
+   597→              {inspectorOpen ? (
+   598→                <motion.div
+   599→                  key="inspector"
+   600→                  initial={{ width: 0, opacity: 0 }}
+   601→                  animate={{ width: 320, opacity: 1 }}
+   602→                  exit={{ width: 0, opacity: 0 }}
+   603→                  transition={{ duration: 0.2, ease: "easeInOut" }}
+   604→                  className="overflow-hidden shrink-0"
+   605→                >
+   606→                  <AgentInspector />
+   607→                </motion.div>
+   608→              ) : (
+   609→                <motion.div
+   610→                  key="inspector-strip"
+   611→                  initial={{ width: 0 }}
+   612→                  animate={{ width: 32 }}
+   613→                  exit={{ width: 0 }}
+   614→                  transition={{ duration: 0.15, ease: "easeInOut" }}
+   615→                  className="shrink-0 flex flex-col items-center pt-2"
+   616→                  style={{ background: "#0a0e14", borderLeft: "2px solid #000" }}
+   617→                >
+   618→                  <button
+   619→                    onClick={() => setInspectorOpen(true)}
+   620→                    className="w-6 h-6 flex items-center justify-center transition-colors"
+   621→                    style={{ color: "#5b6b81" }}
+   622→                    title="Open Inspector (⌘I)"
+   623→                  >
+   624→                    <PanelRightOpen size={12} />
+   625→                  </button>
+   626→                  {selectedAgentId && (
+   627→                    <div
+   628→                      className="mt-2 text-[8px] tracking-wider uppercase font-semibold"
+   629→                      style={{ color: "#ffd60a", writingMode: "vertical-rl", textOrientation: "mixed" }}
+   630→                    >
+   631→                      CFG
+   632→                    </div>
+   633→                  )}
+   634→                </motion.div>
+   635→              )}
+   636→            </AnimatePresence>
+   637→          </>
+   638→        )}
+   639→
+   640→        {activeModule === "router" && <RoutingEngine />}
+   641→
+   642→        {activeModule === "pipeline" && <PipelineStudio />}
+   643→
+   644→        {activeModule === "workflow" && (
+   645→          <div className="flex-1 flex items-center justify-center" style={{ background: "#05070a" }}>
+   646→            <div className="text-center">
+   647→              <div
+   648→                className="w-20 h-20 flex items-center justify-center mx-auto mb-4"
+   649→                style={{
+   650→                  background: "#0f141b",
+   651→                  border: "2px solid #000",
+   652→                  boxShadow: "6px 6px 0 #000",
+   653→                }}
+   654→              >
+   655→                <Palette size={32} style={{ color: "#2a3441" }} />
+   656→              </div>
+   657→              <h3 className="text-[16px] font-semibold mb-2" style={{ color: "#d7dde5", letterSpacing: "0.02em" }}>
+   658→                WORKFLOW STUDIO
+   659→              </h3>
+   660→              <p className="text-[12px] mb-4" style={{ color: "#8a94a3", maxWidth: "320px", margin: "0 auto" }}>
+   661→                Visual workflow design tool. Create, edit, and test multi-agent workflows before deploying them to the live orchestration engine.
+   662→              </p>
+   663→              <div
+   664→                className="inline-block px-3 py-1.5 text-[10px] tracking-wider font-semibold"
+   665→                style={{
+   666→                  background: "#1a212b",
+   667→                  border: "2px solid #000",
+   668→                  boxShadow: "2px 2px 0 #000",
+   669→                  color: "#ffd60a",
+   670→                }}
+   671→              >
+   672→                COMING SOON
+   673→              </div>
+   674→            </div>
+   675→          </div>
+   676→        )}
+   677→      </div>
+   678→
+   679→      {/* Builder Wizard overlay */}
+   680→      <AgentBuilderWizard />
+   681→      {/* Approval Modal */}
+   682→      <ApprovalModal />
+   683→      {/* Team Builder — triggered from File > New Team */}
+   684→      {teamBuilderOpen && <TeamBuilderDialog onClose={() => setTeamBuilderOpen(false)} />}
+   685→    </div>
+   686→  );
+   687→}
+   688→
+   689→/* ──────────────────────────────────────────────────────────
+   690→   Standalone TeamBuilder dialog for menubar use
+   691→   ────────────────────────────────────────────────────────── */
+   692→
+   693→const ORCHESTRATION_MODES = [
+   694→  { value: "sequential", label: "Sequential", desc: "One after another" },
+   695→  { value: "group", label: "Group Chat", desc: "Agents discuss together" },
+   696→  { value: "hierarchical", label: "Hierarchical", desc: "Planner delegates" },
+   697→  { value: "parallel", label: "Parallel", desc: "Run simultaneously" },
+   698→] as const;
+   699→
+   700→function TeamBuilderDialog({ onClose }: { onClose: () => void }) {
+   701→  const { agents, createTeam } = useAgentStore();
+   702→  const [open, setOpen] = useState(true);
+   703→  const [name, setName] = useState("");
+   704→  const [mode, setMode] = useState("sequential");
+   705→  const [selectedAgentIds, setSelectedAgentIds] = useState<string[]>([]);
+   706→  const [isCreating, setIsCreating] = useState(false);
+   707→
+   708→  const toggleAgent = (agentId: string) => {
+   709→    setSelectedAgentIds((prev) =>
+   710→      prev.includes(agentId) ? prev.filter((id) => id !== agentId) : [...prev, agentId]
+   711→    );
+   712→  };
+   713→
+   714→  const handleCreate = async () => {
+   715→    if (!name.trim() || selectedAgentIds.length === 0) return;
+   716→    setIsCreating(true);
+   717→    try {
+   718→      await createTeam({ name: name.trim(), mode, agentIds: selectedAgentIds });
+   719→      setName(""); setMode("sequential"); setSelectedAgentIds([]);
+   720→      setOpen(false);
+   721→      onClose();
+   722→    } finally {
+   723→      setIsCreating(false);
+   724→    }
+   725→  };
+   726→
+   727→  return (
+   728→    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) onClose(); }}>
+   729→      <DialogContent
+   730→        className="bg-[#0f141b] border-[#2a3441] text-[#d7dde5] max-w-lg"
+   731→        style={{ borderRadius: 0 }}
+   732→      >
+   733→        <DialogHeader>
+   734→          <DialogTitle className="flex items-center gap-2 text-[#d7dde5]">
+   735→            <Users size={18} className="text-[#22c55e]" />
+   736→            Create Agent Team
+   737→          </DialogTitle>
+   738→        </DialogHeader>
+   739→
+   740→        <div className="space-y-4 py-2">
+   741→          <div className="space-y-1.5">
+   742→            <Label className="text-[10px] text-[#5b6b81] uppercase tracking-wider font-medium">Team Name</Label>
+   743→            <Input
+   744→              value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Research Squad"
+   745→              className="h-8 text-[12px] bg-[#0b1118] border-[#2a3441] text-[#d7dde5] focus:border-[#ffd60a] focus:ring-[#ffd60a]/20"
+   746→              style={{ borderRadius: 0 }}
+   747→            />
+   748→          </div>
+   749→
+   750→          <div className="space-y-1.5">
+   751→            <Label className="text-[10px] text-[#5b6b81] uppercase tracking-wider font-medium">Orchestration Mode</Label>
+   752→            <div className="grid grid-cols-2 gap-1.5">
+   753→              {ORCHESTRATION_MODES.map((m) => (
+   754→                <button
+   755→                  key={m.value}
+   756→                  onClick={() => setMode(m.value)}
+   757→                  className={`p-2.5 text-left border transition-all ${
+   758→                    mode === m.value
+   759→                      ? "bg-[#22c55e]/15 border-[#22c55e]/40 text-[#22c55e]"
+   760→                      : "bg-[#0b1118] border-[#2a3441] text-[#8a94a3] hover:border-[#3a4553]"
+   761→                  }`}
+   762→                  style={{ borderRadius: 0 }}
+   763→                >
+   764→                  <div className="text-[11px] font-medium">{m.label}</div>
+   765→                  <div className="text-[9px] mt-0.5 opacity-70">{m.desc}</div>
+   766→                </button>
+   767→              ))}
+   768→            </div>
+   769→          </div>
+   770→
+   771→          <div className="space-y-1.5">
+   772→            <Label className="text-[10px] text-[#5b6b81] uppercase tracking-wider font-medium">
+   773→              Select Agents ({selectedAgentIds.length} selected)
+   774→            </Label>
+   775→            {agents.length === 0 ? (
+   776→              <p className="text-[11px] text-[#475569] py-2">No agents available. Create agents first.</p>
+   777→            ) : (
+   778→              <ScrollArea className="max-h-48">
+   779→                <div className="space-y-1">
+   780→                  {agents.map((agent) => (
+   781→                    <label
+   782→                      key={agent.id}
+   783→                      className={`flex items-center gap-2.5 p-2 cursor-pointer transition-all border ${
+   784→                        selectedAgentIds.includes(agent.id)
+   785→                          ? "bg-[#22c55e]/10 border-[#22c55e]/30"
+   786→                          : "bg-[#0b1118] border-[#2a3441] hover:border-[#3a4553]"
+   787→                      }`}
+   788→                      style={{ borderRadius: 0 }}
+   789→                    >
+   790→                      <Checkbox
+   791→                        checked={selectedAgentIds.includes(agent.id)}
+   792→                        onCheckedChange={() => toggleAgent(agent.id)}
+   793→                        className="border-[#3a4553] data-[state=checked]:bg-[#22c55e] data-[state=checked]:border-[#22c55e]"
+   794→                      />
+   795→                      <div className="min-w-0 flex-1">
+   796→                        <div className="text-[11px] font-medium text-[#d7dde5]">{agent.name}</div>
+   797→                        <div className="text-[9px] text-[#5b6b81] truncate">{agent.role} · {agent.tools?.join(", ")}</div>
+   798→                      </div>
+   799→                    </label>
+   800→                  ))}
+   801→                </div>
+   802→              </ScrollArea>
+   803→            )}
+   804→          </div>
+   805→        </div>
+   806→
+   807→        <DialogFooter className="gap-2">
+   808→          <DialogClose asChild>
+   809→            <Button variant="outline" className="h-8 text-[11px] border-2 border-black" style={{ background: "#1a212b", color: "#8a94a3", boxShadow: "2px 2px 0 #000" }}>
+   810→              Cancel
+   811→            </Button>
+   812→          </DialogClose>
+   813→          <Button
+   814→            onClick={handleCreate}
+   815→            disabled={!name.trim() || selectedAgentIds.length === 0 || isCreating}
+   816→            className="h-8 text-[11px] gap-1.5 border-2 border-black disabled:opacity-50"
+   817→            style={{ background: "#22c55e", color: "#000", boxShadow: "2px 2px 0 #000" }}
+   818→          >
+   819→            {isCreating ? <Loader2 size={12} className="animate-spin" /> : <Users size={12} />}
+   820→            Create Team
+   821→          </Button>
+   822→        </DialogFooter>
+   823→      </DialogContent>
+   824→    </Dialog>
+   825→  );
+   826→}
+   827→

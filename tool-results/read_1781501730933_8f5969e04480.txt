@@ -1,0 +1,737 @@
+     1→"use client";
+     2→
+     3→// ═══════════════════════════════════════════════════════════════════════
+     4→// PIPELINE STUDIO — Single-agent pipeline visualization shell.
+     5→// Renders lanes, nodes, connectors, artifact memory, narrative strip,
+     6→// and a decision panel. All backend decoupled — uses local simulation.
+     7→// Refactored to match the neo-brutalist design system:
+     8→//   IBM Plex Mono, #05070a bg, #ffd60a accent, 2px borders, offset shadows
+     9→// ═══════════════════════════════════════════════════════════════════════
+    10→
+    11→import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+    12→import { DEVOPS_PIPELINE, PipelineSimulator, type NodeState } from "./pipeline-data";
+    13→import { PipelineIcon } from "./pipeline-icons";
+    14→import { GitBranch, Play, Square, RotateCcw, Bug, Shield, ChevronDown } from "lucide-react";
+    15→
+    16→// ── Color system (matching main project neo-brutalist theme) ───────────
+    17→const C = {
+    18→  bg: "#05070a",
+    19→  panel: "#0f141b",
+    20→  panelAlt: "#141b23",
+    21→  lane: "#0b1118",
+    22→  laneAlt: "#0f1720",
+    23→  border: "#2a3441",
+    24→  borderLight: "#1e2732",
+    25→  textMain: "#d7dde5",
+    26→  textSub: "#8a94a3",
+    27→  textMuted: "#5b6b81",
+    28→  accent: "#ffd60a",
+    29→  accent2: "#00d1ff",
+    30→
+    31→  sIdle: "#475569",
+    32→  sActive: "#00d1ff",
+    33→  sSuccess: "#22c55e",
+    34→  sWarning: "#f59e0b",
+    35→  sFailure: "#ef4444",
+    36→  sRecovery: "#a855f7",
+    37→
+    38→  rGate: "#f43f5e",
+    39→  rEntry: "#ec4899",
+    40→  rExit: "#22c55e",
+    41→};
+    42→
+    43→type PipelineStatus = "idle" | "running" | "completed" | "failed" | "awaiting_decision" | "paused";
+    44→
+    45→const SEVERITY_RANK = { clean: 0, warning: 1, critical: 2 } as const;
+    46→
+    47→function bumpMemory(current: "clean" | "warning" | "critical", severity: "clean" | "warning" | "critical"): "clean" | "warning" | "critical" {
+    48→  return (SEVERITY_RANK[severity] > SEVERITY_RANK[current]) ? severity : current;
+    49→}
+    50→
+    51→// ── Main Component ──────────────────────────────────────────────────────
+    52→export function PipelineStudio() {
+    53→  const workflow = DEVOPS_PIPELINE;
+    54→
+    55→  const [status, setStatus] = useState<PipelineStatus>("idle");
+    56→  const [nodeStates, setNodeStates] = useState<Record<string, NodeState>>({});
+    57→  const [activeEdges, setActiveEdges] = useState<Record<string, "clean" | "warning" | "critical">>({});
+    58→  const [phaseMemory, setPhaseMemory] = useState<Record<string, "clean" | "warning" | "critical">>({});
+    59→  const [activePhase, setActivePhase] = useState<string | null>(null);
+    60→  const [narrative, setNarrative] = useState<{ text: string; severity: "clean" | "warning" | "critical" }[]>([]);
+    61→  const [pendingDecision, setPendingDecision] = useState<{
+    62→    nodeId: string;
+    63→    intent: string;
+    64→    options: { action_id: string; label: string; severity: "clean" | "warning" | "critical" }[];
+    65→    policyHint?: { source: string; confidence: number; reasoning: string };
+    66→  } | null>(null);
+    67→  const [chaosMode, setChaosMode] = useState(false);
+    68→  const [policyOverride, setPolicyOverride] = useState("human");
+    69→  const [phaseTimers, setPhaseTimers] = useState<Record<string, number>>({});
+    70→  const [drawerOpen, setDrawerOpen] = useState(false);
+    71→  const [drawerTab, setDrawerTab] = useState<"events" | "traces" | "circuits">("events");
+    72→  const [events, setEvents] = useState<{ seq: number; type: string; description: string; severity: "clean" | "warning" | "critical" }[]>([]);
+    73→  const [systemLocked, setSystemLocked] = useState(false);
+    74→  const [finalOutcome, setFinalOutcome] = useState<"completed" | "failed" | null>(null);
+    75→
+    76→  const simulatorRef = useRef<PipelineSimulator | null>(null);
+    77→  const stageRef = useRef<HTMLDivElement | null>(null);
+    78→  const connectorSvgRef = useRef<SVGSVGElement | null>(null);
+    79→  const activePhaseStartRef = useRef<Record<string, number>>({});
+    80→  const eventSeqRef = useRef(0);
+    81→
+    82→  // Phase timer tick
+    83→  useEffect(() => {
+    84→    if (!activePhase || systemLocked) return undefined;
+    85→    const iv = setInterval(() => {
+    86→      setPhaseTimers((t) => {
+    87→        const start = activePhaseStartRef.current[activePhase] || Date.now();
+    88→        return { ...t, [activePhase]: (Date.now() - start) / 1000 };
+    89→      });
+    90→    }, 100);
+    91→    return () => clearInterval(iv);
+    92→  }, [activePhase, systemLocked]);
+    93→
+    94→  // ── Connector rendering ─────────────────────────────────────────────
+    95→  const renderConnectors = useCallback(() => {
+    96→    if (!stageRef.current || !connectorSvgRef.current) return;
+    97→    const svg = connectorSvgRef.current;
+    98→    svg.innerHTML = "";
+    99→    const stageRect = stageRef.current.getBoundingClientRect();
+   100→
+   101→    workflow.edges.forEach((edge) => {
+   102→      const n1 = document.getElementById(`pnode-${edge.from}`);
+   103→      const n2 = document.getElementById(`pnode-${edge.to}`);
+   104→      if (!n1 || !n2) return;
+   105→      const r1 = n1.getBoundingClientRect();
+   106→      const r2 = n2.getBoundingClientRect();
+   107→      const scrollLeft = stageRef.current!.scrollLeft;
+   108→      const x1 = r1.left + r1.width / 2 - stageRect.left + scrollLeft;
+   109→      const y1 = r1.top + r1.height / 2 - stageRect.top;
+   110→      const x2 = r2.left + r2.width / 2 - stageRect.left + scrollLeft;
+   111→      const y2 = r2.top + r2.height / 2 - stageRect.top;
+   112→
+   113→      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+   114→      path.classList.add("pconn-path");
+   115→      path.id = `pconn-${edge.from}-${edge.to}`;
+   116→
+   117→      const fromNode = workflow.nodes.find((n) => n.id === edge.from);
+   118→      const toNode = workflow.nodes.find((n) => n.id === edge.to);
+   119→      if (fromNode && toNode && fromNode.phase !== toNode.phase) path.classList.add("phandoff");
+   120→      if (fromNode && toNode && fromNode.phase === toNode.phase && x2 < x1) path.classList.add("ploop");
+   121→
+   122→      const key = `${edge.from}->${edge.to}`;
+   123→      const sev = activeEdges[key];
+   124→      if (sev) {
+   125→        path.classList.add("pactive");
+   126→        if (sev === "warning") path.classList.add("pwarning");
+   127→        if (sev === "critical") path.classList.add("pcritical");
+   128→      }
+   129→
+   130→      const dx = Math.abs(x2 - x1);
+   131→      const d =
+   132→        dx < 30
+   133→          ? `M${x1},${y1} C${x1 + 60},${y1} ${x1 + 60},${y2} ${x2},${y2}`
+   134→          : `M${x1},${y1} C${x1 + dx / 2},${y1} ${x2 - dx / 2},${y2} ${x2},${y2}`;
+   135→      path.setAttribute("d", d);
+   136→      svg.appendChild(path);
+   137→    });
+   138→  }, [workflow, activeEdges]);
+   139→
+   140→  useLayoutEffect(() => { renderConnectors(); }, [renderConnectors, nodeStates]);
+   141→
+   142→  useEffect(() => {
+   143→    const onResize = () => renderConnectors();
+   144→    window.addEventListener("resize", onResize);
+   145→    return () => window.removeEventListener("resize", onResize);
+   146→  }, [renderConnectors]);
+   147→
+   148→  // ── Event handlers from simulator ───────────────────────────────────
+   149→  const addSimEvent = useCallback((type: string, description: string, severity: "clean" | "warning" | "critical" = "clean") => {
+   150→    eventSeqRef.current += 1;
+   151→    setEvents((prev) => [...prev, { seq: eventSeqRef.current, type, description, severity }]);
+   152→  }, []);
+   153→
+   154→  const simulatorCallbacks = useMemo(() => ({
+   155→    onPhaseEntered: (phase: string) => {
+   156→      setActivePhase(phase);
+   157→      if (!activePhaseStartRef.current[phase]) activePhaseStartRef.current[phase] = Date.now();
+   158→      setPhaseMemory((m) => ({ ...m, [phase]: m[phase] || "clean" }));
+   159→      addSimEvent("phase_entered", `Entered phase: ${phase}`);
+   160→    },
+   161→    onPhaseCompleted: (phase: string, memory: "clean" | "warning" | "critical") => {
+   162→      setPhaseMemory((m) => ({ ...m, [phase]: bumpMemory(m[phase] || "clean", memory) }));
+   163→      addSimEvent("phase_completed", `Completed phase: ${phase}`, memory);
+   164→    },
+   165→    onNodeStarted: (nodeId: string) => {
+   166→      setNodeStates((s) => ({ ...s, [nodeId]: "active" }));
+   167→      const node = workflow.nodes.find((n) => n.id === nodeId);
+   168→      addSimEvent("node_started", `${node?.name || nodeId} started`);
+   169→    },
+   170→    onNodeCompleted: (nodeId: string) => {
+   171→      setNodeStates((s) => ({ ...s, [nodeId]: s[nodeId] === "warning" ? "warning" : "success" }));
+   172→      const node = workflow.nodes.find((n) => n.id === nodeId);
+   173→      addSimEvent("node_completed", `${node?.name || nodeId} completed`);
+   174→    },
+   175→    onNodeRetry: (nodeId: string) => {
+   176→      setNodeStates((s) => ({ ...s, [nodeId]: "warning" }));
+   177→      const node = workflow.nodes.find((n) => n.id === nodeId);
+   178→      addSimEvent("node_retry", `${node?.name || nodeId} retrying`, "warning");
+   179→    },
+   180→    onNodeFailed: (nodeId: string) => {
+   181→      setNodeStates((s) => ({ ...s, [nodeId]: "failure" }));
+   182→      const node = workflow.nodes.find((n) => n.id === nodeId);
+   183→      addSimEvent("node_failed", `${node?.name || nodeId} failed`, "critical");
+   184→    },
+   185→    onEdgeTraversed: (from: string, to: string, severity: "clean" | "warning" | "critical", narrative?: string) => {
+   186→      const key = `${from}->${to}`;
+   187→      setActiveEdges((m) => ({ ...m, [key]: severity }));
+   188→      if (narrative) {
+   189→        setNarrative((n) => [...n, { text: narrative, severity }]);
+   190→      }
+   191→      const fromNode = workflow.nodes.find((n) => n.id === from);
+   192→      if (fromNode) setPhaseMemory((m) => ({ ...m, [fromNode.phase]: bumpMemory(m[fromNode.phase] || "clean", severity) }));
+   193→      addSimEvent("edge_traversed", `${from} → ${to}: ${narrative || severity}`, severity);
+   194→    },
+   195→    onDecisionRequired: (nodeId: string, intent: string, options: { action_id: string; label: string; severity: "clean" | "warning" | "critical" }[], policyHint?: { source: string; confidence: number; reasoning: string }) => {
+   196→      setNodeStates((s) => ({ ...s, [nodeId]: "decision-active" }));
+   197→      setStatus("awaiting_decision");
+   198→      setPendingDecision({ nodeId, intent, options, policyHint });
+   199→      addSimEvent("decision_required", `Decision required: ${intent}`, "warning");
+   200→    },
+   201→    onWorkflowCompleted: () => {
+   202→      setStatus("completed");
+   203→      setSystemLocked(true);
+   204→      setFinalOutcome("completed");
+   205→      addSimEvent("workflow_completed", "Pipeline completed successfully", "clean");
+   206→    },
+   207→    onWorkflowFailed: () => {
+   208→      setStatus("failed");
+   209→      setSystemLocked(true);
+   210→      setFinalOutcome("failed");
+   211→      addSimEvent("workflow_failed", "Pipeline failed", "critical");
+   212→    },
+   213→    onCompensationTriggered: (description: string) => {
+   214→      setNarrative((n) => [...n, { text: description, severity: "warning" }]);
+   215→      addSimEvent("compensation", description, "warning");
+   216→    },
+   217→    onCircuitOpened: (description: string) => {
+   218→      setNarrative((n) => [...n, { text: description, severity: "critical" }]);
+   219→      addSimEvent("circuit_opened", description, "critical");
+   220→    },
+   221→  }), [workflow, addSimEvent]);
+   222→
+   223→  // ── Controls ────────────────────────────────────────────────────────
+   224→  const resetUi = useCallback(() => {
+   225→    setNodeStates({});
+   226→    setActiveEdges({});
+   227→    setPhaseMemory({});
+   228→    setActivePhase(null);
+   229→    setNarrative([]);
+   230→    setPendingDecision(null);
+   231→    setPhaseTimers({});
+   232→    setEvents([]);
+   233→    setSystemLocked(false);
+   234→    setFinalOutcome(null);
+   235→    eventSeqRef.current = 0;
+   236→    activePhaseStartRef.current = {};
+   237→  }, []);
+   238→
+   239→  const handleRun = () => {
+   240→    if (simulatorRef.current) {
+   241→      simulatorRef.current.stop();
+   242→    }
+   243→    resetUi();
+   244→    setStatus("running");
+   245→
+   246→    const sim = new PipelineSimulator(workflow, simulatorCallbacks);
+   247→    simulatorRef.current = sim;
+   248→    sim.start(chaosMode, policyOverride);
+   249→  };
+   250→
+   251→  const handleReset = () => {
+   252→    if (simulatorRef.current) {
+   253→      simulatorRef.current.stop();
+   254→      simulatorRef.current = null;
+   255→    }
+   256→    setStatus("idle");
+   257→    resetUi();
+   258→  };
+   259→
+   260→  const handleDecision = (actionId: string) => {
+   261→    if (!pendingDecision) return;
+   262→    const edge = workflow.edges.find((e) => e.from === pendingDecision.nodeId && e.action_id === actionId);
+   263→    if (edge) {
+   264→      setActiveEdges((m) => ({ ...m, [`${edge.from}->${edge.to}`]: edge.severity }));
+   265→      if (edge.narrative) setNarrative((n) => [...n, { text: edge.narrative!, severity: edge.severity }]);
+   266→      const srcNode = workflow.nodes.find((n) => n.id === edge.from);
+   267→      if (srcNode) setPhaseMemory((m) => ({ ...m, [srcNode.phase]: bumpMemory(m[srcNode.phase] || "clean", edge.severity) }));
+   268→    }
+   269→    setNodeStates((s) => ({ ...s, [pendingDecision.nodeId]: "success" }));
+   270→    setPendingDecision(null);
+   271→    setStatus("running");
+   272→    addSimEvent("decision_made", `Decision: ${actionId}`, edge?.severity || "clean");
+   273→  };
+   274→
+   275→  // Cleanup on unmount
+   276→  useEffect(() => {
+   277→    return () => {
+   278→      if (simulatorRef.current) simulatorRef.current.stop();
+   279→    };
+   280→  }, []);
+   281→
+   282→  // ── Derived state ───────────────────────────────────────────────────
+   283→  const phases = workflow.phases;
+   284→  const nodesByPhase = useMemo(() => {
+   285→    const map: Record<string, typeof workflow.nodes> = {};
+   286→    workflow.nodes.forEach((n) => {
+   287→      if (!map[n.phase]) map[n.phase] = [];
+   288→      map[n.phase].push(n);
+   289→    });
+   290→    return map;
+   291→  }, [workflow.nodes]);
+   292→
+   293→  const releasePhaseId = phases.length ? phases[phases.length - 1].id : null;
+   294→  const artifactSegments = phases.map((p) => p.id);
+   295→
+   296→  // ── Render ──────────────────────────────────────────────────────────
+   297→  return (
+   298→    <div className="flex-1 flex flex-col overflow-hidden" style={{ background: C.bg }}>
+   299→      {/* ═══ HEADER ═══ */}
+   300→      <header
+   301→        className="h-11 flex items-center gap-3 px-3 shrink-0"
+   302→        style={{ background: C.panel, borderBottom: "2px solid #000", boxShadow: "0 2px 0 #000" }}
+   303→      >
+   304→        <div className="flex items-center gap-2">
+   305→          <div className="w-6 h-6 grid place-items-center text-xs font-bold" style={{ background: C.accent, border: "2px solid #000", boxShadow: "2px 2px 0 #000", color: "#000" }}>
+   306→            P
+   307→          </div>
+   308→          <span className="text-[13px] font-semibold tracking-wide" style={{ color: C.textMain }}>
+   309→            Pipeline Studio{" "}
+   310→            <span style={{ color: C.textMuted, fontWeight: 400 }}>pro</span>
+   311→          </span>
+   312→          {status !== "idle" && (
+   313→            <span className="flex items-center gap-1.5 text-[10px] ml-2" style={{ color: C.textSub, fontFamily: "'IBM Plex Mono', monospace" }}>
+   314→              <span
+   315→                className="w-2 h-2"
+   316→                style={{
+   317→                  background: status === "running" ? C.sSuccess : status === "awaiting_decision" ? C.sRecovery : status === "completed" ? C.sSuccess : status === "failed" ? C.sFailure : C.sIdle,
+   318→                  border: "1px solid #000",
+   319→                  boxShadow: status === "running" ? `0 0 8px ${C.sSuccess}` : "none",
+   320→                }}
+   321→              />
+   322→              {status.toUpperCase()}
+   323→            </span>
+   324→          )}
+   325→        </div>
+   326→
+   327→        <div className="flex items-center gap-2 ml-auto">
+   328→          {/* Chaos mode toggle */}
+   329→          <label className="flex items-center gap-1.5 text-[10px] tracking-wider uppercase cursor-pointer" style={{ color: C.textSub }}>
+   330→            <input
+   331→              type="checkbox"
+   332→              checked={chaosMode}
+   333→              onChange={(e) => setChaosMode(e.target.checked)}
+   334→              className="accent-[#ffd60a]"
+   335→            />
+   336→            <Bug size={10} />
+   337→            Chaos
+   338→          </label>
+   339→
+   340→          {/* Policy selector */}
+   341→          <select
+   342→            value={policyOverride}
+   343→            onChange={(e) => setPolicyOverride(e.target.value)}
+   344→            className="h-6 px-2 text-[10px] tracking-wider uppercase"
+   345→            style={{
+   346→              background: C.lane,
+   347→              border: "2px solid #000",
+   348→              color: C.textSub,
+   349→              fontFamily: "'IBM Plex Mono', monospace",
+   350→              boxShadow: "2px 2px 0 #000",
+   351→              borderRadius: 0,
+   352→            }}
+   353→          >
+   354→            <option value="human">Human</option>
+   355→            <option value="probabilistic">Probabilistic</option>
+   356→            <option value="rule">Rule-based</option>
+   357→            <option value="llm">LLM Agent</option>
+   358→          </select>
+   359→
+   360→          {/* Events toggle */}
+   361→          <button
+   362→            onClick={() => setDrawerOpen((v) => !v)}
+   363→            className="h-6 px-2 text-[10px] tracking-wider uppercase font-semibold"
+   364→            style={{
+   365→              background: drawerOpen ? C.panelAlt : C.lane,
+   366→              border: "2px solid #000",
+   367→              color: drawerOpen ? C.accent : C.textSub,
+   368→              boxShadow: "2px 2px 0 #000",
+   369→            }}
+   370→          >
+   371→            Events
+   372→          </button>
+   373→
+   374→          {/* Reset */}
+   375→          <button
+   376→            onClick={handleReset}
+   377→            className="h-6 px-2 text-[10px] tracking-wider uppercase font-semibold"
+   378→            style={{
+   379→              background: C.lane,
+   380→              border: "2px solid #000",
+   381→              color: C.textSub,
+   382→              boxShadow: "2px 2px 0 #000",
+   383→            }}
+   384→          >
+   385→            <RotateCcw size={10} className="inline mr-0.5" />
+   386→            Reset
+   387→          </button>
+   388→
+   389→          {/* Run */}
+   390→          {status === "running" || status === "awaiting_decision" ? (
+   391→            <button
+   392→              onClick={handleReset}
+   393→              className="h-6 px-3 text-[10px] tracking-wider uppercase font-semibold flex items-center gap-1"
+   394→              style={{ background: C.sFailure, border: "2px solid #000", color: "#fff", boxShadow: "2px 2px 0 #000" }}
+   395→            >
+   396→              <Square size={8} /> Stop
+   397→            </button>
+   398→          ) : (
+   399→            <button
+   400→              onClick={handleRun}
+   401→              className="h-6 px-3 text-[10px] tracking-wider uppercase font-semibold flex items-center gap-1"
+   402→              style={{ background: C.accent, border: "2px solid #000", color: "#000", boxShadow: "2px 2px 0 #000" }}
+   403→            >
+   404→              <Play size={8} /> Run Pipeline
+   405→            </button>
+   406→          )}
+   407→        </div>
+   408→      </header>
+   409→
+   410→      {/* ═══ STAGE ═══ */}
+   411→      <div className="flex-1 flex min-h-0 relative">
+   412→        <div
+   413→          ref={stageRef}
+   414→          className={`flex-1 overflow-x-auto ${systemLocked ? "pointer-events-none" : ""}`}
+   415→          style={{
+   416→            display: "grid",
+   417→            gridTemplateColumns: `repeat(${phases.length}, minmax(220px, 1fr))`,
+   418→            background: C.bg,
+   419→            gap: 1,
+   420→            position: "relative",
+   421→          }}
+   422→        >
+   423→          {phases.map((phase) => {
+   424→            const isActive = activePhase === phase.id;
+   425→            const timerSec = phaseTimers[phase.id] || 0;
+   426→            const mem = phaseMemory[phase.id] || "clean";
+   427→            const isComplete = mem !== "clean" || (systemLocked && activePhase !== phase.id);
+   428→
+   429→            return (
+   430→              <div
+   431→                key={phase.id}
+   432→                id={`plane-${phase.id}`}
+   433→                className="flex flex-col relative transition-all"
+   434→                style={{
+   435→                  background: isActive ? "rgba(0,209,255,0.04)" : C.lane,
+   436→                  borderRight: "1px solid " + C.borderLight,
+   437→                  opacity: systemLocked && !isComplete ? 0.3 : 1,
+   438→                  filter: systemLocked && !isComplete ? "grayscale(0.6)" : "none",
+   439→                  minHeight: 0,
+   440→                }}
+   441→              >
+   442→                {/* Lane header */}
+   443→                <div
+   444→                  className="flex items-center justify-between px-3 py-2 shrink-0"
+   445→                  style={{
+   446→                    background: isActive ? "rgba(0,209,255,0.06)" : C.panelAlt,
+   447→                    borderBottom: `2px solid ${isActive ? C.sActive : C.border}`,
+   448→                    boxShadow: isActive ? `0 2px 0 ${C.sActive}40` : "none",
+   449→                  }}
+   450→                >
+   451→                  <div className="flex items-center gap-1.5">
+   452→                    {isActive && (
+   453→                      <span className="w-1.5 h-1.5 animate-pulse" style={{ background: C.sActive, border: "1px solid #000" }} />
+   454→                    )}
+   455→                    <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: isActive ? C.accent2 : C.textSub }}>
+   456→                      {phase.name}
+   457→                    </span>
+   458→                  </div>
+   459→                  <span
+   460→                    className="text-[9px] font-semibold"
+   461→                    style={{
+   462→                      color: isActive ? C.accent2 : C.textMuted,
+   463→                      fontFamily: "'IBM Plex Mono', monospace",
+   464→                      opacity: isActive ? 1 : 0,
+   465→                      transition: "opacity 0.3s",
+   466→                    }}
+   467→                  >
+   468→                    {timerSec.toFixed(1)}s
+   469→                  </span>
+   470→                </div>
+   471→
+   472→                {/* Lane content — nodes */}
+   473→                <div
+   474→                  className="flex-1 flex flex-col items-center gap-5 py-6 px-3 overflow-y-auto"
+   475→                  style={{ position: "relative", zIndex: 2 }}
+   476→                >
+   477→                  {(nodesByPhase[phase.id] || []).map((node) => {
+   478→                    const st = nodeStates[node.id] || "idle";
+   479→                    const isDecisionActive = st === "decision-active";
+   480→
+   481→                    // Node styling based on role
+   482→                    let nodeBorderColor = C.border;
+   483→                    let nodeBg = C.lane;
+   484→                    let iconColor = C.sIdle;
+   485→
+   486→                    if (node.role === "gate") nodeBorderColor = C.rGate;
+   487→                    else if (node.role === "entry") nodeBorderColor = C.rEntry;
+   488→                    else if (node.role === "exit") nodeBorderColor = C.rExit;
+   489→                    else if (node.role === "recovery") nodeBorderColor = C.sRecovery;
+   490→
+   491→                    if (st === "active") { nodeBorderColor = C.sActive; nodeBg = "rgba(0,209,255,0.08)"; iconColor = C.sActive; }
+   492→                    else if (st === "success") { nodeBorderColor = C.sSuccess; nodeBg = "rgba(34,197,94,0.08)"; iconColor = C.sSuccess; }
+   493→                    else if (st === "warning") { nodeBorderColor = C.sWarning; nodeBg = "rgba(245,158,11,0.08)"; iconColor = C.sWarning; }
+   494→                    else if (st === "failure") { nodeBorderColor = C.sFailure; nodeBg = "rgba(239,68,68,0.08)"; iconColor = C.sFailure; }
+   495→                    else if (isDecisionActive) { nodeBorderColor = C.sRecovery; nodeBg = "rgba(168,85,247,0.1)"; iconColor = C.sRecovery; }
+   496→
+   497→                    return (
+   498→                      <div
+   499→                        key={node.id}
+   500→                        id={`pnode-${node.id}`}
+   501→                        className="relative flex flex-col items-center gap-1"
+   502→                      >
+   503→                        <div
+   504→                          className="w-14 h-14 flex items-center justify-center transition-all"
+   505→                          style={{
+   506→                            background: nodeBg,
+   507→                            border: `2px solid ${nodeBorderColor}`,
+   508→                            boxShadow: st === "active"
+   509→                              ? `0 0 16px ${C.sActive}40, 2px 2px 0 #000`
+   510→                              : isDecisionActive
+   511→                              ? `0 0 20px ${C.sRecovery}50, 2px 2px 0 #000`
+   512→                              : "2px 2px 0 #000",
+   513→                            transform: node.role === "gate" ? "rotate(45deg)" : "none",
+   514→                            borderRadius: 0,
+   515→                          }}
+   516→                        >
+   517→                          <PipelineIcon
+   518→                            name={node.icon}
+   519→                            style={{
+   520→                              width: 22,
+   521→                              height: 22,
+   522→                              stroke: iconColor,
+   523→                              fill: "none",
+   524→                              strokeWidth: 1.5,
+   525→                              transform: node.role === "gate" ? "rotate(-45deg)" : "none",
+   526→                              transition: "stroke 0.3s",
+   527→                            }}
+   528→                          />
+   529→                        </div>
+   530→                        <span
+   531→                          className="text-[9px] font-semibold whitespace-nowrap"
+   532→                          style={{ color: C.textSub }}
+   533→                        >
+   534→                          {node.name}
+   535→                        </span>
+   536→                        {/* Node type indicator */}
+   537→                        {node.type === "decision" && (
+   538→                          <span
+   539→                            className="text-[7px] px-1 tracking-wider uppercase font-bold"
+   540→                            style={{
+   541→                              background: isDecisionActive ? C.sRecovery + "20" : C.lane,
+   542→                              border: `1px solid ${isDecisionActive ? C.sRecovery + "60" : C.border}`,
+   543→                              color: isDecisionActive ? C.sRecovery : C.textMuted,
+   544→                            }}
+   545→                          >
+   546→                            DECISION
+   547→                          </span>
+   548→                        )}
+   549→                      </div>
+   550→                    );
+   551→                  })}
+   552→                </div>
+   553→
+   554→                {/* Artifact Memory — only on release phase */}
+   555→                {phase.id === releasePhaseId && (
+   556→                  <div className="absolute bottom-4 right-4 w-24 h-24 pointer-events-none" style={{ zIndex: 50, opacity: 0.4, transition: "all 0.5s" }}>
+   557→                    <svg viewBox="0 0 100 100" width="100%" height="100%">
+   558→                      {artifactSegments.map((segId, i) => {
+   559→                        const paths = [
+   560→                          "M50 50 L50 5 L93 35 Z",
+   561→                          "M50 50 L93 35 L78 88 Z",
+   562→                          "M50 50 L78 88 L22 88 Z",
+   563→                          "M50 50 L22 88 L7 35 Z",
+   564→                          "M50 50 L7 35 L50 5 Z",
+   565→                        ];
+   566→                        const mem = phaseMemory[segId];
+   567→                        const fill = mem === "critical" ? C.sFailure : mem === "warning" ? C.sWarning : mem === "clean" ? C.sSuccess : C.lane;
+   568→                        return <path key={segId} d={paths[i]} fill={fill} stroke={C.border} strokeWidth="1" style={{ transition: "all 0.5s", filter: mem ? `drop-shadow(0 0 6px ${fill})` : "none" }} />;
+   569→                      })}
+   570→                      <circle cx="50" cy="50" r="8" fill="#000" stroke={C.border} strokeWidth="1" />
+   571→                    </svg>
+   572→                  </div>
+   573→                )}
+   574→              </div>
+   575→            );
+   576→          })}
+   577→
+   578→          {/* SVG Connectors */}
+   579→          <svg ref={connectorSvgRef} className="pconnector-svg" />
+   580→
+   581→          {/* Decision Panel */}
+   582→          {pendingDecision && (
+   583→            <div
+   584→              className="absolute z-[100] flex flex-col gap-2 p-4"
+   585→              style={{
+   586→                bottom: 120,
+   587→                left: "50%",
+   588→                transform: "translateX(-50%)",
+   589→                width: 340,
+   590→                background: "rgba(15,20,27,0.96)",
+   591→                border: `2px solid ${C.sRecovery}`,
+   592→                boxShadow: `0 0 30px ${C.sRecovery}30, 6px 6px 0 #000`,
+   593→              }}
+   594→            >
+   595→              <div
+   596→                className="text-[10px] uppercase tracking-widest font-bold pb-2"
+   597→                style={{ color: C.sRecovery, borderBottom: `1px solid ${C.border}` }}
+   598→              >
+   599→                {pendingDecision.intent.toUpperCase()}
+   600→              </div>
+   601→              {pendingDecision.policyHint && pendingDecision.policyHint.source !== "human" && (
+   602→                <div
+   603→                  className="text-[9px] px-2 py-1.5"
+   604→                  style={{
+   605→                    color: C.textSub,
+   606→                    fontFamily: "'IBM Plex Mono', monospace",
+   607→                    background: "rgba(168,85,247,0.06)",
+   608→                    borderLeft: `2px solid ${C.sRecovery}`,
+   609→                  }}
+   610→                >
+   611→                  {pendingDecision.policyHint.source.toUpperCase()} · confidence{" "}
+   612→                  {pendingDecision.policyHint.confidence.toFixed(2)}
+   613→                  {pendingDecision.policyHint.reasoning ? ` · ${pendingDecision.policyHint.reasoning}` : ""}
+   614→                </div>
+   615→              )}
+   616→              {pendingDecision.options.map((opt) => (
+   617→                <button
+   618→                  key={opt.action_id}
+   619→                  onClick={() => handleDecision(opt.action_id)}
+   620→                  className="flex items-center gap-2 px-3 py-2 text-[11px] text-left transition-all"
+   621→                  style={{
+   622→                    background: "rgba(255,255,255,0.02)",
+   623→                    border: `1px solid ${C.border}`,
+   624→                    color: C.textMain,
+   625→                    boxShadow: "2px 2px 0 #000",
+   626→                  }}
+   627→                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(168,85,247,0.1)"; e.currentTarget.style.borderColor = C.sRecovery; }}
+   628→                  onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.02)"; e.currentTarget.style.borderColor = C.border; }}
+   629→                >
+   630→                  <span style={{ color: opt.severity === "clean" ? C.sSuccess : opt.severity === "warning" ? C.sWarning : C.sFailure }}>◆</span>
+   631→                  {opt.label}
+   632→                </button>
+   633→              ))}
+   634→            </div>
+   635→          )}
+   636→        </div>
+   637→
+   638→        {/* ═══ EVENT DRAWER ═══ */}
+   639→        <div
+   640→          className="shrink-0 flex flex-col transition-all"
+   641→          style={{
+   642→            width: drawerOpen ? 320 : 0,
+   643→            background: C.panel,
+   644→            borderLeft: drawerOpen ? "2px solid #000" : "none",
+   645→            overflow: "hidden",
+   646→          }}
+   647→        >
+   648→          {/* Drawer header */}
+   649→          <div className="flex items-center justify-between px-3 py-2 shrink-0" style={{ background: C.panelAlt, borderBottom: "1px solid " + C.border }}>
+   650→            <div className="flex gap-1">
+   651→              {(["events", "traces", "circuits"] as const).map((t) => (
+   652→                <button
+   653→                  key={t}
+   654→                  onClick={() => setDrawerTab(t)}
+   655→                  className="px-2 py-1 text-[9px] uppercase tracking-wider font-semibold"
+   656→                  style={{
+   657→                    background: drawerTab === t ? C.panelAlt : "transparent",
+   658→                    border: `1px solid ${drawerTab === t ? C.border : "transparent"}`,
+   659→                    color: drawerTab === t ? C.accent : C.textMuted,
+   660→                    boxShadow: drawerTab === t ? "2px 2px 0 #000" : "none",
+   661→                  }}
+   662→                >
+   663→                  {t}
+   664→                </button>
+   665→              ))}
+   666→            </div>
+   667→            <button onClick={() => setDrawerOpen(false)} style={{ color: C.textSub, background: "transparent", border: "none", cursor: "pointer", fontSize: 14 }}>
+   668→              ✕
+   669→            </button>
+   670→          </div>
+   671→
+   672→          {/* Drawer body */}
+   673→          <div className="flex-1 overflow-y-auto" style={{ background: C.bg }}>
+   674→            {drawerTab === "events" && events.map((ev) => (
+   675→              <div
+   676→                key={ev.seq}
+   677→                className="flex items-start gap-2 px-3 py-1.5 text-[10px]"
+   678→                style={{
+   679→                  borderBottom: "1px solid rgba(255,255,255,0.02)",
+   680→                  borderLeft: `2px solid ${ev.severity === "critical" ? C.sFailure : ev.severity === "warning" ? C.sWarning : C.sSuccess}`,
+   681→                  background: "rgba(255,255,255,0.01)",
+   682→                }}
+   683→              >
+   684→                <span style={{ color: C.textMuted, fontFamily: "'IBM Plex Mono', monospace", width: 24, flexShrink: 0 }}>#{ev.seq}</span>
+   685→                <div>
+   686→                  <div style={{ color: C.accent2, fontSize: 9, textTransform: "uppercase", letterSpacing: "0.05em" }}>{ev.type}</div>
+   687→                  <div style={{ color: C.textMain }}>{ev.description}</div>
+   688→                </div>
+   689→              </div>
+   690→            ))}
+   691→            {drawerTab === "traces" && (
+   692→              <div className="p-4 text-[10px]" style={{ color: C.textMuted }}>
+   693→                {status !== "idle" ? "Trace spans will appear here when backend is connected" : "Start an execution to view traces"}
+   694→              </div>
+   695→            )}
+   696→            {drawerTab === "circuits" && (
+   697→              <div className="p-4 text-[10px]" style={{ color: C.textMuted }}>
+   698→                No circuit breakers registered (shell mode)
+   699→              </div>
+   700→            )}
+   701→          </div>
+   702→        </div>
+   703→      </div>
+   704→
+   705→      {/* ═══ NARRATIVE STRIP ═══ */}
+   706→      <footer
+   707→        className="h-9 flex items-center px-4 gap-2 shrink-0 overflow-x-auto whitespace-nowrap"
+   708→        style={{
+   709→          background: "#000",
+   710→          borderTop: `2px solid ${finalOutcome === "completed" ? C.sSuccess : finalOutcome === "failed" ? C.sFailure : C.border}`,
+   711→          fontFamily: "'IBM Plex Mono', monospace",
+   712→          fontSize: 10,
+   713→          color: C.textSub,
+   714→          zIndex: 40,
+   715→        }}
+   716→      >
+   717→        {narrative.length === 0 ? (
+   718→          <span style={{ color: C.textMuted }}>
+   719→            {status !== "idle" ? "Awaiting first narrative event…" : "READY — Click Run Pipeline to begin simulation"}
+   720→          </span>
+   721→        ) : (
+   722→          narrative.map((item, i) => (
+   723→            <span key={i} className="flex items-center gap-1">
+   724→              <span style={{
+   725→                color: item.severity === "critical" ? C.sFailure : item.severity === "warning" ? C.sWarning : C.sSuccess,
+   726→              }}>
+   727→                {item.text}
+   728→              </span>
+   729→              {i < narrative.length - 1 && <span style={{ color: C.border, margin: "0 4px" }}>→</span>}
+   730→            </span>
+   731→          ))
+   732→        )}
+   733→      </footer>
+   734→    </div>
+   735→  );
+   736→}
+   737→

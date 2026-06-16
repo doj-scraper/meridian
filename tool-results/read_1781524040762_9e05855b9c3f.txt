@@ -1,0 +1,995 @@
+     1→     1→     1→"use client";
+     2→     2→     2→
+     3→     3→     3→import { useEffect, useRef, useCallback, useState } from "react";
+     4→     4→     4→import { motion, AnimatePresence } from "framer-motion";
+     5→     5→     5→import { useAgentStore, type AgentEvent, type AppModule } from "@/store/agent-store";
+     6→     6→     6→import { AgentSidebar } from "./agent-sidebar";
+     7→     7→     7→import { AgentCanvas } from "./agent-canvas";
+     8→     8→     8→import { AgentInspector } from "./agent-inspector";
+     9→     9→     9→import { AgentBuilderWizard } from "./agent-builder-wizard";
+    10→    10→    10→import { SystemIndicator } from "./system-indicator";
+    11→    11→    11→import { ApprovalModal } from "./approval-modal";
+    12→    12→    12→import { RoutingEngine } from "./routing-engine";
+    13→    13→    13→import { PipelineStudio } from "@/components/pipeline/pipeline-studio";
+    14→    14→    14→import { HermesCausalGraph } from "./hermes-causal-graph";
+    15→    15→    15→import { HermesEventStream } from "./hermes-event-stream";
+    16→    16→    16→import { HermesFrontierPanel } from "./hermes-frontier-panel";
+    17→    17→    17→import { useHermesStore } from "@/store/hermes-store";
+    18→    18→    18→import { Button } from "@/components/ui/button";
+    19→    19→    19→import {
+    20→    20→    20→  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose,
+    21→    21→    21→} from "@/components/ui/dialog";
+    22→    22→    22→import { Input } from "@/components/ui/input";
+    23→    23→    23→import { Label } from "@/components/ui/label";
+    24→    24→    24→import { Checkbox } from "@/components/ui/checkbox";
+    25→    25→    25→import { ScrollArea } from "@/components/ui/scroll-area";
+    26→    26→    26→import {
+    27→    27→    27→  Menubar,
+    28→    28→    28→  MenubarMenu,
+    29→    29→    29→  MenubarTrigger,
+    30→    30→    30→  MenubarContent,
+    31→    31→    31→  MenubarItem,
+    32→    32→    32→  MenubarSeparator,
+    33→    33→    33→  MenubarCheckboxItem,
+    34→    34→    34→  MenubarSub,
+    35→    35→    35→  MenubarSubTrigger,
+    36→    36→    36→  MenubarSubContent,
+    37→    37→    37→  MenubarShortcut,
+    38→    38→    38→} from "@/components/ui/menubar";
+    39→    39→    39→import {
+    40→    40→    40→  PanelLeftClose,
+    41→    41→    41→  PanelLeftOpen,
+    42→    42→    42→  PanelRightClose,
+    43→    43→    43→  PanelRightOpen,
+    44→    44→    44→  Workflow,
+    45→    45→    45→  Route,
+    46→    46→    46→  GitBranch,
+    47→    47→    47→  Palette,
+    48→    48→    48→  Sparkles,
+    49→    49→    49→  Bot,
+    50→    50→    50→  Users,
+    51→    51→    51→  Settings,
+    52→    52→    52→  Keyboard,
+    53→    53→    53→  Info,
+    54→    54→    54→  FileText,
+    55→    55→    55→  Loader2,
+    56→    56→    56→} from "lucide-react";
+    57→    57→    57→import { useToast } from "@/hooks/use-toast";
+    58→    58→    58→
+    59→    59→    59→// SSE reconnection constants
+    60→    60→    60→const MAX_RECONNECT_ATTEMPTS = 5;
+    61→    61→    61→const BASE_RECONNECT_DELAY_MS = 1000;
+    62→    62→    62→const MAX_RECONNECT_DELAY_MS = 30000;
+    63→    63→    63→
+    64→    64→    64→// V2 event types that the SSE handler recognizes
+    65→    65→    65→const V2_EVENT_TYPES = new Set<string>([
+    66→    66→    66→  "status", "plan", "action", "result", "thinking",
+    67→    67→    67→  "error", "done", "reflection", "policy", "handoff", "group_message",
+    68→    68→    68→]);
+    69→    69→    69→
+    70→    70→    70→const NAV_ITEMS: { key: AppModule; label: string; icon: React.ReactNode }[] = [
+    71→    71→    71→  { key: "canvas", label: "Agents", icon: <Workflow size={12} /> },
+    72→    72→    72→  { key: "hermes", label: "Hermes", icon: <Sparkles size={12} /> },
+    73→    73→    73→  { key: "router", label: "Router", icon: <Route size={12} /> },
+    74→    74→    74→  { key: "pipeline", label: "Pipeline", icon: <GitBranch size={12} /> },
+    75→    75→    75→  { key: "workflow", label: "Studio", icon: <Palette size={12} /> },
+    76→    76→    76→];
+    77→    77→    77→
+    78→    78→    78→// ═══════════════════════════════════════════════════════════════
+    79→    79→    79→// Hermes Module — Causal DAG Architecture View
+    80→    80→    80→// ═══════════════════════════════════════════════════════════════
+    81→    81→    81→
+    82→    82→    82→function HermesModule() {
+    83→    83→    83→  const { startRun, stopRun, runStatus, runGoal, viewMode, setViewMode } = useHermesStore();
+    84→    84→    84→  const [goalInput, setGoalInput] = useState("");
+    85→    85→    85→  const [agentName, setAgentName] = useState("Hermes Agent");
+    86→    86→    86→  const eventStream = useHermesStore((s) => s.eventStream);
+    87→    87→    87→  const frontier = useHermesStore((s) => s.frontier);
+    88→    88→    88→  const agents = useHermesStore((s) => s.agents);
+    89→    89→    89→  const totalEvents = useHermesStore((s) => s.totalEvents);
+    90→    90→    90→  const transitionCount = useHermesStore((s) => s.transitionCount);
+    91→    91→    91→
+    92→    92→    92→  return (
+    93→    93→    93→    <div className="flex-1 flex" style={{ background: "#05070a", minHeight: 0 }}>
+    94→    94→    94→      {/* Left: Event Stream */}
+    95→    95→    95→      <div style={{ width: "280px", borderRight: "2px solid #000", flexShrink: 0 }}>
+    96→    96→    96→        <HermesEventStream />
+    97→    97→    97→      </div>
+    98→    98→    98→
+    99→    99→    99→      {/* Center: Causal Graph or other views */}
+   100→   100→   100→      <div className="flex-1 flex flex-col" style={{ minHeight: 0 }}>
+   101→   101→   101→        {/* Toolbar */}
+   102→   102→   102→        <div
+   103→   103→   103→          style={{
+   104→   104→   104→            height: "42px",
+   105→   105→   105→            borderBottom: "2px solid #000",
+   106→   106→   106→            background: "#0f141b",
+   107→   107→   107→            display: "flex",
+   108→   108→   108→            alignItems: "center",
+   109→   109→   109→            justifyContent: "space-between",
+   110→   110→   110→            padding: "0 12px",
+   111→   111→   111→            flexShrink: 0,
+   112→   112→   112→          }}
+   113→   113→   113→        >
+   114→   114→   114→          <div style={{ display: "flex", gap: "4px" }}>
+   115→   115→   115→            {(["causal-graph", "event-stream", "frontier"] as const).map((mode) => (
+   116→   116→   116→              <button
+   117→   117→   117→                key={mode}
+   118→   118→   118→                onClick={() => setViewMode(mode)}
+   119→   119→   119→                style={{
+   120→   120→   120→                  background: viewMode === mode ? "#ffd60a" : "transparent",
+   121→   121→   121→                  color: viewMode === mode ? "#000" : "#8a94a3",
+   122→   122→   122→                  border: viewMode === mode ? "2px solid #ffd60a" : "2px solid transparent",
+   123→   123→   123→                  padding: "2px 8px",
+   124→   124→   124→                  fontSize: "10px",
+   125→   125→   125→                  fontWeight: 700,
+   126→   126→   126→                  textTransform: "uppercase",
+   127→   127→   127→                  cursor: "pointer",
+   128→   128→   128→                  fontFamily: "'IBM Plex Mono', monospace",
+   129→   129→   129→                  boxShadow: viewMode === mode ? "2px 2px 0 #000" : "none",
+   130→   130→   130→                }}
+   131→   131→   131→              >
+   132→   132→   132→                {mode.replace("-", " ")}
+   133→   133→   133→              </button>
+   134→   134→   134→            ))}
+   135→   135→   135→          </div>
+   136→   136→   136→
+   137→   137→   137→          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+   138→   138→   138→            <span style={{ color: "#5a6577", fontSize: "9px" }}>
+   139→   139→   139→              {totalEvents} events · {transitionCount} transitions
+   140→   140→   140→            </span>
+   141→   141→   141→          </div>
+   142→   142→   142→        </div>
+   143→   143→   143→
+   144→   144→   144→        {/* Main content area */}
+   145→   145→   145→        <div className="flex-1" style={{ minHeight: 0 }}>
+   146→   146→   146→          {viewMode === "causal-graph" && <HermesCausalGraph />}
+   147→   147→   147→          {viewMode === "event-stream" && (
+   148→   148→   148→            <div style={{ padding: "12px", overflowY: "auto", height: "100%" }}>
+   149→   149→   149→              <HermesEventStream />
+   150→   150→   150→            </div>
+   151→   151→   151→          )}
+   152→   152→   152→          {viewMode === "frontier" && <HermesFrontierPanel />}
+   153→   153→   153→        </div>
+   154→   154→   154→
+   155→   155→   155→        {/* Bottom: Run controls */}
+   156→   156→   156→        <div
+   157→   157→   157→          style={{
+   158→   158→   158→            height: "48px",
+   159→   159→   159→            borderTop: "2px solid #000",
+   160→   160→   160→            background: "#0f141b",
+   161→   161→   161→            display: "flex",
+   162→   162→   162→            alignItems: "center",
+   163→   163→   163→            gap: "8px",
+   164→   164→   164→            padding: "0 12px",
+   165→   165→   165→            flexShrink: 0,
+   166→   166→   166→          }}
+   167→   167→   167→        >
+   168→   168→   168→          <input
+   169→   169→   169→            value={goalInput}
+   170→   170→   170→            onChange={(e) => setGoalInput(e.target.value)}
+   171→   171→   171→            placeholder="Enter goal for Hermes run..."
+   172→   172→   172→            style={{
+   173→   173→   173→              flex: 1,
+   174→   174→   174→              background: "#05070a",
+   175→   175→   175→              border: "2px solid #2a3441",
+   176→   176→   176→              boxShadow: "inset 1px 1px 0 #000",
+   177→   177→   177→              padding: "6px 8px",
+   178→   178→   178→              color: "#e8eaed",
+   179→   179→   179→              fontSize: "11px",
+   180→   180→   180→              fontFamily: "'IBM Plex Mono', monospace",
+   181→   181→   181→              outline: "none",
+   182→   182→   182→            }}
+   183→   183→   183→          />
+   184→   184→   184→          {runStatus === "running" ? (
+   185→   185→   185→            <button
+   186→   186→   186→              onClick={() => stopRun()}
+   187→   187→   187→              style={{
+   188→   188→   188→                background: "#ef4444",
+   189→   189→   189→                color: "#fff",
+   190→   190→   190→                border: "2px solid #000",
+   191→   191→   191→                boxShadow: "2px 2px 0 #000",
+   192→   192→   192→                padding: "4px 12px",
+   193→   193→   193→                fontSize: "10px",
+   194→   194→   194→                fontWeight: 700,
+   195→   195→   195→                cursor: "pointer",
+   196→   196→   196→                fontFamily: "'IBM Plex Mono', monospace",
+   197→   197→   197→                textTransform: "uppercase",
+   198→   198→   198→              }}
+   199→   199→   199→            >
+   200→   200→   200→              Stop
+   201→   201→   201→            </button>
+   202→   202→   202→          ) : (
+   203→   203→   203→            <button
+   204→   204→   204→              onClick={() => {
+   205→   205→   205→                if (goalInput.trim()) {
+   206→   206→   206→                  startRun(goalInput);
+   207→   207→   207→                }
+   208→   208→   208→              }}
+   209→   209→   209→              disabled={!goalInput.trim()}
+   210→   210→   210→              style={{
+   211→   211→   211→                background: goalInput.trim() ? "#ffd60a" : "#2a3441",
+   212→   212→   212→                color: goalInput.trim() ? "#000" : "#5a6577",
+   213→   213→   213→                border: "2px solid #000",
+   214→   214→   214→                boxShadow: goalInput.trim() ? "2px 2px 0 #000" : "none",
+   215→   215→   215→                padding: "4px 12px",
+   216→   216→   216→                fontSize: "10px",
+   217→   217→   217→                fontWeight: 700,
+   218→   218→   218→                cursor: goalInput.trim() ? "pointer" : "default",
+   219→   219→   219→                fontFamily: "'IBM Plex Mono', monospace",
+   220→   220→   220→                textTransform: "uppercase",
+   221→   221→   221→              }}
+   222→   222→   222→            >
+   223→   223→   223→              Run
+   224→   224→   224→            </button>
+   225→   225→   225→          )}
+   226→   226→   226→        </div>
+   227→   227→   227→      </div>
+   228→   228→   228→
+   229→   229→   229→      {/* Right: Frontier Panel */}
+   230→   230→   230→      <div style={{ width: "260px", borderLeft: "2px solid #000", flexShrink: 0 }}>
+   231→   231→   231→        <HermesFrontierPanel />
+   232→   232→   232→      </div>
+   233→   233→   233→    </div>
+   234→   234→   234→  );
+   235→   235→   235→}
+   236→   236→   236→
+   237→   237→   237→export function AgentStudio() {
+   238→   238→   238→  const {
+   239→   239→   239→    fetchAgents,
+   240→   240→   240→    fetchRuns,
+   241→   241→   241→    currentRunId,
+   242→   242→   242→    addEvent,
+   243→   243→   243→    clearEvents,
+   244→   244→   244→    setIsRunning,
+   245→   245→   245→    sidebarOpen,
+   246→   246→   246→    inspectorOpen,
+   247→   247→   247→    setSidebarOpen,
+   248→   248→   248→    setInspectorOpen,
+   249→   249→   249→    selectedAgentId,
+   250→   250→   250→    selectAgent,
+   251→   251→   251→    agents,
+   252→   252→   252→    error,
+   253→   253→   253→    clearError,
+   254→   254→   254→    deleteAgent,
+   255→   255→   255→    builderOpen,
+   256→   256→   256→    setBuilderOpen,
+   257→   257→   257→    activeModule,
+   258→   258→   258→    setActiveModule,
+   259→   259→   259→  } = useAgentStore();
+   260→   260→   260→
+   261→   261→   261→  const { toast } = useToast();
+   262→   262→   262→  const [teamBuilderOpen, setTeamBuilderOpen] = useState(false);
+   263→   263→   263→
+   264→   264→   264→  const eventSourceRef = useRef<EventSource | null>(null);
+   265→   265→   265→  const reconnectAttemptsRef = useRef<number>(0);
+   266→   266→   266→  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+   267→   267→   267→  const isCleaningUpRef = useRef<boolean>(false);
+   268→   268→   268→  const connectSSERef = useRef<(runId: string) => void>(() => {});
+   269→   269→   269→
+   270→   270→   270→  // Keyboard shortcuts
+   271→   271→   271→  useEffect(() => {
+   272→   272→   272→    const handler = (e: KeyboardEvent) => {
+   273→   273→   273→      if ((e.ctrlKey || e.metaKey) && e.key === "b") {
+   274→   274→   274→        e.preventDefault();
+   275→   275→   275→        setSidebarOpen(!sidebarOpen);
+   276→   276→   276→      }
+   277→   277→   277→      if ((e.ctrlKey || e.metaKey) && e.key === "i") {
+   278→   278→   278→        e.preventDefault();
+   279→   279→   279→        setInspectorOpen(!inspectorOpen);
+   280→   280→   280→      }
+   281→   281→   281→    };
+   282→   282→   282→    window.addEventListener("keydown", handler);
+   283→   283→   283→    return () => window.removeEventListener("keydown", handler);
+   284→   284→   284→  }, [sidebarOpen, inspectorOpen, setSidebarOpen, setInspectorOpen]);
+   285→   285→   285→
+   286→   286→   286→  // Show toast notification when error state is set
+   287→   287→   287→  useEffect(() => {
+   288→   288→   288→    if (error) {
+   289→   289→   289→      toast({ title: "Error", description: error, variant: "destructive" });
+   290→   290→   290→    }
+   291→   291→   291→  }, [error, toast]);
+   292→   292→   292→
+   293→   293→   293→  const handleClearError = useCallback(() => {
+   294→   294→   294→    if (error) clearError();
+   295→   295→   295→  }, [error, clearError]);
+   296→   296→   296→
+   297→   297→   297→  const getReconnectDelay = useCallback((attempt: number): number => {
+   298→   298→   298→    const delay = BASE_RECONNECT_DELAY_MS * Math.pow(2, attempt);
+   299→   299→   299→    return Math.min(delay, MAX_RECONNECT_DELAY_MS);
+   300→   300→   300→  }, []);
+   301→   301→   301→
+   302→   302→   302→  const closeEventSource = useCallback(() => {
+   303→   303→   303→    isCleaningUpRef.current = true;
+   304→   304→   304→    if (reconnectTimeoutRef.current) {
+   305→   305→   305→      clearTimeout(reconnectTimeoutRef.current);
+   306→   306→   306→      reconnectTimeoutRef.current = null;
+   307→   307→   307→    }
+   308→   308→   308→    if (eventSourceRef.current) {
+   309→   309→   309→      eventSourceRef.current.close();
+   310→   310→   310→      eventSourceRef.current = null;
+   311→   311→   311→    }
+   312→   312→   312→    reconnectAttemptsRef.current = 0;
+   313→   313→   313→  }, []);
+   314→   314→   314→
+   315→   315→   315→  const attemptReconnect = useCallback(
+   316→   316→   316→    (runId: string) => {
+   317→   317→   317→      if (isCleaningUpRef.current) return;
+   318→   318→   318→      const attempt = reconnectAttemptsRef.current;
+   319→   319→   319→      if (attempt >= MAX_RECONNECT_ATTEMPTS) {
+   320→   320→   320→        useAgentStore.setState({
+   321→   321→   321→          isRunning: false,
+   322→   322→   322→          error: `Connection lost after ${MAX_RECONNECT_ATTEMPTS} reconnection attempts`,
+   323→   323→   323→        });
+   324→   324→   324→        return;
+   325→   325→   325→      }
+   326→   326→   326→      const delay = getReconnectDelay(attempt);
+   327→   327→   327→      reconnectAttemptsRef.current += 1;
+   328→   328→   328→      reconnectTimeoutRef.current = setTimeout(() => {
+   329→   329→   329→        if (isCleaningUpRef.current) return;
+   330→   330→   330→        connectSSERef.current(runId);
+   331→   331→   331→      }, delay);
+   332→   332→   332→    },
+   333→   333→   333→    [getReconnectDelay]
+   334→   334→   334→  );
+   335→   335→   335→
+   336→   336→   336→  const connectSSE = useCallback(
+   337→   337→   337→    (runId: string) => {
+   338→   338→   338→      if (isCleaningUpRef.current) return;
+   339→   339→   339→      if (eventSourceRef.current) {
+   340→   340→   340→        eventSourceRef.current.close();
+   341→   341→   341→        eventSourceRef.current = null;
+   342→   342→   342→      }
+   343→   343→   343→      const url = `/api/agent/stream?runId=${encodeURIComponent(runId)}`;
+   344→   344→   344→      const es = new EventSource(url);
+   345→   345→   345→      eventSourceRef.current = es;
+   346→   346→   346→
+   347→   347→   347→      es.onmessage = (event) => {
+   348→   348→   348→        try {
+   349→   349→   349→          const data: AgentEvent = JSON.parse(event.data);
+   350→   350→   350→          addEvent(data);
+   351→   351→   351→          reconnectAttemptsRef.current = 0;
+   352→   352→   352→          if (data.type === "done") {
+   353→   353→   353→            setIsRunning(false);
+   354→   354→   354→            es.close();
+   355→   355→   355→            eventSourceRef.current = null;
+   356→   356→   356→            fetchRuns();
+   357→   357→   357→          }
+   358→   358→   358→          if (data.type === "error") {
+   359→   359→   359→            useAgentStore.setState({ error: data.message });
+   360→   360→   360→          }
+   361→   361→   361→        } catch (parseError) {
+   362→   362→   362→          console.error("SSE parse error:", parseError);
+   363→   363→   363→        }
+   364→   364→   364→      };
+   365→   365→   365→
+   366→   366→   366→      es.onerror = () => {
+   367→   367→   367→        es.close();
+   368→   368→   368→        eventSourceRef.current = null;
+   369→   369→   369→        if (!isCleaningUpRef.current) {
+   370→   370→   370→          attemptReconnect(runId);
+   371→   371→   371→        }
+   372→   372→   372→      };
+   373→   373→   373→    },
+   374→   374→   374→    [addEvent, setIsRunning, fetchRuns, attemptReconnect]
+   375→   375→   375→  );
+   376→   376→   376→
+   377→   377→   377→  useEffect(() => {
+   378→   378→   378→    connectSSERef.current = connectSSE;
+   379→   379→   379→  }, [connectSSE]);
+   380→   380→   380→
+   381→   381→   381→  useEffect(() => {
+   382→   382→   382→    if (!currentRunId) return;
+   383→   383→   383→    isCleaningUpRef.current = false;
+   384→   384→   384→    reconnectAttemptsRef.current = 0;
+   385→   385→   385→    clearEvents();
+   386→   386→   386→    connectSSE(currentRunId);
+   387→   387→   387→    return () => {
+   388→   388→   388→      closeEventSource();
+   389→   389→   389→    };
+   390→   390→   390→  }, [currentRunId, clearEvents, connectSSE, closeEventSource]);
+   391→   391→   391→
+   392→   392→   392→  useEffect(() => {
+   393→   393→   393→    return () => {
+   394→   394→   394→      isCleaningUpRef.current = true;
+   395→   395→   395→      closeEventSource();
+   396→   396→   396→    };
+   397→   397→   397→  }, [closeEventSource]);
+   398→   398→   398→
+   399→   399→   399→  return (
+   400→   400→   400→    <div className="h-screen w-full flex flex-col overflow-hidden" style={{ background: "#05070a" }} onClick={handleClearError}>
+   401→   401→   401→      {/* ═══ TOPBAR ═══ */}
+   402→   402→   402→      <header
+   403→   403→   403→        className="h-11 flex items-center shrink-0 relative z-10"
+   404→   404→   404→        style={{
+   405→   405→   405→          background: "#0f141b",
+   406→   406→   406→          borderBottom: "2px solid #000",
+   407→   407→   407→          boxShadow: "0 2px 0 #000",
+   408→   408→   408→        }}
+   409→   409→   409→      >
+   410→   410→   410→        {/* Logo — always clean, never crushed */}
+   411→   411→   411→        <div className="flex items-center gap-2.5 px-3 shrink-0">
+   412→   412→   412→          <div
+   413→   413→   413→            className="w-6 h-6 grid place-items-center text-xs font-bold shrink-0"
+   414→   414→   414→            style={{
+   415→   415→   415→              background: "#ffd60a",
+   416→   416→   416→              border: "2px solid #000",
+   417→   417→   417→              boxShadow: "2px 2px 0 #000",
+   418→   418→   418→              color: "#000",
+   419→   419→   419→            }}
+   420→   420→   420→          >
+   421→   421→   421→            A
+   422→   422→   422→          </div>
+   423→   423→   423→          <span className="text-[13px] font-semibold tracking-wide whitespace-nowrap" style={{ color: "#d7dde5" }}>
+   424→   424→   424→            Agent Studio OS{" "}
+   425→   425→   425→            <span style={{ color: "#8a94a3", fontWeight: 400 }}>beta</span>
+   426→   426→   426→          </span>
+   427→   427→   427→        </div>
+   428→   428→   428→
+   429→   429→   429→        {/* ═══ MENUBAR ═══ */}
+   430→   430→   430→        <Menubar className="h-7 ml-1 gap-0 border-0 bg-transparent p-0 shadow-none" style={{ background: "transparent" }}>
+   431→   431→   431→          {/* FILE */}
+   432→   432→   432→          <MenubarMenu>
+   433→   433→   433→            <MenubarTrigger
+   434→   434→   434→              className="text-[11px] font-medium tracking-wider uppercase px-2 py-1 h-7"
+   435→   435→   435→              style={{ color: "#8a94a3" }}
+   436→   436→   436→            >
+   437→   437→   437→              File
+   438→   438→   438→            </MenubarTrigger>
+   439→   439→   439→            <MenubarContent
+   440→   440→   440→              className="min-w-[180px]"
+   441→   441→   441→              style={{
+   442→   442→   442→                background: "#0b1016",
+   443→   443→   443→                border: "2px solid #000",
+   444→   444→   444→                borderRadius: 0,
+   445→   445→   445→                boxShadow: "4px 4px 0 #000",
+   446→   446→   446→                color: "#d7dde5",
+   447→   447→   447→              }}
+   448→   448→   448→            >
+   449→   449→   449→              <MenubarItem
+   450→   450→   450→                className="text-[11px] gap-2 focus:bg-[#141c25] focus:text-[#d7dde5]"
+   451→   451→   451→                onClick={() => setBuilderOpen(true)}
+   452→   452→   452→              >
+   453→   453→   453→                <Sparkles size={12} style={{ color: "#ffd60a" }} />
+   454→   454→   454→                AI Builder
+   455→   455→   455→                <MenubarShortcut className="text-[9px]" style={{ color: "#5b6b81" }}>⌘N</MenubarShortcut>
+   456→   456→   456→              </MenubarItem>
+   457→   457→   457→              <MenubarItem
+   458→   458→   458→                className="text-[11px] gap-2 focus:bg-[#141c25] focus:text-[#d7dde5]"
+   459→   459→   459→                onClick={() => {
+   460→   460→   460→                  const store = useAgentStore.getState();
+   461→   461→   461→                  store.createAgent({
+   462→   462→   462→                    name: "New Agent",
+   463→   463→   463→                    goal: "Define a goal for this agent",
+   464→   464→   464→                    personality: "helpful assistant",
+   465→   465→   465→                    tools: ["search"],
+   466→   466→   466→                    maxSteps: 10,
+   467→   467→   467→                    autoRun: false,
+   468→   468→   468→                    outputFormat: "markdown",
+   469→   469→   469→                    role: "general",
+   470→   470→   470→                    orchestrationMode: "single",
+   471→   471→   471→                  } as any).then((a) => { if (a) store.selectAgent(a.id); });
+   472→   472→   472→                }}
+   473→   473→   473→              >
+   474→   474→   474→                <Bot size={12} style={{ color: "#8a94a3" }} />
+   475→   475→   475→                New Agent
+   476→   476→   476→              </MenubarItem>
+   477→   477→   477→              <MenubarSeparator style={{ background: "#1b2430" }} />
+   478→   478→   478→              <MenubarItem
+   479→   479→   479→                className="text-[11px] gap-2 focus:bg-[#141c25] focus:text-[#d7dde5]"
+   480→   480→   480→                onClick={() => setActiveModule("workflow")}
+   481→   481→   481→              >
+   482→   482→   482→                <Workflow size={12} style={{ color: "#8a94a3" }} />
+   483→   483→   483→                New Workflow
+   484→   484→   484→              </MenubarItem>
+   485→   485→   485→              <MenubarItem
+   486→   486→   486→                className="text-[11px] gap-2 focus:bg-[#141c25] focus:text-[#d7dde5]"
+   487→   487→   487→                onClick={() => setTeamBuilderOpen(true)}
+   488→   488→   488→              >
+   489→   489→   489→                <Users size={12} style={{ color: "#22c55e" }} />
+   490→   490→   490→                New Team
+   491→   491→   491→              </MenubarItem>
+   492→   492→   492→            </MenubarContent>
+   493→   493→   493→          </MenubarMenu>
+   494→   494→   494→
+   495→   495→   495→          {/* EDIT */}
+   496→   496→   496→          <MenubarMenu>
+   497→   497→   497→            <MenubarTrigger
+   498→   498→   498→              className="text-[11px] font-medium tracking-wider uppercase px-2 py-1 h-7"
+   499→   499→   499→              style={{ color: "#8a94a3" }}
+   500→   500→   500→            >
+   501→   501→   501→              Edit
+   502→   502→   502→            </MenubarTrigger>
+   503→   503→   503→            <MenubarContent
+   504→   504→   504→              className="min-w-[180px]"
+   505→   505→   505→              style={{
+   506→   506→   506→                background: "#0b1016",
+   507→   507→   507→                border: "2px solid #000",
+   508→   508→   508→                borderRadius: 0,
+   509→   509→   509→                boxShadow: "4px 4px 0 #000",
+   510→   510→   510→                color: "#d7dde5",
+   511→   511→   511→              }}
+   512→   512→   512→            >
+   513→   513→   513→              <MenubarItem
+   514→   514→   514→                className="text-[11px] gap-2 focus:bg-[#141c25] focus:text-[#d7dde5]"
+   515→   515→   515→                onClick={() => { if (selectedAgentId) setInspectorOpen(true); }}
+   516→   516→   516→                disabled={!selectedAgentId}
+   517→   517→   517→              >
+   518→   518→   518→                <Settings size={12} style={{ color: "#8a94a3" }} />
+   519→   519→   519→                Configuration
+   520→   520→   520→                <MenubarShortcut className="text-[9px]" style={{ color: "#5b6b81" }}>⌘I</MenubarShortcut>
+   521→   521→   521→              </MenubarItem>
+   522→   522→   522→              <MenubarItem
+   523→   523→   523→                className="text-[11px] gap-2 focus:bg-[#141c25] focus:text-[#d7dde5]"
+   524→   524→   524→                onClick={() => setActiveModule("router")}
+   525→   525→   525→              >
+   526→   526→   526→                <Route size={12} style={{ color: "#8a94a3" }} />
+   527→   527→   527→                Routing Policies
+   528→   528→   528→              </MenubarItem>
+   529→   529→   529→              <MenubarSeparator style={{ background: "#1b2430" }} />
+   530→   530→   530→              <MenubarItem
+   531→   531→   531→                className="text-[11px] gap-2 focus:bg-[#141c25] focus:text-[#ef4444]"
+   532→   532→   532→                disabled={!selectedAgentId}
+   533→   533→   533→                onClick={() => {
+   534→   534→   534→                  if (selectedAgentId) {
+   535→   535→   535→                    deleteAgent(selectedAgentId);
+   536→   536→   536→                    selectAgent(null);
+   537→   537→   537→                  }
+   538→   538→   538→                }}
+   539→   539→   539→              >
+   540→   540→   540→                Delete Agent
+   541→   541→   541→              </MenubarItem>
+   542→   542→   542→            </MenubarContent>
+   543→   543→   543→          </MenubarMenu>
+   544→   544→   544→
+   545→   545→   545→          {/* VIEW */}
+   546→   546→   546→          <MenubarMenu>
+   547→   547→   547→            <MenubarTrigger
+   548→   548→   548→              className="text-[11px] font-medium tracking-wider uppercase px-2 py-1 h-7"
+   549→   549→   549→              style={{ color: "#8a94a3" }}
+   550→   550→   550→            >
+   551→   551→   551→              View
+   552→   552→   552→            </MenubarTrigger>
+   553→   553→   553→            <MenubarContent
+   554→   554→   554→              className="min-w-[200px]"
+   555→   555→   555→              style={{
+   556→   556→   556→                background: "#0b1016",
+   557→   557→   557→                border: "2px solid #000",
+   558→   558→   558→                borderRadius: 0,
+   559→   559→   559→                boxShadow: "4px 4px 0 #000",
+   560→   560→   560→                color: "#d7dde5",
+   561→   561→   561→              }}
+   562→   562→   562→            >
+   563→   563→   563→              <MenubarCheckboxItem
+   564→   564→   564→                checked={sidebarOpen}
+   565→   565→   565→                onCheckedChange={setSidebarOpen}
+   566→   566→   566→                className="text-[11px] gap-2 focus:bg-[#141c25] focus:text-[#d7dde5]"
+   567→   567→   567→              >
+   568→   568→   568→                Explorer
+   569→   569→   569→                <MenubarShortcut className="text-[9px] ml-auto" style={{ color: "#5b6b81" }}>⌘B</MenubarShortcut>
+   570→   570→   570→              </MenubarCheckboxItem>
+   571→   571→   571→              <MenubarCheckboxItem
+   572→   572→   572→                checked={inspectorOpen}
+   573→   573→   573→                onCheckedChange={setInspectorOpen}
+   574→   574→   574→                className="text-[11px] gap-2 focus:bg-[#141c25] focus:text-[#d7dde5]"
+   575→   575→   575→              >
+   576→   576→   576→                Inspector
+   577→   577→   577→                <MenubarShortcut className="text-[9px] ml-auto" style={{ color: "#5b6b81" }}>⌘I</MenubarShortcut>
+   578→   578→   578→              </MenubarCheckboxItem>
+   579→   579→   579→              <MenubarSeparator style={{ background: "#1b2430" }} />
+   580→   580→   580→              <MenubarSub>
+   581→   581→   581→                <MenubarSubTrigger className="text-[11px] gap-2 focus:bg-[#141c25] focus:text-[#d7dde5]">
+   582→   582→   582→                  Modules
+   583→   583→   583→                </MenubarSubTrigger>
+   584→   584→   584→                <MenubarSubContent
+   585→   585→   585→                  className="min-w-[160px]"
+   586→   586→   586→                  style={{
+   587→   587→   587→                    background: "#0b1016",
+   588→   588→   588→                    border: "2px solid #000",
+   589→   589→   589→                    borderRadius: 0,
+   590→   590→   590→                    boxShadow: "4px 4px 0 #000",
+   591→   591→   591→                    color: "#d7dde5",
+   592→   592→   592→                  }}
+   593→   593→   593→                >
+   594→   594→   594→                  {NAV_ITEMS.map((item) => (
+   595→   595→   595→                    <MenubarItem
+   596→   596→   596→                      key={item.key}
+   597→   597→   597→                      className="text-[11px] gap-2 focus:bg-[#141c25] focus:text-[#d7dde5]"
+   598→   598→   598→                      onClick={() => setActiveModule(item.key)}
+   599→   599→   599→                    >
+   600→   600→   600→                      {item.icon}
+   601→   601→   601→                      <span className={activeModule === item.key ? "font-semibold" : ""} style={{ color: activeModule === item.key ? "#ffd60a" : "#d7dde5" }}>
+   602→   602→   602→                        {item.label}
+   603→   603→   603→                      </span>
+   604→   604→   604→                      {activeModule === item.key && (
+   605→   605→   605→                        <span className="ml-auto text-[8px] tracking-wider" style={{ color: "#ffd60a" }}>●</span>
+   606→   606→   606→                      )}
+   607→   607→   607→                    </MenubarItem>
+   608→   608→   608→                  ))}
+   609→   609→   609→                </MenubarSubContent>
+   610→   610→   610→              </MenubarSub>
+   611→   611→   611→            </MenubarContent>
+   612→   612→   612→          </MenubarMenu>
+   613→   613→   613→
+   614→   614→   614→          {/* HELP */}
+   615→   615→   615→          <MenubarMenu>
+   616→   616→   616→            <MenubarTrigger
+   617→   617→   617→              className="text-[11px] font-medium tracking-wider uppercase px-2 py-1 h-7"
+   618→   618→   618→              style={{ color: "#8a94a3" }}
+   619→   619→   619→            >
+   620→   620→   620→              Help
+   621→   621→   621→            </MenubarTrigger>
+   622→   622→   622→            <MenubarContent
+   623→   623→   623→              className="min-w-[180px]"
+   624→   624→   624→              style={{
+   625→   625→   625→                background: "#0b1016",
+   626→   626→   626→                border: "2px solid #000",
+   627→   627→   627→                borderRadius: 0,
+   628→   628→   628→                boxShadow: "4px 4px 0 #000",
+   629→   629→   629→                color: "#d7dde5",
+   630→   630→   630→              }}
+   631→   631→   631→            >
+   632→   632→   632→              <MenubarItem className="text-[11px] gap-2 focus:bg-[#141c25] focus:text-[#d7dde5]">
+   633→   633→   633→                <Info size={12} style={{ color: "#8a94a3" }} />
+   634→   634→   634→                About Agent Studio OS
+   635→   635→   635→              </MenubarItem>
+   636→   636→   636→              <MenubarItem className="text-[11px] gap-2 focus:bg-[#141c25] focus:text-[#d7dde5]">
+   637→   637→   637→                <FileText size={12} style={{ color: "#8a94a3" }} />
+   638→   638→   638→                Documentation
+   639→   639→   639→              </MenubarItem>
+   640→   640→   640→              <MenubarSeparator style={{ background: "#1b2430" }} />
+   641→   641→   641→              <MenubarItem className="text-[11px] gap-2 focus:bg-[#141c25] focus:text-[#d7dde5]">
+   642→   642→   642→                <Keyboard size={12} style={{ color: "#8a94a3" }} />
+   643→   643→   643→                Keyboard Shortcuts
+   644→   644→   644→              </MenubarItem>
+   645→   645→   645→            </MenubarContent>
+   646→   646→   646→          </MenubarMenu>
+   647→   647→   647→        </Menubar>
+   648→   648→   648→
+   649→   649→   649→        {/* Module nav tabs — compact */}
+   650→   650→   650→        <nav className="flex gap-0.5 ml-2">
+   651→   651→   651→          {NAV_ITEMS.map((item) => (
+   652→   652→   652→            <button
+   653→   653→   653→              key={item.key}
+   654→   654→   654→              onClick={() => setActiveModule(item.key)}
+   655→   655→   655→              className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium tracking-wider transition-all uppercase"
+   656→   656→   656→              style={{
+   657→   657→   657→                color: activeModule === item.key ? "#ffd60a" : "#5b6b81",
+   658→   658→   658→                background: activeModule === item.key ? "#1a212b" : "transparent",
+   659→   659→   659→                border: activeModule === item.key ? "1px solid #2a3441" : "1px solid transparent",
+   660→   660→   660→              }}
+   661→   661→   661→            >
+   662→   662→   662→              {item.icon}
+   663→   663→   663→              <span className="hidden sm:inline">{item.label}</span>
+   664→   664→   664→            </button>
+   665→   665→   665→          ))}
+   666→   666→   666→        </nav>
+   667→   667→   667→
+   668→   668→   668→        {/* Right side — status + toggles */}
+   669→   669→   669→        <div className="ml-auto flex items-center gap-2 px-2">
+   670→   670→   670→          <SystemIndicator />
+   671→   671→   671→
+   672→   672→   672→          <div
+   673→   673→   673→            className="px-2 py-0.5 text-[9px] tracking-wider hidden md:block"
+   674→   674→   674→            style={{
+   675→   675→   675→              border: "1px solid #2a3441",
+   676→   676→   676→              background: "#1a212b",
+   677→   677→   677→              color: "#8a94a3",
+   678→   678→   678→            }}
+   679→   679→   679→          >
+   680→   680→   680→            {agents.length} AGENT{agents.length !== 1 ? "S" : ""}
+   681→   681→   681→          </div>
+   682→   682→   682→
+   683→   683→   683→          {/* Sidebar toggle */}
+   684→   684→   684→          <button
+   685→   685→   685→            onClick={() => setSidebarOpen(!sidebarOpen)}
+   686→   686→   686→            className="w-7 h-7 flex items-center justify-center transition-colors"
+   687→   687→   687→            style={{ color: sidebarOpen ? "#d7dde5" : "#5b6b81" }}
+   688→   688→   688→            title={sidebarOpen ? "Close Explorer (⌘B)" : "Open Explorer (⌘B)"}
+   689→   689→   689→          >
+   690→   690→   690→            {sidebarOpen ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={14} />}
+   691→   691→   691→          </button>
+   692→   692→   692→          {/* Inspector toggle */}
+   693→   693→   693→          <button
+   694→   694→   694→            onClick={() => setInspectorOpen(!inspectorOpen)}
+   695→   695→   695→            className="w-7 h-7 flex items-center justify-center transition-colors"
+   696→   696→   696→            style={{ color: inspectorOpen ? "#d7dde5" : "#5b6b81" }}
+   697→   697→   697→            title={inspectorOpen ? "Close Inspector (⌘I)" : "Open Inspector (⌘I)"}
+   698→   698→   698→          >
+   699→   699→   699→            {inspectorOpen ? <PanelRightClose size={14} /> : <PanelRightOpen size={14} />}
+   700→   700→   700→          </button>
+   701→   701→   701→        </div>
+   702→   702→   702→      </header>
+   703→   703→   703→
+   704→   704→   704→      {/* ═══ MAIN CONTENT ═══ */}
+   705→   705→   705→      <div className="flex-1 flex min-h-0">
+   706→   706→   706→        {activeModule === "canvas" && (
+   707→   707→   707→          <>
+   708→   708→   708→            {/* Left Sidebar with collapse strip */}
+   709→   709→   709→            <AnimatePresence initial={false}>
+   710→   710→   710→              {sidebarOpen ? (
+   711→   711→   711→                <motion.div
+   712→   712→   712→                  key="sidebar"
+   713→   713→   713→                  initial={{ width: 0, opacity: 0 }}
+   714→   714→   714→                  animate={{ width: 260, opacity: 1 }}
+   715→   715→   715→                  exit={{ width: 0, opacity: 0 }}
+   716→   716→   716→                  transition={{ duration: 0.2, ease: "easeInOut" }}
+   717→   717→   717→                  className="overflow-hidden shrink-0"
+   718→   718→   718→                >
+   719→   719→   719→                  <AgentSidebar />
+   720→   720→   720→                </motion.div>
+   721→   721→   721→              ) : (
+   722→   722→   722→                <motion.div
+   723→   723→   723→                  key="sidebar-strip"
+   724→   724→   724→                  initial={{ width: 0 }}
+   725→   725→   725→                  animate={{ width: 32 }}
+   726→   726→   726→                  exit={{ width: 0 }}
+   727→   727→   727→                  transition={{ duration: 0.15, ease: "easeInOut" }}
+   728→   728→   728→                  className="shrink-0 flex flex-col items-center pt-2"
+   729→   729→   729→                  style={{ background: "#0a0e14", borderRight: "2px solid #000" }}
+   730→   730→   730→                >
+   731→   731→   731→                  <button
+   732→   732→   732→                    onClick={() => setSidebarOpen(true)}
+   733→   733→   733→                    className="w-6 h-6 flex items-center justify-center transition-colors"
+   734→   734→   734→                    style={{ color: "#5b6b81" }}
+   735→   735→   735→                    title="Open Explorer (⌘B)"
+   736→   736→   736→                  >
+   737→   737→   737→                    <PanelLeftOpen size={12} />
+   738→   738→   738→                  </button>
+   739→   739→   739→                  <div className="mt-2 flex flex-col gap-1.5">
+   740→   740→   740→                    {agents.slice(0, 8).map((agent) => (
+   741→   741→   741→                      <div
+   742→   742→   742→                        key={agent.id}
+   743→   743→   743→                        className="w-2 h-2"
+   744→   744→   744→                        style={{
+   745→   745→   745→                          background: selectedAgentId === agent.id ? "#ffd60a" : "#2a3441",
+   746→   746→   746→                          border: "1px solid #000",
+   747→   747→   747→                        }}
+   748→   748→   748→                        title={agent.name}
+   749→   749→   749→                      />
+   750→   750→   750→                    ))}
+   751→   751→   751→                  </div>
+   752→   752→   752→                </motion.div>
+   753→   753→   753→              )}
+   754→   754→   754→            </AnimatePresence>
+   755→   755→   755→
+   756→   756→   756→            {/* Center Canvas / Run View */}
+   757→   757→   757→            <AgentCanvas />
+   758→   758→   758→
+   759→   759→   759→            {/* Right Inspector with collapse strip */}
+   760→   760→   760→            <AnimatePresence initial={false}>
+   761→   761→   761→              {inspectorOpen ? (
+   762→   762→   762→                <motion.div
+   763→   763→   763→                  key="inspector"
+   764→   764→   764→                  initial={{ width: 0, opacity: 0 }}
+   765→   765→   765→                  animate={{ width: 320, opacity: 1 }}
+   766→   766→   766→                  exit={{ width: 0, opacity: 0 }}
+   767→   767→   767→                  transition={{ duration: 0.2, ease: "easeInOut" }}
+   768→   768→   768→                  className="overflow-hidden shrink-0"
+   769→   769→   769→                >
+   770→   770→   770→                  <AgentInspector />
+   771→   771→   771→                </motion.div>
+   772→   772→   772→              ) : (
+   773→   773→   773→                <motion.div
+   774→   774→   774→                  key="inspector-strip"
+   775→   775→   775→                  initial={{ width: 0 }}
+   776→   776→   776→                  animate={{ width: 32 }}
+   777→   777→   777→                  exit={{ width: 0 }}
+   778→   778→   778→                  transition={{ duration: 0.15, ease: "easeInOut" }}
+   779→   779→   779→                  className="shrink-0 flex flex-col items-center pt-2"
+   780→   780→   780→                  style={{ background: "#0a0e14", borderLeft: "2px solid #000" }}
+   781→   781→   781→                >
+   782→   782→   782→                  <button
+   783→   783→   783→                    onClick={() => setInspectorOpen(true)}
+   784→   784→   784→                    className="w-6 h-6 flex items-center justify-center transition-colors"
+   785→   785→   785→                    style={{ color: "#5b6b81" }}
+   786→   786→   786→                    title="Open Inspector (⌘I)"
+   787→   787→   787→                  >
+   788→   788→   788→                    <PanelRightOpen size={12} />
+   789→   789→   789→                  </button>
+   790→   790→   790→                  {selectedAgentId && (
+   791→   791→   791→                    <div
+   792→   792→   792→                      className="mt-2 text-[8px] tracking-wider uppercase font-semibold"
+   793→   793→   793→                      style={{ color: "#ffd60a", writingMode: "vertical-rl", textOrientation: "mixed" }}
+   794→   794→   794→                    >
+   795→   795→   795→                      CFG
+   796→   796→   796→                    </div>
+   797→   797→   797→                  )}
+   798→   798→   798→                </motion.div>
+   799→   799→   799→              )}
+   800→   800→   800→            </AnimatePresence>
+   801→   801→   801→          </>
+   802→   802→   802→        )}
+   803→   803→   803→
+   804→   804→   804→        {activeModule === "router" && <RoutingEngine />}
+   805→   805→   805→
+   806→   806→   806→        {activeModule === "hermes" && (
+   807→   807→   807→          <HermesModule />
+   808→   808→   808→        )}
+   809→   809→   809→
+   810→   810→   810→        {activeModule === "pipeline" && <PipelineStudio />}
+   811→   811→   811→
+   812→   812→   812→        {activeModule === "workflow" && (
+   813→   813→   813→          <div className="flex-1 flex items-center justify-center" style={{ background: "#05070a" }}>
+   814→   814→   814→            <div className="text-center">
+   815→   815→   815→              <div
+   816→   816→   816→                className="w-20 h-20 flex items-center justify-center mx-auto mb-4"
+   817→   817→   817→                style={{
+   818→   818→   818→                  background: "#0f141b",
+   819→   819→   819→                  border: "2px solid #000",
+   820→   820→   820→                  boxShadow: "6px 6px 0 #000",
+   821→   821→   821→                }}
+   822→   822→   822→              >
+   823→   823→   823→                <Palette size={32} style={{ color: "#2a3441" }} />
+   824→   824→   824→              </div>
+   825→   825→   825→              <h3 className="text-[16px] font-semibold mb-2" style={{ color: "#d7dde5", letterSpacing: "0.02em" }}>
+   826→   826→   826→                WORKFLOW STUDIO
+   827→   827→   827→              </h3>
+   828→   828→   828→              <p className="text-[12px] mb-4" style={{ color: "#8a94a3", maxWidth: "320px", margin: "0 auto" }}>
+   829→   829→   829→                Visual workflow design tool. Create, edit, and test multi-agent workflows before deploying them to the live orchestration engine.
+   830→   830→   830→              </p>
+   831→   831→   831→              <div
+   832→   832→   832→                className="inline-block px-3 py-1.5 text-[10px] tracking-wider font-semibold"
+   833→   833→   833→                style={{
+   834→   834→   834→                  background: "#1a212b",
+   835→   835→   835→                  border: "2px solid #000",
+   836→   836→   836→                  boxShadow: "2px 2px 0 #000",
+   837→   837→   837→                  color: "#ffd60a",
+   838→   838→   838→                }}
+   839→   839→   839→              >
+   840→   840→   840→                COMING SOON
+   841→   841→   841→              </div>
+   842→   842→   842→            </div>
+   843→   843→   843→          </div>
+   844→   844→   844→        )}
+   845→   845→   845→      </div>
+   846→   846→   846→
+   847→   847→   847→      {/* Builder Wizard overlay */}
+   848→   848→   848→      <AgentBuilderWizard />
+   849→   849→   849→      {/* Approval Modal */}
+   850→   850→   850→      <ApprovalModal />
+   851→   851→   851→      {/* Team Builder — triggered from File > New Team */}
+   852→   852→   852→      {teamBuilderOpen && <TeamBuilderDialog onClose={() => setTeamBuilderOpen(false)} />}
+   853→   853→   853→    </div>
+   854→   854→   854→  );
+   855→   855→   855→}
+   856→   856→   856→
+   857→   857→   857→/* ──────────────────────────────────────────────────────────
+   858→   858→   858→   Standalone TeamBuilder dialog for menubar use
+   859→   859→   859→   ────────────────────────────────────────────────────────── */
+   860→   860→   860→
+   861→   861→   861→const ORCHESTRATION_MODES = [
+   862→   862→   862→  { value: "sequential", label: "Sequential", desc: "One after another" },
+   863→   863→   863→  { value: "group", label: "Group Chat", desc: "Agents discuss together" },
+   864→   864→   864→  { value: "hierarchical", label: "Hierarchical", desc: "Planner delegates" },
+   865→   865→   865→  { value: "parallel", label: "Parallel", desc: "Run simultaneously" },
+   866→   866→   866→] as const;
+   867→   867→   867→
+   868→   868→   868→function TeamBuilderDialog({ onClose }: { onClose: () => void }) {
+   869→   869→   869→  const { agents, createTeam } = useAgentStore();
+   870→   870→   870→  const [open, setOpen] = useState(true);
+   871→   871→   871→  const [name, setName] = useState("");
+   872→   872→   872→  const [mode, setMode] = useState("sequential");
+   873→   873→   873→  const [selectedAgentIds, setSelectedAgentIds] = useState<string[]>([]);
+   874→   874→   874→  const [isCreating, setIsCreating] = useState(false);
+   875→   875→   875→
+   876→   876→   876→  const toggleAgent = (agentId: string) => {
+   877→   877→   877→    setSelectedAgentIds((prev) =>
+   878→   878→   878→      prev.includes(agentId) ? prev.filter((id) => id !== agentId) : [...prev, agentId]
+   879→   879→   879→    );
+   880→   880→   880→  };
+   881→   881→   881→
+   882→   882→   882→  const handleCreate = async () => {
+   883→   883→   883→    if (!name.trim() || selectedAgentIds.length === 0) return;
+   884→   884→   884→    setIsCreating(true);
+   885→   885→   885→    try {
+   886→   886→   886→      await createTeam({ name: name.trim(), mode, agentIds: selectedAgentIds });
+   887→   887→   887→      setName(""); setMode("sequential"); setSelectedAgentIds([]);
+   888→   888→   888→      setOpen(false);
+   889→   889→   889→      onClose();
+   890→   890→   890→    } finally {
+   891→   891→   891→      setIsCreating(false);
+   892→   892→   892→    }
+   893→   893→   893→  };
+   894→   894→   894→
+   895→   895→   895→  return (
+   896→   896→   896→    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) onClose(); }}>
+   897→   897→   897→      <DialogContent
+   898→   898→   898→        className="bg-[#0f141b] border-[#2a3441] text-[#d7dde5] max-w-lg"
+   899→   899→   899→        style={{ borderRadius: 0 }}
+   900→   900→   900→      >
+   901→   901→   901→        <DialogHeader>
+   902→   902→   902→          <DialogTitle className="flex items-center gap-2 text-[#d7dde5]">
+   903→   903→   903→            <Users size={18} className="text-[#22c55e]" />
+   904→   904→   904→            Create Agent Team
+   905→   905→   905→          </DialogTitle>
+   906→   906→   906→        </DialogHeader>
+   907→   907→   907→
+   908→   908→   908→        <div className="space-y-4 py-2">
+   909→   909→   909→          <div className="space-y-1.5">
+   910→   910→   910→            <Label className="text-[10px] text-[#5b6b81] uppercase tracking-wider font-medium">Team Name</Label>
+   911→   911→   911→            <Input
+   912→   912→   912→              value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Research Squad"
+   913→   913→   913→              className="h-8 text-[12px] bg-[#0b1118] border-[#2a3441] text-[#d7dde5] focus:border-[#ffd60a] focus:ring-[#ffd60a]/20"
+   914→   914→   914→              style={{ borderRadius: 0 }}
+   915→   915→   915→            />
+   916→   916→   916→          </div>
+   917→   917→   917→
+   918→   918→   918→          <div className="space-y-1.5">
+   919→   919→   919→            <Label className="text-[10px] text-[#5b6b81] uppercase tracking-wider font-medium">Orchestration Mode</Label>
+   920→   920→   920→            <div className="grid grid-cols-2 gap-1.5">
+   921→   921→   921→              {ORCHESTRATION_MODES.map((m) => (
+   922→   922→   922→                <button
+   923→   923→   923→                  key={m.value}
+   924→   924→   924→                  onClick={() => setMode(m.value)}
+   925→   925→   925→                  className={`p-2.5 text-left border transition-all ${
+   926→   926→   926→                    mode === m.value
+   927→   927→   927→                      ? "bg-[#22c55e]/15 border-[#22c55e]/40 text-[#22c55e]"
+   928→   928→   928→                      : "bg-[#0b1118] border-[#2a3441] text-[#8a94a3] hover:border-[#3a4553]"
+   929→   929→   929→                  }`}
+   930→   930→   930→                  style={{ borderRadius: 0 }}
+   931→   931→   931→                >
+   932→   932→   932→                  <div className="text-[11px] font-medium">{m.label}</div>
+   933→   933→   933→                  <div className="text-[9px] mt-0.5 opacity-70">{m.desc}</div>
+   934→   934→   934→                </button>
+   935→   935→   935→              ))}
+   936→   936→   936→            </div>
+   937→   937→   937→          </div>
+   938→   938→   938→
+   939→   939→   939→          <div className="space-y-1.5">
+   940→   940→   940→            <Label className="text-[10px] text-[#5b6b81] uppercase tracking-wider font-medium">
+   941→   941→   941→              Select Agents ({selectedAgentIds.length} selected)
+   942→   942→   942→            </Label>
+   943→   943→   943→            {agents.length === 0 ? (
+   944→   944→   944→              <p className="text-[11px] text-[#475569] py-2">No agents available. Create agents first.</p>
+   945→   945→   945→            ) : (
+   946→   946→   946→              <ScrollArea className="max-h-48">
+   947→   947→   947→                <div className="space-y-1">
+   948→   948→   948→                  {agents.map((agent) => (
+   949→   949→   949→                    <label
+   950→   950→   950→                      key={agent.id}
+   951→   951→   951→                      className={`flex items-center gap-2.5 p-2 cursor-pointer transition-all border ${
+   952→   952→   952→                        selectedAgentIds.includes(agent.id)
+   953→   953→   953→                          ? "bg-[#22c55e]/10 border-[#22c55e]/30"
+   954→   954→   954→                          : "bg-[#0b1118] border-[#2a3441] hover:border-[#3a4553]"
+   955→   955→   955→                      }`}
+   956→   956→   956→                      style={{ borderRadius: 0 }}
+   957→   957→   957→                    >
+   958→   958→   958→                      <Checkbox
+   959→   959→   959→                        checked={selectedAgentIds.includes(agent.id)}
+   960→   960→   960→                        onCheckedChange={() => toggleAgent(agent.id)}
+   961→   961→   961→                        className="border-[#3a4553] data-[state=checked]:bg-[#22c55e] data-[state=checked]:border-[#22c55e]"
+   962→   962→   962→                      />
+   963→   963→   963→                      <div className="min-w-0 flex-1">
+   964→   964→   964→                        <div className="text-[11px] font-medium text-[#d7dde5]">{agent.name}</div>
+   965→   965→   965→                        <div className="text-[9px] text-[#5b6b81] truncate">{agent.role} · {agent.tools?.join(", ")}</div>
+   966→   966→   966→                      </div>
+   967→   967→   967→                    </label>
+   968→   968→   968→                  ))}
+   969→   969→   969→                </div>
+   970→   970→   970→              </ScrollArea>
+   971→   971→   971→            )}
+   972→   972→   972→          </div>
+   973→   973→   973→        </div>
+   974→   974→   974→
+   975→   975→   975→        <DialogFooter className="gap-2">
+   976→   976→   976→          <DialogClose asChild>
+   977→   977→   977→            <Button variant="outline" className="h-8 text-[11px] border-2 border-black" style={{ background: "#1a212b", color: "#8a94a3", boxShadow: "2px 2px 0 #000" }}>
+   978→   978→   978→              Cancel
+   979→   979→   979→            </Button>
+   980→   980→   980→          </DialogClose>
+   981→   981→   981→          <Button
+   982→   982→   982→            onClick={handleCreate}
+   983→   983→   983→            disabled={!name.trim() || selectedAgentIds.length === 0 || isCreating}
+   984→   984→   984→            className="h-8 text-[11px] gap-1.5 border-2 border-black disabled:opacity-50"
+   985→   985→   985→            style={{ background: "#22c55e", color: "#000", boxShadow: "2px 2px 0 #000" }}
+   986→   986→   986→          >
+   987→   987→   987→            {isCreating ? <Loader2 size={12} className="animate-spin" /> : <Users size={12} />}
+   988→   988→   988→            Create Team
+   989→   989→   989→          </Button>
+   990→   990→   990→        </DialogFooter>
+   991→   991→   991→      </DialogContent>
+   992→   992→   992→    </Dialog>
+   993→   993→   993→  );
+   994→   994→   994→}
+   995→   995→   995→

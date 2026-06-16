@@ -1,0 +1,2002 @@
+     1→# Agent Studio OS — V2.0 Enterprise Upgrade Plan
+     2→
+     3→> **From Prototype → Production-Grade Agent Runtime OS**  
+     4→> **Date:** March 4, 2026  
+     5→> **Sources:** AGENTIC_OS_V2_PLAN.md, CODEREVIEW.md, agenticNotebooklm.md, agentsNotebooklm.md, V1 Code Review
+     6→
+     7→---
+     8→
+     9→## Table of Contents
+    10→
+    11→1. [Executive Summary](#1-executive-summary)
+    12→2. [V1 Prototype → Enterprise Gap Analysis](#2-v1-prototype--enterprise-gap-analysis)
+    13→3. [Architecture Redesign](#3-architecture-redesign)
+    14→4. [Phase 0: Critical Production Fixes](#4-phase-0-critical-production-fixes)
+    15→5. [Phase 1: Multi-Agent Orchestration Engine](#5-phase-1-multi-agent-orchestration-engine)
+    16→6. [Phase 2: Memory, Tools & Verification](#6-phase-2-memory-tools--verification)
+    17→7. [Phase 3: Governance, Safety & Observability](#7-phase-3-governance-safety--observability)
+    18→8. [Phase 4: Advanced Execution & Scale](#8-phase-4-advanced-execution--scale)
+    19→9. [Database Schema Evolution](#9-database-schema-evolution)
+    20→10. [API Surface](#10-api-surface)
+    21→11. [Frontend Component Architecture](#11-frontend-component-architecture)
+    22→12. [Security Architecture](#12-security-architecture)
+    23→13. [Deployment & Infrastructure](#13-deployment--infrastructure)
+    24→14. [Implementation Roadmap](#14-implementation-roadmap)
+    25→15. [Risk Register](#15-risk-register)
+    26→16. [Success Metrics](#16-success-metrics)
+    27→
+    28→---
+    29→
+    30→## 1. Executive Summary
+    31→
+    32→Agent Studio OS V1 is a **functional prototype** — it demonstrates the concept of a visual AI agent builder with canvas-based editing, SSE streaming, and an AI Builder wizard. However, it has **critical production gaps** that prevent enterprise deployment:
+    33→
+    34→- **3 critical memory leaks** that will crash any long-running server
+    35→- **All tools are simulated** — the agent loop is LLM → mock → LLM
+    36→- **Zero authentication** — no user ownership, no access control
+    37→- **Fragile LLM output parsing** — non-greedy regex on nested JSON
+    38→- **No concurrency control** — unlimited simultaneous agent runs
+    39→- **SQLite with no indexes** — will degrade under multi-user load
+    40→- **No canvas persistence** — user layouts lost on refresh
+    41→- **No policy/approval system** — agents can execute any action unchecked
+    42→
+    43→V2 transforms this into an **enterprise-grade Agent Runtime OS** through 4 phases:
+    44→
+    45→| Phase | Focus | Timeline | Enterprise Value |
+    46→|-------|-------|----------|------------------|
+    47→| **P0** | Critical fixes + real tools | Week 1 | System won't crash or leak memory |
+    48→| **P1** | Multi-agent orchestration | Weeks 2-4 | Core differentiator — collaborative agents |
+    49→| **P2** | Memory, verification, tools | Weeks 5-6 | Reliability — agents produce verified outputs |
+    50→| **P3** | Governance, observability | Weeks 7-9 | Trust — auditable, controllable, observable |
+    51→| **P4** | Advanced features & scale | Weeks 10-12 | Growth — parallel execution, task graphs, triggers |
+    52→
+    53→**The transformation:** From a single-agent task-orchestration UI → Multi-agent autonomous runtime OS with enterprise-grade safety, observability, and reliability.
+    54→
+    55→---
+    56→
+    57→## 2. V1 Prototype → Enterprise Gap Analysis
+    58→
+    59→### 2.1 Critical Code Issues (Must Fix Before Any V2 Work)
+    60→
+    61→These are **production blockers** discovered during code review. Every one of them will cause failures in a real deployment.
+    62→
+    63→| ID | Issue | File | Severity | Impact |
+    64→|----|-------|------|----------|--------|
+    65→| **C01** | **Memory leak: `eventListeners` Map never cleaned** | `agent.ts` | 🔴 Critical | Server OOM after hours of use |
+    66→| **C02** | **Memory leak: `activeRuns` entry persists on throw** | `agent.ts` | 🔴 Critical | Runs get permanently stuck in "running" |
+    67→| **C03** | **Memory leak: `runMemories` never cleared** | `memory.ts` | 🔴 Critical | Every run's full history stays in RAM forever |
+    68→| **C04** | **Singleton race in `getZAI()`** | `planner.ts`, `evaluator.ts` | 🔴 Critical | Multiple ZAI instances created, resource leak |
+    69→| **C05** | **Fragile JSON parsing: non-greedy regex** | `planner.ts:55` | 🔴 Critical | Nested JSON from LLM silently truncated |
+    70→| **C06** | **All tools return simulated data** | `tools.ts` | 🔴 Critical | No real functionality |
+    71→| **C07** | **No concurrency limit on agent runs** | `agent.ts` | 🔴 Critical | LLM API cost spike, server overload |
+    72→| **C08** | **DB errors silently swallowed** | `agent.ts` (6 locations) | 🟡 High | Step data silently lost |
+    73→| **C09** | **No `res.ok` checks in store** | `agent-store.ts` (7 locations) | 🟡 High | Error responses treated as data |
+    74→| **C10** | **Canvas nodes fully regenerated on agent count change** | `agent-canvas.tsx` | 🟡 High | User layouts destroyed on add/remove |
+    75→| **C11** | **`evaluator.ts` matches "untrue" as true** | `evaluator.ts:62` | 🟡 High | Premature run termination |
+    76→| **C12** | **`buildAgent` returns unvalidated JSON** | `planner.ts:130` | 🟡 High | Runtime errors if LLM omits fields |
+    77→| **C13** | **Wrong `role: "assistant"` instead of `"system"`** | `planner.ts:46`, `evaluator.ts` | 🟡 Medium | Reduced instruction-following |
+    78→| **C14** | **No input sanitization on LLM output** | `agent.ts`, `tools.ts` | 🟡 Medium | Prompt injection, XSS in stored data |
+    79→| **C15** | **SSE has no auto-reconnect** | `agent-studio.tsx` | 🟡 Medium | Stream drops silently |
+    80→| **C16** | **No runtime validation at API boundaries** | All API routes | 🟡 Medium | Malformed data accepted |
+    81→
+    82→### 2.2 Architecture Gaps (Prototype vs Enterprise)
+    83→
+    84→| Dimension | V1 (Prototype) | V2 (Enterprise) | Gap |
+    85→|-----------|----------------|-----------------|-----|
+    86→| **Execution** | Single agent, sequential only | Multi-agent: sequential, group, hierarchical, parallel | 🔴 Fundamental |
+    87→| **Quality** | Single-pass, no self-review | Reflection loops with generator→critic iteration | 🔴 Fundamental |
+    88→| **Composition** | All agents identical | Role-based: planner, researcher, executor, critic, reviewer | 🔴 Fundamental |
+    89→| **Memory** | In-memory only, resets on restart | 3-tier: session, persistent DB, versioned artifacts | 🔴 Data loss |
+    90→| **Tools** | All simulated, no verification | Real implementations with deterministic validators | 🔴 Non-functional |
+    91→| **Safety** | Kill switch only | Policy engine, approval gates, audit trail | 🔴 Uncontrolled |
+    92→| **Observability** | Basic SSE events | Timeline, metrics, token tracking, failure analysis | 🟡 Blind spots |
+    93→| **Auth** | None | User ownership, RBAC, scoped access | 🔴 No access control |
+    94→| **Database** | SQLite, no indexes, no enums | Indexed, enum-constrained, migration-ready | 🟡 Performance |
+    95→| **Error Handling** | Try/catch → console.error | Structured errors, retry, graceful degradation | 🟡 Fragile |
+    96→| **Deployment** | Single process, no scaling | Containerized, horizontal scaling ready | 🟡 Single point of failure |
+    97→
+    98→### 2.3 What the Research Documents Tell Us
+    99→
+   100→The four uploaded documents provide critical design guidance:
+   101→
+   102→**From agenticNotebooklm.md (AutoGen Research):**
+   103→- Sequential workflow = publish-subscribe topics, each agent subscribes to its own topic
+   104→- Group chat = shared scratchpad + Group Chat Manager with `RequestToSpeak`
+   105→- Speaker selection: prefer rule-based over LLM-based when order is obvious (saves tokens/latency)
+   106→- Termination conditions: `TextMentionTermination("APPROVE")` + `MaxMessageTermination` combined with `|` operator
+   107→- Round-robin for fixed order, SelectorGroupChat for dynamic delegation
+   108→
+   109→**From agentsNotebooklm.md (Agent Architecture Research):**
+   110→- **The "combo" effect:** Weaker delegative planner + strong solver > single dominant model
+   111→- **Security risks unique to multi-agent:** Confused Deputy attacks, cross-agent privilege escalation, collusion
+   112→- **SEAgent's MAC model:** Decision Engine checks every tool call against Policy DB → Block/Deny, User Prompt/Ask, or Shadow Mode
+   113→- **AgentCgroup:** AI agents have 15.4× peak-to-average memory ratio, burst-silence pattern, 56-74% latency from OS execution
+   114→- **Soft limits > hard kills:** OOM kills destroy non-recoverable LLM context; throttling preserves state
+   115→- **Understand-Modify-Verify lifecycle:** Early phase = lightweight reads, mid-late = heavy bash calls
+   116→
+   117→**From AGENTIC_OS_V2_PLAN.md (V2 Roadmap):**
+   118→- 10 feature areas: orchestration, reflection, roles, memory, verification, policy, observability, parallel, task graphs, system state
+   119→- Model upgrade to `gemini-2.5-pro`
+   120→- Infrastructure for cron/webhook triggers
+   121→
+   122→**From CODEREVIEW.md (Dev-Ready Feature Spec):**
+   123→- Complete database schemas for all 10 features
+   124→- Type definitions with implementation examples
+   125→- Testing requirements per feature
+   126→- Resource estimates: 220 hours / ~2 months with 2 developers
+   127→- Risk assessment and mitigation strategies
+   128→
+   129→---
+   130→
+   131→## 3. Architecture Redesign
+   132→
+   133→### 3.1 V1 Architecture (Current)
+   134→
+   135→```
+   136→┌─────────────────────────────────────────────────────────────┐
+   137→│                     PRESENTATION LAYER                       │
+   138→│  AgentStudio → Sidebar | Canvas | Inspector | RunView       │
+   139→│  (React Flow, Zustand store, SSE EventSource)               │
+   140→└───────────────────────────┬─────────────────────────────────┘
+   141→                            │ fetch / SSE
+   142→┌───────────────────────────▼─────────────────────────────────┐
+   143→│                        API LAYER                             │
+   144→│  /api/agent/{create,list,build,run,runs,stream,stop,update} │
+   145→│  (Next.js Route Handlers, no auth, no validation)           │
+   146→└───────────────────────────┬─────────────────────────────────┘
+   147→                            │
+   148→┌───────────────────────────▼─────────────────────────────────┐
+   149→│                      ENGINE LAYER                            │
+   150→│  agent.ts (orchestrator) → planner.ts → tools.ts            │
+   151→│                          → evaluator.ts → memory.ts          │
+   152→│  (In-process, single-agent, event bus, no concurrency)      │
+   153→└───────────────────────────┬─────────────────────────────────┘
+   154→                            │
+   155→┌───────────────────────────▼─────────────────────────────────┐
+   156→│                       DATA LAYER                             │
+   157→│  Prisma + SQLite (Agent, AgentRun, Step)                    │
+   158→│  (No indexes, no enums, no user association)                │
+   159→└─────────────────────────────────────────────────────────────┘
+   160→```
+   161→
+   162→### 3.2 V2 Architecture (Enterprise)
+   163→
+   164→```
+   165→┌──────────────────────────────────────────────────────────────────────────┐
+   166→│                        PRESENTATION LAYER                                 │
+   167→│                                                                           │
+   168→│  ┌──────────┐  ┌──────────────┐  ┌──────────────┐  ┌─────────────────┐  │
+   169→│  │ Sidebar   │  │ Team Canvas  │  │ Inspector    │  │ Run Dashboard   │  │
+   170→│  │ +Templates│  │ (React Flow) │  │ +Roles       │  │ +Timeline       │  │
+   171→│  │ +AI Build │  │ +Task Graphs │  │ +Memory      │  │ +Metrics        │  │
+   172→│  └──────────┘  └──────────────┘  └──────────────┘  └─────────────────┘  │
+   173→│                                                                           │
+   174→│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌─────────────┐  │
+   175→│  │ Approval     │  │ Policy       │  │ Memory       │  │ System      │  │
+   176→│  │ Modal        │  │ Dashboard    │  │ Inspector    │  │ Indicator   │  │
+   177→│  └──────────────┘  └──────────────┘  └──────────────┘  └─────────────┘  │
+   178→│                                                                           │
+   179→│  Zustand Store (agent-store, policy-store, memory-store, system-store)   │
+   180→│  SSE EventSource with auto-reconnect + event deduplication               │
+   181→└──────────────────────────────────────┬───────────────────────────────────┘
+   182→                                       │ fetch / SSE (with auth headers)
+   183→┌──────────────────────────────────────▼───────────────────────────────────┐
+   184→│                          API LAYER                                        │
+   185→│                                                                           │
+   186→│  ┌─────────────────┐  ┌──────────────────┐  ┌─────────────────────────┐ │
+   187→│  │ Agent APIs       │  │ Orchestration APIs│  │ Governance APIs        │ │
+   188→│  │ /agent/*         │  │ /team/*           │  │ /policy/*              │ │
+   189→│  │ /tools/*         │  │ /orchestration/*  │  │ /approval/*            │ │
+   190→│  │ /memory/*        │  │ /task-graph/*     │  │ /audit/*               │ │
+   191→│  │ /artifacts/*     │  │ /trigger/*        │  │ /metrics/*             │ │
+   192→│  └─────────────────┘  └──────────────────┘  └─────────────────────────┘ │
+   193→│                                                                           │
+   194→│  Middleware: Auth | Rate Limit | Validation (zod) | Request Logging      │
+   195→└──────────────────────────────────────┬───────────────────────────────────┘
+   196→                                       │
+   197→┌──────────────────────────────────────▼───────────────────────────────────┐
+   198→│                        ENGINE LAYER                                       │
+   199→│                                                                           │
+   200→│  ┌────────────────────────────────────────────────────────────────────┐  │
+   201→│  │                    Orchestrator (orchestrator.ts)                   │  │
+   202→│  │  Routes to execution strategy based on TeamConfig.mode             │  │
+   203→│  └──────────┬──────────┬──────────┬──────────┬───────────────────────┘  │
+   204→│             │          │          │          │                            │
+   205→│  ┌──────────▼──┐ ┌─────▼────┐ ┌──▼─────────┐ ┌▼───────────┐           │
+   206→│  │ Sequential  │ │ Group    │ │Hierarchical│ │ Parallel   │           │
+   207→│  │ Pipeline    │ │ Chat     │ │ Manager    │ │ Fan-out    │           │
+   208→│  └──────┬──────┘ └────┬─────┘ └─────┬──────┘ └─────┬──────┘           │
+   209→│         │             │             │               │                    │
+   210→│  ┌──────▼─────────────▼─────────────▼───────────────▼──────────────┐   │
+   211→│  │                    Agent Executor (agent.ts)                     │   │
+   212→│  │  Plan → Verify Policy → Execute → Validate → Evaluate → Memory  │   │
+   213→│  └──────┬──────────────┬──────────────┬──────────────┬────────────┘   │
+   214→│         │              │              │              │                  │
+   215→│  ┌──────▼───┐  ┌───────▼───┐  ┌──────▼─────┐  ┌───▼──────────┐      │
+   216→│  │ Planner  │  │ Tool      │  │ Reflection │  │ Evaluator    │      │
+   217→│  │ +Roles   │  │ Registry  │  │ Engine     │  │ +Criteria    │      │
+   218→│  │ +Graphs  │  │ +Verify   │  │ +Critic    │  │ +Budgets     │      │
+   219→│  └──────────┘  └───────────┘  └────────────┘  └──────────────┘      │
+   220→│                                                                       │
+   221→│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐               │
+   222→│  │ Policy       │  │ Metrics      │  │ System State │               │
+   223→│  │ Engine       │  │ Collector    │  │ Manager      │               │
+   224→│  └──────────────┘  └──────────────┘  └──────────────┘               │
+   225→└──────────────────────────────────────┬───────────────────────────────────┘
+   226→                                       │
+   227→┌──────────────────────────────────────▼───────────────────────────────────┐
+   228→│                         DATA LAYER                                        │
+   229→│                                                                           │
+   230→│  ┌────────────────────────────────────────────────────────────────────┐  │
+   231→│  │  Prisma + SQLite (with WAL mode, indexes, enums)                  │  │
+   232→│  │  Agent | AgentRun | Step | Team | Task | TaskGraph                │  │
+   233→│  │  AgentMemory | Artifact | Policy | Approval | AuditLog            │  │
+   234→│  │  AgentTemplate | AgentTrigger | RunMetrics | TimelineEvent        │  │
+   235→│  └────────────────────────────────────────────────────────────────────┘  │
+   236→│                                                                           │
+   237→│  Migration path: SQLite → PostgreSQL when scale requires it              │
+   238→└───────────────────────────────────────────────────────────────────────────┘
+   239→```
+   240→
+   241→### 3.3 Key Architecture Decisions
+   242→
+   243→| Decision | Choice | Rationale |
+   244→|----------|--------|-----------|
+   245→| **Orchestration pattern** | Strategy pattern with mode routing | Clean separation, testable strategies, easy to add modes |
+   246→| **Memory architecture** | 3-tier with DB persistence | Survives restarts, queryable, multi-instance safe |
+   247→| **Policy enforcement** | Pre-execution hook in agent loop | Catches actions before they happen, not after |
+   248→| **LLM output parsing** | Zod schema validation | Replaces fragile regex, validates at runtime, typed output |
+   249→| **Event system** | Typed SSE with sequence numbers | Solves ordering, deduplication, and multi-agent event correlation |
+   250→| **Concurrency control** | Semaphore + run queue | Prevents resource exhaustion, configurable limits |
+   251→| **Canvas state** | Server-authoritative (graphData) | Survives refresh, shareable, restorable |
+   252→
+   253→---
+   254→
+   255→## 4. Phase 0: Critical Production Fixes
+   256→
+   257→*These must be completed before ANY V2 feature work. They are production blockers.*
+   258→
+   259→### 4.1 — Memory Leak Triage
+   260→
+   261→**C01: EventListeners cleanup**
+   262→```typescript
+   263→// agent.ts — Add cleanup after run completes
+   264→export function cleanupRun(runId: string) {
+   265→  activeRuns.delete(runId);
+   266→  eventListeners.delete(runId);     // ← ADD THIS
+   267→  clearMemory(runId);               // ← ADD THIS
+   268→}
+   269→```
+   270→
+   271→**C02: activeRuns cleanup on throw**
+   272→```typescript
+   273→// agent.ts — Wrap runAgent in try/finally
+   274→export async function runAgent(runId: string, config: AgentConfig) {
+   275→  activeRuns.add(runId);
+   276→  try {
+   277→    // ... existing run logic
+   278→  } catch (error) {
+   279→    // ... error handling
+   280→  } finally {
+   281→    cleanupRun(runId);  // ← ALWAYS cleanup
+   282→  }
+   283→}
+   284→```
+   285→
+   286→**C03: Run memory cleanup**
+   287→```typescript
+   288→// memory.ts — Called from cleanupRun
+   289→export function clearMemory(runId: string): void {
+   290→  runMemories.delete(runId);
+   291→}
+   292→```
+   293→
+   294→### 4.2 — Singleton Fix
+   295→
+   296→**C04: Extract shared ZAI client**
+   297→```typescript
+   298→// NEW FILE: src/lib/agent/zai-client.ts
+   299→let zaiInstance: ZAI | null = null;
+   300→let zaiPromise: Promise<ZAI> | null = null;
+   301→
+   302→export async function getZAI(): Promise<ZAI> {
+   303→  if (zaiInstance) return zaiInstance;
+   304→  if (zaiPromise) return zaiPromise;
+   305→  
+   306→  zaiPromise = ZAI.create().then(instance => {
+   307→    zaiInstance = instance;
+   308→    return instance;
+   309→  });
+   310→  
+   311→  return zaiPromise;
+   312→}
+   313→```
+   314→
+   315→Import from this shared module in `planner.ts` and `evaluator.ts` instead of duplicating.
+   316→
+   317→### 4.3 — LLM Output Parsing Fix
+   318→
+   319→**C05: Replace regex with structured extraction**
+   320→```typescript
+   321→// planner.ts — Replace fragile regex with zod validation
+   322→import { z } from 'zod';
+   323→
+   324→const ActionSchema = z.object({
+   325→  tool: z.enum(['search', 'write', 'code', 'browser', 'finish']),
+   326→  input: z.string()
+   327→});
+   328→
+   329→function extractAction(content: string): AgentAction {
+   330→  // Try multiple extraction strategies
+   331→  // 1. Direct JSON parse
+   332→  try {
+   333→    const parsed = JSON.parse(content);
+   334→    return ActionSchema.parse(parsed);
+   335→  } catch {}
+   336→  
+   337→  // 2. Extract from markdown code block
+   338→  const codeBlockMatch = content.match(/```json\s*([\s\S]*?)```/);
+   339→  if (codeBlockMatch) {
+   340→    try {
+   341→      const parsed = JSON.parse(codeBlockMatch[1]);
+   342→      return ActionSchema.parse(parsed);
+   343→    } catch {}
+   344→  }
+   345→  
+   346→  // 3. Find last JSON object (greedy, handles nested)
+   347→  const jsonMatch = content.match(/\{[\s\S]*\}/);
+   348→  if (jsonMatch) {
+   349→    try {
+   350→      const parsed = JSON.parse(jsonMatch[0]);
+   351→      return ActionSchema.parse(parsed);
+   352→    } catch {}
+   353→  }
+   354→  
+   355→  // 4. Fallback with retry prompt
+   356→  return { tool: 'finish', input: `Could not parse action from LLM response. Original: ${content.substring(0, 200)}` };
+   357→}
+   358→```
+   359→
+   360→### 4.4 — Real Tool Implementations
+   361→
+   362→**C06: Wire tools to actual services**
+   363→
+   364→```typescript
+   365→// tools.ts — Real implementations
+   366→import { webSearch } from '@/lib/skills/web-search';
+   367→import { webRead } from '@/lib/skills/web-reader';
+   368→import { generateText } from '@/lib/skills/llm';
+   369→
+   370→export async function executeTool(action: AgentAction): Promise<string> {
+   371→  switch (action.tool) {
+   372→    case 'search':
+   373→      return await webSearch(action.input);
+   374→    case 'write':
+   375→      // Save to artifact store (will be implemented in P2)
+   376→      return `Document saved: "${action.input.substring(0, 100)}..."`;
+   377→    case 'code':
+   378→      // Execute in sandboxed subprocess with timeout
+   379→      return await executeCodeSandbox(action.input);
+   380→    case 'browser':
+   381→      return await webRead(action.input);
+   382→    case 'finish':
+   383→      return action.input;
+   384→  }
+   385→}
+   386→
+   387→async function executeCodeSandbox(code: string): Promise<string> {
+   388→  // Execute with timeout and output capture
+   389→  const { exec } = require('child_process');
+   390→  return new Promise((resolve, reject) => {
+   391→    const proc = exec(
+   392→      `timeout 10s node -e "${code.replace(/"/g, '\\"')}"`,
+   393→      { maxBuffer: 1024 * 1024 },
+   394→      (error, stdout, stderr) => {
+   395→        if (error) resolve(`Execution error: ${error.message}`);
+   396→        else resolve(stdout || stderr || 'No output');
+   397→      }
+   398→    );
+   399→  });
+   400→}
+   401→```
+   402→
+   403→### 4.5 — Concurrency Control
+   404→
+   405→**C07: Add run queue with limits**
+   406→
+   407→```typescript
+   408→// agent.ts — Add concurrency limiting
+   409→const MAX_CONCURRENT_RUNS = 5;
+   410→const activeRunCount = { value: 0 };
+   411→const runQueue: Array<{ runId: string; config: AgentConfig; resolve: Function; reject: Function }> = [];
+   412→
+   413→export async function runAgent(runId: string, config: AgentConfig): Promise<void> {
+   414→  if (activeRunCount.value >= MAX_CONCURRENT_RUNS) {
+   415→    return new Promise((resolve, reject) => {
+   416→      runQueue.push({ runId, config, resolve, reject });
+   417→    });
+   418→  }
+   419→  
+   420→  activeRunCount.value++;
+   421→  try {
+   422→    await executeRun(runId, config);
+   423→  } finally {
+   424→    activeRunCount.value--;
+   425→    processQueue();
+   426→  }
+   427→}
+   428→
+   429→function processQueue() {
+   430→  while (activeRunCount.value < MAX_CONCURRENT_RUNS && runQueue.length > 0) {
+   431→    const { runId, config, resolve, reject } = runQueue.shift()!;
+   432→    activeRunCount.value++;
+   433→    executeRun(runId, config)
+   434→      .then(resolve)
+   435→      .catch(reject)
+   436→      .finally(() => { activeRunCount.value--; processQueue(); });
+   437→  }
+   438→}
+   439→```
+   440→
+   441→### 4.6 — Evaluator Fix
+   442→
+   443→**C11: Strict boolean matching**
+   444→```typescript
+   445→// evaluator.ts — Replace fragile includes("true")
+   446→const isComplete = /^(true|yes|1)$/i.test(content.trim());
+   447→```
+   448→
+   449→### 4.7 — Database Indexes
+   450→
+   451→**Add indexes to Prisma schema:**
+   452→```prisma
+   453→model AgentRun {
+   454→  // ... existing fields
+   455→  @@index([agentId])
+   456→  @@index([status])
+   457→  @@index([createdAt])
+   458→}
+   459→
+   460→model Step {
+   461→  // ... existing fields
+   462→  @@index([runId])
+   463→  @@index([stepNum])
+   464→}
+   465→```
+   466→
+   467→### 4.8 — Store Error Handling
+   468→
+   469→**C09: Add response status checks**
+   470→```typescript
+   471→// agent-store.ts — Pattern for all fetch calls
+   472→async fetchAgents() {
+   473→  try {
+   474→    const res = await fetch('/api/agent/list');
+   475→    if (!res.ok) throw new Error(`Failed to fetch agents: ${res.status}`);
+   476→    const data = await res.json();
+   477→    set({ agents: data });
+   478→  } catch (error) {
+   479→    set({ error: (error as Error).message });
+   480→    toast.error('Failed to fetch agents');
+   481→  }
+   482→}
+   483→```
+   484→
+   485→**Add error state to store:**
+   486→```typescript
+   487→interface AgentState {
+   488→  // ... existing
+   489→  error: string | null;
+   490→  clearError: () => void;
+   491→}
+   492→```
+   493→
+   494→### 4.9 — API Validation Layer
+   495→
+   496→**C16: Add zod validation middleware**
+   497→
+   498→```typescript
+   499→// NEW FILE: src/lib/api/validate.ts
+   500→import { z } from 'zod';
+   501→import { NextRequest, NextResponse } from 'next/server';
+   502→
+   503→export function validateBody<T>(schema: z.ZodSchema<T>) {
+   504→  return async (req: NextRequest): Promise<T | NextResponse> => {
+   505→    try {
+   506→      const body = await req.json();
+   507→      return schema.parse(body);
+   508→    } catch (error) {
+   509→      return NextResponse.json(
+   510→        { error: 'Validation failed', details: error },
+   511→        { status: 400 }
+   512→      );
+   513→    }
+   514→  };
+   515→}
+   516→```
+   517→
+   518→### 4.10 — Canvas Persistence
+   519→
+   520→**C10: Load graphData on fetch**
+   521→```typescript
+   522→// agent-store.ts — Restore canvas from DB on agent fetch
+   523→fetchAgents: async () => {
+   524→  const res = await fetch('/api/agent/list');
+   525→  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+   526→  const agents = await res.json();
+   527→  
+   528→  // Restore canvas from each agent's graphData
+   529→  const nodes: CanvasNode[] = [];
+   530→  const edges: CanvasEdge[] = [];
+   531→  
+   532→  for (const agent of agents) {
+   533→    if (agent.graphData) {
+   534→      try {
+   535→        const graph = JSON.parse(agent.graphData);
+   536→        nodes.push(...graph.nodes);
+   537→        edges.push(...graph.edges);
+   538→      } catch {}
+   539→    }
+   540→  }
+   541→  
+   542→  set({ agents, canvasNodes: nodes.length ? nodes : generateDefaultNodes(agents), 
+   543→        canvasEdges: edges.length ? edges : generateDefaultEdges(agents) });
+   544→}
+   545→```
+   546→
+   547→### 4.11 — SSE Auto-Reconnect
+   548→
+   549→**C15: Add reconnection logic**
+   550→```typescript
+   551→// agent-studio.tsx — SSE with auto-reconnect
+   552→useEffect(() => {
+   553→  if (!currentRunId) return;
+   554→  
+   555→  let reconnectAttempts = 0;
+   556→  const MAX_RECONNECT = 5;
+   557→  
+   558→  const connect = () => {
+   559→    const es = new EventSource(`/api/agent/stream?runId=${encodeURIComponent(currentRunId)}`);
+   560→    
+   561→    es.onopen = () => { reconnectAttempts = 0; };
+   562→    
+   563→    es.onmessage = (e) => {
+   564→      const event = JSON.parse(e.data);
+   565→      // ... handle event
+   566→    };
+   567→    
+   568→    es.onerror = () => {
+   569→      es.close();
+   570→      if (reconnectAttempts < MAX_RECONNECT) {
+   571→        reconnectAttempts++;
+   572→        setTimeout(connect, Math.min(1000 * 2 ** reconnectAttempts, 30000));
+   573→      }
+   574→    };
+   575→    
+   576→    return es;
+   577→  };
+   578→  
+   579→  const es = connect();
+   580→  return () => es.close();
+   581→}, [currentRunId]);
+   582→```
+   583→
+   584→### Phase 0 Summary
+   585→
+   586→| Fix | Effort | Impact |
+   587→|-----|--------|--------|
+   588→| Memory leak triage | 2h | System stays alive under load |
+   589→| Singleton fix | 1h | No duplicate ZAI instances |
+   590→| LLM parsing fix | 3h | No silent JSON truncation |
+   591→| Real tool implementations | 4h | Agents actually work |
+   592→| Concurrency control | 2h | No API cost spikes |
+   593→| Evaluator fix | 0.5h | No premature termination |
+   594→| Database indexes | 1h | Queries scale with data |
+   595→| Store error handling | 2h | Users see error feedback |
+   596→| API validation | 3h | No malformed data accepted |
+   597→| Canvas persistence | 2h | Layouts survive refresh |
+   598→| SSE auto-reconnect | 1h | Streams recover from drops |
+   599→| **Total** | **~22h** | **Production-stable V1** |
+   600→
+   601→---
+   602→
+   603→## 5. Phase 1: Multi-Agent Orchestration Engine
+   604→
+   605→### 5.1 — Orchestration Mode Engine
+   606→
+   607→**Research basis (agenticNotebooklm.md):** AutoGen defines 3 core patterns — Sequential Pipeline, Group Chat, Hierarchical Chat. We add Parallel as a 4th.
+   608→
+   609→```typescript
+   610→// NEW FILE: src/lib/agent/orchestrator.ts
+   611→import { EventEmitter } from 'events';
+   612→
+   613→export type OrchestrationMode = 'single' | 'sequential' | 'group' | 'hierarchical' | 'parallel';
+   614→
+   615→export interface TeamConfig {
+   616→  id: string;
+   617→  name: string;
+   618→  mode: OrchestrationMode;
+   619→  agents: AgentConfig[];
+   620→  termination: TerminationCondition;
+   621→  maxConcurrency?: number;
+   622→  sharedContext?: boolean;
+   623→}
+   624→
+   625→export type TerminationCondition =
+   626→  | { type: 'max_steps'; value: number }
+   627→  | { type: 'text_mention'; text: string }
+   628→  | { type: 'max_messages'; value: number }
+   629→  | { type: 'composite'; conditions: TerminationCondition[]; operator: 'and' | 'or' };
+   630→
+   631→export class AgentOrchestrator extends EventEmitter {
+   632→  private activeOrchestrations = new Map<string, AbortController>();
+   633→
+   634→  async run(team: TeamConfig, input: string): Promise<string> {
+   635→    const controller = new AbortController();
+   636→    this.activeOrchestrations.set(team.id, controller);
+   637→
+   638→    try {
+   639→      switch (team.mode) {
+   640→        case 'single':     return await this.runSingle(team, input, controller.signal);
+   641→        case 'sequential': return await this.runSequential(team, input, controller.signal);
+   642→        case 'group':      return await this.runGroup(team, input, controller.signal);
+   643→        case 'hierarchical': return await this.runHierarchical(team, input, controller.signal);
+   644→        case 'parallel':   return await this.runParallel(team, input, controller.signal);
+   645→      }
+   646→    } finally {
+   647→      this.activeOrchestrations.delete(team.id);
+   648→    }
+   649→  }
+   650→
+   651→  stop(teamId: string): void {
+   652→    this.activeOrchestrations.get(teamId)?.abort();
+   653→  }
+   654→
+   655→  private async runSingle(team: TeamConfig, input: string, signal: AbortSignal): Promise<string> {
+   656→    // Backward-compatible: run first agent only
+   657→    return executeAgent(team.agents[0], input, { signal, emitter: this });
+   658→  }
+   659→
+   660→  private async runSequential(team: TeamConfig, input: string, signal: AbortSignal): Promise<string> {
+   661→    // Pipeline: A → B → C, output handoff between stages
+   662→    let currentInput = input;
+   663→    for (const agent of team.agents) {
+   664→      if (signal.aborted) throw new Error('Orchestration aborted');
+   665→      const result = await executeAgent(agent, currentInput, { signal, emitter: this });
+   666→      this.emit('handoff', { from: agent.name, to: team.agents[team.agents.indexOf(agent) + 1]?.name, data: result.substring(0, 200) });
+   667→      currentInput = result;
+   668→    }
+   669→    return currentInput;
+   670→  }
+   671→
+   672→  private async runGroup(team: TeamConfig, input: string, signal: AbortSignal): Promise<string> {
+   673→    // Shared scratchpad with turn-taking manager
+   674→    const history: GroupChatMessage[] = [{ role: 'user', content: input, source: 'user' }];
+   675→    let messageCount = 0;
+   676→
+   677→    while (!this.checkTermination(history, team.termination, messageCount)) {
+   678→      if (signal.aborted) throw new Error('Orchestration aborted');
+   679→      
+   680→      const nextSpeaker = await this.selectNextSpeaker(team, history);
+   681→      const response = await executeAgentTurn(nextSpeaker, history, { signal, emitter: this });
+   682→      
+   683→      history.push({ role: 'assistant', content: response, source: nextSpeaker.name });
+   684→      messageCount++;
+   685→      
+   686→      this.emit('group_message', { speaker: nextSpeaker.name, message: response.substring(0, 200) });
+   687→    }
+   688→
+   689→    return history[history.length - 1]?.content ?? '';
+   690→  }
+   691→
+   692→  private async runHierarchical(team: TeamConfig, input: string, signal: AbortSignal): Promise<string> {
+   693→    // Manager delegates to workers, collects results
+   694→    const manager = team.agents.find(a => a.role === 'planner') ?? team.agents[0];
+   695→    const workers = team.agents.filter(a => a.role !== 'planner');
+   696→
+   697→    // Manager decomposes goal
+   698→    const plan = await executeAgent(manager, `Decompose this goal into sub-tasks: ${input}`, { signal, emitter: this });
+   699→    
+   700→    // Workers execute sub-tasks
+   701→    const workerResults: Record<string, string> = {};
+   702→    for (const worker of workers) {
+   703→      if (signal.aborted) throw new Error('Orchestration aborted');
+   704→      const task = await this.assignTask(manager, worker, plan, workerResults);
+   705→      const result = await executeAgent(worker, task, { signal, emitter: this });
+   706→      workerResults[worker.name] = result;
+   707→    }
+   708→
+   709→    // Manager synthesizes
+   710→    return await executeAgent(manager, `Synthesize final answer from worker results:\n${JSON.stringify(workerResults)}`, { signal, emitter: this });
+   711→  }
+   712→
+   713→  private async runParallel(team: TeamConfig, input: string, signal: AbortSignal): Promise<string> {
+   714→    // Fan-out with concurrency limit
+   715→    const maxConcurrency = team.maxConcurrency ?? 3;
+   716→    const results: Record<string, string> = {};
+   717→    const semaphore = new Semaphore(maxConcurrency);
+   718→
+   719→    await Promise.allSettled(
+   720→      team.agents.map(async (agent) => {
+   721→        await semaphore.acquire();
+   722→        try {
+   723→          if (signal.aborted) return;
+   724→          const result = await executeAgent(agent, input, { signal, emitter: this });
+   725→          results[agent.name] = result;
+   726→        } finally {
+   727→          semaphore.release();
+   728→        }
+   729→      })
+   730→    );
+   731→
+   732→    // Merge results
+   733→    return Object.entries(results).map(([name, result]) => `## ${name}\n${result}`).join('\n\n');
+   734→  }
+   735→
+   736→  // ... helper methods
+   737→}
+   738→
+   739→// Simple semaphore for concurrency control
+   740→class Semaphore {
+   741→  private queue: (() => void)[] = [];
+   742→  private running = 0;
+   743→  constructor(private max: number) {}
+   744→  
+   745→  async acquire(): Promise<void> {
+   746→    if (this.running < this.max) {
+   747→      this.running++;
+   748→      return;
+   749→    }
+   750→    return new Promise<void>(resolve => this.queue.push(resolve));
+   751→  }
+   752→  
+   753→  release(): void {
+   754→    this.running--;
+   755→    const next = this.queue.shift();
+   756→    if (next) { this.running++; next(); }
+   757→  }
+   758→}
+   759→```
+   760→
+   761→### 5.2 — Reflection Loop System
+   762→
+   763→**Research basis:** The Evaluator-Optimizer pattern from agenticNotebooklm.md. GPT-3.5 jumps from 48.1% → 95.1% on coding benchmarks with agentic refinement. Key practices: cap iterations, use explicit approval criteria, optionally insert human as evaluator.
+   764→
+   765→```typescript
+   766→// NEW FILE: src/lib/agent/reflection.ts
+   767→import { getZAI } from './zai-client';
+   768→
+   769→export interface ReflectionConfig {
+   770→  enabled: boolean;
+   771→  maxIterations: number;      // Default: 3
+   772→  criticPrompt: string;        // Custom critic system prompt
+   773→  approvalKeyword: string;     // Default: "APPROVED"
+   774→  requireHumanApproval: boolean; // For high-stakes outputs
+   775→}
+   776→
+   777→export interface ReflectionIteration {
+   778→  iteration: number;
+   779→  output: string;
+   780→  critique: string;
+   781→  approved: boolean;
+   782→  timestamp: Date;
+   783→}
+   784→
+   785→export async function runReflectionLoop(
+   786→  initialOutput: string,
+   787→  goal: string,
+   788→  config: ReflectionConfig,
+   789→  emitter: EventEmitter
+   790→): Promise<{ output: string; iterations: ReflectionIteration[]; approved: boolean }> {
+   791→  const iterations: ReflectionIteration[] = [];
+   792→  let currentOutput = initialOutput;
+   793→  let approved = false;
+   794→  let iteration = 0;
+   795→
+   796→  while (iteration < config.maxIterations && !approved) {
+   797→    // Critic evaluates
+   798→    emitter.emit('reflection', { type: 'critique_start', iteration });
+   799→    const critique = await critiqueOutput(currentOutput, goal, config);
+   800→    emitter.emit('reflection', { type: 'critique_done', iteration, critique: critique.substring(0, 200) });
+   801→
+   802→    approved = critique.toUpperCase().includes(config.approvalKeyword);
+   803→    
+   804→    iterations.push({
+   805→      iteration,
+   806→      output: currentOutput,
+   807→      critique,
+   808→      approved,
+   809→      timestamp: new Date()
+   810→    });
+   811→
+   812→    if (!approved && iteration < config.maxIterations - 1) {
+   813→      // Generator revises
+   814→      emitter.emit('reflection', { type: 'revision_start', iteration });
+   815→      currentOutput = await reviseOutput(currentOutput, critique, goal, config);
+   816→      emitter.emit('reflection', { type: 'revision_done', iteration });
+   817→    }
+   818→
+   819→    iteration++;
+   820→  }
+   821→
+   822→  return { output: currentOutput, iterations, approved };
+   823→}
+   824→
+   825→async function critiqueOutput(output: string, goal: string, config: ReflectionConfig): Promise<string> {
+   826→  const zai = await getZAI();
+   827→  const response = await zai.chat({
+   828→    messages: [
+   829→      { role: 'system', content: config.criticPrompt || `You are a quality critic. Evaluate the output against the goal. If satisfactory, respond with "${config.approvalKeyword}". Otherwise, provide specific, actionable feedback for improvement.` },
+   830→      { role: 'user', content: `Goal: ${goal}\n\nOutput to evaluate:\n${output}` }
+   831→    ]
+   832→  });
+   833→  return response.choices[0]?.message?.content ?? '';
+   834→}
+   835→
+   836→async function reviseOutput(output: string, critique: string, goal: string, config: ReflectionConfig): Promise<string> {
+   837→  const zai = await getZAI();
+   838→  const response = await zai.chat({
+   839→    messages: [
+   840→      { role: 'system', content: 'You are an expert generator. Revise the output based on the critique provided. Address every point of feedback.' },
+   841→      { role: 'user', content: `Goal: ${goal}\n\nCurrent output:\n${output}\n\nCritique:\n${critique}\n\nPlease provide a revised output that addresses all feedback.` }
+   842→    ]
+   843→  });
+   844→  return response.choices[0]?.message?.content ?? output;
+   845→}
+   846→```
+   847→
+   848→### 5.3 — Agent Role System
+   849→
+   850→**Research basis:** Specialization reduces context overload and makes multi-agent systems easier to debug (agentsNotebooklm.md). The "combo effect" — weaker delegative planner + strong solver > single dominant model.
+   851→
+   852→```typescript
+   853→// NEW FILE: src/lib/agent/roles.ts
+   854→export type AgentRole = 'general' | 'planner' | 'researcher' | 'executor' | 'critic' | 'reviewer';
+   855→
+   856→export interface RoleDefinition {
+   857→  name: string;
+   858→  color: string;           // Hex color for canvas badge
+   859→  icon: string;            // Lucide icon name
+   860→  defaultTools: AgentTool[];
+   861→  promptModifier: string;  // Appended to agent's personality
+   862→  permissions: RolePermissions;
+   863→  defaultPersonality: string;
+   864→}
+   865→
+   866→export interface RolePermissions {
+   867→  read: boolean;
+   868→  write: boolean;
+   869→  execute: boolean;
+   870→  approve: boolean;
+   871→  delegate: boolean;
+   872→}
+   873→
+   874→export const ROLE_DEFINITIONS: Record<AgentRole, RoleDefinition> = {
+   875→  general: {
+   876→    name: 'General',
+   877→    color: '#8B5CF6',  // violet
+   878→    icon: 'Bot',
+   879→    defaultTools: ['search', 'write', 'code', 'browser'],
+   880→    promptModifier: '',
+   881→    permissions: { read: true, write: true, execute: true, approve: false, delegate: false },
+   882→    defaultPersonality: 'helpful and thorough'
+   883→  },
+   884→  planner: {
+   885→    name: 'Planner',
+   886→    color: '#7C3AED',  // purple
+   887→    icon: 'GitBranch',
+   888→    defaultTools: ['search', 'write'],
+   889→    promptModifier: 'Focus on creating detailed execution plans and delegating tasks to specialized agents.',
+   890→    permissions: { read: true, write: true, execute: false, approve: true, delegate: true },
+   891→    defaultPersonality: 'strategic and organized'
+   892→  },
+   893→  researcher: {
+   894→    name: 'Researcher',
+   895→    color: '#22C55E',  // green
+   896→    icon: 'Search',
+   897→    defaultTools: ['search', 'browser'],
+   898→    promptModifier: 'Gather comprehensive, factual information. Do not make up details.',
+   899→    permissions: { read: true, write: true, execute: true, approve: false, delegate: false },
+   900→    defaultPersonality: 'thorough and analytical'
+   901→  },
+   902→  executor: {
+   903→    name: 'Executor',
+   904→    color: '#3B82F6',  // blue
+   905→    icon: 'Play',
+   906→    defaultTools: ['code', 'write'],
+   907→    promptModifier: 'Execute tasks with high accuracy and precision.',
+   908→    permissions: { read: true, write: true, execute: true, approve: false, delegate: false },
+   909→    defaultPersonality: 'efficient and precise'
+   910→  },
+   911→  critic: {
+   912→    name: 'Critic',
+   913→    color: '#F59E0B',  // amber
+   914→    icon: 'Shield',
+   915→    defaultTools: ['write'],
+   916→    promptModifier: 'Provide detailed, constructive critique. Be objective and thorough.',
+   917→    permissions: { read: true, write: true, execute: false, approve: true, delegate: false },
+   918→    defaultPersonality: 'objective and constructive'
+   919→  },
+   920→  reviewer: {
+   921→    name: 'Reviewer',
+   922→    color: '#EF4444',  // red
+   923→    icon: 'CheckCircle',
+   924→    defaultTools: ['search', 'write'],
+   925→    promptModifier: 'Review work for completeness, accuracy, and quality.',
+   926→    permissions: { read: true, write: false, execute: false, approve: true, delegate: false },
+   927→    defaultPersonality: 'meticulous and quality-focused'
+   928→  }
+   929→};
+   930→```
+   931→
+   932→### 5.4 — Database Changes for Phase 1
+   933→
+   934→```prisma
+   935→// Added to existing Agent model
+   936→model Agent {
+   937→  // ... existing fields
+   938→  role                String   @default("general")   // general|planner|researcher|executor|critic|reviewer
+   939→  permissions         String   @default("read,write,execute")
+   940→  orchestrationMode   String   @default("single")    // single|sequential|group|hierarchical|parallel
+   941→  maxConcurrency      Int      @default(3)
+   942→  reflectionEnabled   Boolean  @default(false)
+   943→  reflectionMaxIter   Int      @default(3)
+   944→  reflectionCriteria  String   @default("APPROVED")
+   945→  model               String   @default("gemini-2.5-pro")
+   946→  teamId              String?
+   947→}
+   948→
+   949→// New model for agent teams
+   950→model Team {
+   951→  id              String   @id @default(cuid())
+   952→  name            String
+   953→  mode            String   @default("sequential")  // sequential|group|hierarchical|parallel
+   954→  maxConcurrency  Int      @default(3)
+   955→  terminationType String   @default("max_steps")
+   956→  terminationValue Int     @default(20)
+   957→  sharedContext   Boolean  @default(false)
+   958→  agents          Agent[]
+   959→  createdAt       DateTime @default(now())
+   960→  updatedAt       DateTime @updatedAt
+   961→}
+   962→
+   963→// New model for reflection iterations
+   964→model ReflectionIteration {
+   965→  id          String   @id @default(cuid())
+   966→  runId       String
+   967→  iteration   Int
+   968→  output      String
+   969→  critique    String
+   970→  approved    Boolean  @default(false)
+   971→  createdAt   DateTime @default(now())
+   972→  
+   973→  @@index([runId])
+   974→}
+   975→```
+   976→
+   977→### 5.5 — New API Routes
+   978→
+   979→| Route | Method | Purpose |
+   980→|-------|--------|---------|
+   981→| `/api/team/create` | POST | Create an agent team |
+   982→| `/api/team/list` | GET | List teams |
+   983→| `/api/team/get` | GET | Get team with agents |
+   984→| `/api/team/run` | POST | Start team orchestration |
+   985→| `/api/team/stop` | POST | Stop team orchestration |
+   986→| `/api/team/update` | PATCH | Update team config |
+   987→
+   988→### 5.6 — UI Changes
+   989→
+   990→| Component | Change |
+   991→|-----------|--------|
+   992→| `agent-sidebar.tsx` | Add "Execution Strategy" dropdown, "Create Team" button |
+   993→| `agent-inspector.tsx` | Add Role selector, Reflection toggle, Team membership |
+   994→| `agent-canvas.tsx` | Support team node groups, orchestration flow arrows |
+   995→| `agent-node.tsx` | Role-based color badges (green researcher, amber critic, etc.) |
+   996→| NEW: `team-builder.tsx` | Drag agents into team, set orchestration mode |
+   997→| NEW: `reflection-panel.tsx` | Live iteration log showing critique/fix cycle |
+   998→| NEW: `role-badge.tsx` | Color-coded role badge component |
+   999→
+  1000→---
+  1001→
+  1002→## 6. Phase 2: Memory, Tools & Verification
+  1003→
+  1004→### 6.1 — 3-Tier Memory Layer
+  1005→
+  1006→**Research basis (agentsNotebooklm.md):** Agentic systems need memory at multiple levels. The shift from reactive assistants to autonomous workflows is built on external tools and memory, not prompt-only reasoning. AgentCgroup research shows context cannot be checkpointed or migrated — making persistent DB-backed memory critical.
+  1007→
+  1008→```typescript
+  1009→// NEW FILE: src/lib/agent/memory-v2.ts
+  1010→import { db } from '@/lib/db';
+  1011→
+  1012→export type MemoryTier = 'session' | 'persistent' | 'artifact';
+  1013→
+  1014→export interface MemoryEntry {
+  1015→  id: string;
+  1016→  agentId: string;
+  1017→  tier: MemoryTier;
+  1018→  key: string;
+  1019→  value: any;
+  1020→  expiresAt?: Date;
+  1021→  metadata?: Record<string, any>;
+  1022→  createdAt: Date;
+  1023→  updatedAt: Date;
+  1024→}
+  1025→
+  1026→export class MemoryManager {
+  1027→  // Session tier: in-memory, run-scoped, auto-cleared
+  1028→  private sessionStore = new Map<string, Map<string, any>>();
+  1029→
+  1030→  async get(agentId: string, key: string, tier: MemoryTier, runId?: string): Promise<any> {
+  1031→    switch (tier) {
+  1032→      case 'session': {
+  1033→        const runMap = runId ? this.sessionStore.get(runId) : this.sessionStore.get(agentId);
+  1034→        return runMap?.get(key);
+  1035→      }
+  1036→      case 'persistent': {
+  1037→        const record = await db.agentMemory.findFirst({
+  1038→          where: { agentId, key, tier: 'persistent' }
+  1039→        });
+  1040→        return record ? JSON.parse(record.value) : null;
+  1041→      }
+  1042→      case 'artifact': {
+  1043→        const artifact = await db.artifact.findFirst({
+  1044→          where: { agentId, name: key }
+  1045→        });
+  1046→        return artifact?.content ?? null;
+  1047→      }
+  1048→    }
+  1049→  }
+  1050→
+  1051→  async set(agentId: string, key: string, value: any, tier: MemoryTier, runId?: string): Promise<void> {
+  1052→    switch (tier) {
+  1053→      case 'session': {
+  1054→        const mapKey = runId ?? agentId;
+  1055→        if (!this.sessionStore.has(mapKey)) this.sessionStore.set(mapKey, new Map());
+  1056→        this.sessionStore.get(mapKey)!.set(key, value);
+  1057→        break;
+  1058→      }
+  1059→      case 'persistent': {
+  1060→        await db.agentMemory.upsert({
+  1061→          where: { agentId_key_tier: { agentId, key, tier: 'persistent' } },
+  1062→          create: { agentId, key, tier: 'persistent', value: JSON.stringify(value) },
+  1063→          update: { value: JSON.stringify(value) }
+  1064→        });
+  1065→        break;
+  1066→      }
+  1067→      case 'artifact': {
+  1068→        await db.artifact.upsert({
+  1069→          where: { agentId_name: { agentId, name: key } },
+  1070→          create: { agentId, name: key, content: typeof value === 'string' ? value : JSON.stringify(value), type: inferType(value) },
+  1071→          update: { content: typeof value === 'string' ? value : JSON.stringify(value) }
+  1072→        });
+  1073→        break;
+  1074→      }
+  1075→    }
+  1076→  }
+  1077→
+  1078→  clearSession(runId: string): void {
+  1079→    this.sessionStore.delete(runId);
+  1080→  }
+  1081→
+  1082→  async listPersistent(agentId: string): Promise<MemoryEntry[]> {
+  1083→    return db.agentMemory.findMany({ where: { agentId, tier: 'persistent' } });
+  1084→  }
+  1085→
+  1086→  async listArtifacts(agentId: string): Promise<any[]> {
+  1087→    return db.artifact.findMany({ where: { agentId } });
+  1088→  }
+  1089→}
+  1090→```
+  1091→
+  1092→### 6.2 — Tool Registry & Verification
+  1093→
+  1094→**Research basis:** RLVR (Reinforcement Learning with Verifiable Rewards) outperforms Process Reward Models because deterministic checks (JSON parsing, code compilation) are immune to reward hacking. We use this principle for tool verification — deterministic validators over LLM judges.
+  1095→
+  1096→```typescript
+  1097→// NEW FILE: src/lib/agent/tool-registry.ts
+  1098→import { z } from 'zod';
+  1099→
+  1100→export interface ToolDefinition {
+  1101→  id: string;
+  1102→  name: string;
+  1103→  description: string;
+  1104→  category: 'search' | 'write' | 'code' | 'browser' | 'memory' | 'api' | 'custom';
+  1105→  riskLevel: 'low' | 'medium' | 'high';
+  1106→  parameters: z.ZodSchema;
+  1107→  validator?: ToolValidator;
+  1108→  executor: (params: any) => Promise<string>;
+  1109→}
+  1110→
+  1111→export interface ToolValidator {
+  1112→  type: 'json_schema' | 'code_compiles' | 'url_reachable' | 'regex_match' | 'custom';
+  1113→  config: Record<string, any>;
+  1114→}
+  1115→
+  1116→export interface VerificationResult {
+  1117→  status: 'verified' | 'failed' | 'needs_review';
+  1118→  message: string;
+  1119→  details?: any;
+  1120→}
+  1121→
+  1122→class ToolRegistry {
+  1123→  private tools = new Map<string, ToolDefinition>();
+  1124→
+  1125→  register(tool: ToolDefinition): void {
+  1126→    this.tools.set(tool.id, tool);
+  1127→  }
+  1128→
+  1129→  get(id: string): ToolDefinition | undefined {
+  1130→    return this.tools.get(id);
+  1131→  }
+  1132→
+  1133→  list(category?: string): ToolDefinition[] {
+  1134→    const all = Array.from(this.tools.values());
+  1135→    return category ? all.filter(t => t.category === category) : all;
+  1136→  }
+  1137→
+  1138→  async executeWithVerification(
+  1139→    toolId: string,
+  1140→    params: any,
+  1141→    maxRetries: number = 1
+  1142→  ): Promise<{ result: string; verification: VerificationResult }> {
+  1143→    const tool = this.tools.get(toolId);
+  1144→    if (!tool) throw new Error(`Unknown tool: ${toolId}`);
+  1145→
+  1146→    // Validate params
+  1147→    const validated = tool.parameters.parse(params);
+  1148→
+  1149→    let result: string;
+  1150→    let attempts = 0;
+  1151→
+  1152→    do {
+  1153→      result = await tool.executor(validated);
+  1154→      
+  1155→      if (!tool.validator) {
+  1156→        return { result, verification: { status: 'needs_review', message: 'No validator configured' } };
+  1157→      }
+  1158→
+  1159→      const verification = await this.verify(result, tool.validator);
+  1160→      if (verification.status === 'verified') {
+  1161→        return { result, verification };
+  1162→      }
+  1163→
+  1164→      attempts++;
+  1165→    } while (attempts < maxRetries);
+  1166→
+  1167→    return { result, verification: { status: 'failed', message: `Failed after ${maxRetries} attempts` } };
+  1168→  }
+  1169→
+  1170→  private async verify(output: string, validator: ToolValidator): Promise<VerificationResult> {
+  1171→    switch (validator.type) {
+  1172→      case 'json_schema':
+  1173→        try {
+  1174→          JSON.parse(output);
+  1175→          return { status: 'verified', message: 'Valid JSON' };
+  1176→        } catch (e) {
+  1177→          return { status: 'failed', message: `Invalid JSON: ${(e as Error).message}` };
+  1178→        }
+  1179→      
+  1180→      case 'code_compiles':
+  1181→        // Check if code can be parsed without syntax errors
+  1182→        try {
+  1183→          new Function(output);
+  1184→          return { status: 'verified', message: 'Code compiles' };
+  1185→        } catch (e) {
+  1186→          return { status: 'failed', message: `Syntax error: ${(e as Error).message}` };
+  1187→        }
+  1188→
+  1189→      case 'url_reachable':
+  1190→        try {
+  1191→          const res = await fetch(output, { method: 'HEAD' });
+  1192→          return res.ok
+  1193→            ? { status: 'verified', message: `URL reachable (${res.status})` }
+  1194→            : { status: 'failed', message: `URL returned ${res.status}` };
+  1195→        } catch (e) {
+  1196→          return { status: 'failed', message: `URL unreachable: ${(e as Error).message}` };
+  1197→        };
+  1198→
+  1199→      case 'regex_match':
+  1200→        const regex = new RegExp(validator.config.pattern);
+  1201→        return regex.test(output)
+  1202→          ? { status: 'verified', message: 'Matches pattern' }
+  1203→          : { status: 'failed', message: 'Does not match pattern' };
+  1204→
+  1205→      default:
+  1206→        return { status: 'needs_review', message: 'Unknown validator type' };
+  1207→    }
+  1208→  }
+  1209→}
+  1210→
+  1211→// Singleton registry
+  1212→export const toolRegistry = new ToolRegistry();
+  1213→
+  1214→// Register built-in tools
+  1215→toolRegistry.register({
+  1216→  id: 'web_search',
+  1217→  name: 'Web Search',
+  1218→  description: 'Search the web for information',
+  1219→  category: 'search',
+  1220→  riskLevel: 'low',
+  1221→  parameters: z.object({ query: z.string() }),
+  1222→  executor: async ({ query }) => { /* call z-ai-web-dev-sdk web-search */ return ''; }
+  1223→});
+  1224→
+  1225→toolRegistry.register({
+  1226→  id: 'write_file',
+  1227→  name: 'Write File',
+  1228→  description: 'Write content to a file artifact',
+  1229→  category: 'write',
+  1230→  riskLevel: 'medium',
+  1231→  parameters: z.object({ filename: z.string(), content: z.string() }),
+  1232→  executor: async ({ filename, content }) => { /* save to artifact store */ return `Saved ${filename}`; }
+  1233→});
+  1234→
+  1235→toolRegistry.register({
+  1236→  id: 'execute_code',
+  1237→  name: 'Execute Code',
+  1238→  description: 'Execute code in a sandboxed environment',
+  1239→  category: 'code',
+  1240→  riskLevel: 'high',
+  1241→  parameters: z.object({ code: z.string(), language: z.enum(['javascript', 'python']).optional() }),
+  1242→  validator: { type: 'code_compiles', config: {} },
+  1243→  executor: async ({ code }) => { /* sandboxed execution */ return ''; }
+  1244→});
+  1245→
+  1246→toolRegistry.register({
+  1247→  id: 'browse_url',
+  1248→  name: 'Browse URL',
+  1249→  description: 'Read content from a web page',
+  1250→  category: 'browser',
+  1251→  riskLevel: 'medium',
+  1252→  parameters: z.object({ url: z.string().url() }),
+  1253→  executor: async ({ url }) => { /* call z-ai-web-dev-sdk web-reader */ return ''; }
+  1254→});
+  1255→```
+  1256→
+  1257→### 6.3 — Database Changes for Phase 2
+  1258→
+  1259→```prisma
+  1260→model AgentMemory {
+  1261→  id        String   @id @default(cuid())
+  1262→  agentId   String
+  1263→  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  1264→  tier      String   @default("persistent")  // session | persistent | artifact
+  1265→  key       String
+  1266→  value     String   // JSON
+  1267→  expiresAt DateTime?
+  1268→  createdAt DateTime @default(now())
+  1269→  updatedAt DateTime @updatedAt
+  1270→
+  1271→  @@unique([agentId, key, tier])
+  1272→  @@index([agentId, tier])
+  1273→}
+  1274→
+  1275→model Artifact {
+  1276→  id        String   @id @default(cuid())
+  1277→  agentId   String
+  1278→  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  1279→  runId     String?
+  1280→  name      String
+  1281→  type      String   @default("text")  // code | text | json | markdown | file
+  1282→  content   String
+  1283→  metadata  String?  // JSON
+  1284→  createdAt DateTime @default(now())
+  1285→
+  1286→  @@unique([agentId, name])
+  1287→  @@index([agentId, type])
+  1288→}
+  1289→
+  1290→model Step {
+  1291→  // ... existing fields
+  1292→  verificationStatus  String?  // verified | failed | needs_review
+  1293→  verificationDetails String?  // JSON
+  1294→  latencyMs           Int?
+  1295→  tokenCount          Int?
+  1296→}
+  1297→```
+  1298→
+  1299→---
+  1300→
+  1301→## 7. Phase 3: Governance, Safety & Observability
+  1302→
+  1303→### 7.1 — Policy & Approval System
+  1304→
+  1305→**Research basis (agentsNotebooklm.md):** SEAgent's Mandatory Access Control checks every tool call against a Policy Database with 3 outcomes: Block/Deny, User Prompt/Ask, Shadow Mode. AWS and Microsoft mandate least-privilege access, sandboxed execution, and immutable audit logs. Multi-agent systems face confused-deputy attacks and cross-agent privilege escalation.
+  1306→
+  1307→```typescript
+  1308→// NEW FILE: src/lib/agent/policy.ts
+  1309→export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
+  1310→export type PolicyAction = 'allow' | 'block' | 'ask_user' | 'shadow';
+  1311→
+  1312→export interface PolicyRule {
+  1313→  id: string;
+  1314→  name: string;
+  1315→  description: string;
+  1316→  condition: PolicyCondition;
+  1317→  action: PolicyAction;
+  1318→  priority: number;  // Higher = evaluated first
+  1319→  enabled: boolean;
+  1320→}
+  1321→
+  1322→export interface PolicyCondition {
+  1323→  tools?: string[];        // Which tools this applies to
+  1324→  roles?: AgentRole[];     // Which roles
+  1325→  riskLevels?: RiskLevel[]; // Which risk levels
+  1326→  agents?: string[];       // Specific agent IDs
+  1327→}
+  1328→
+  1329→export interface PolicyCheckResult {
+  1330→  allowed: boolean;
+  1331→  action: PolicyAction;
+  1332→  matchedPolicies: PolicyRule[];
+  1333→  requiresApproval: boolean;
+  1334→}
+  1335→
+  1336→export class PolicyEngine {
+  1337→  private policies: PolicyRule[] = [];
+  1338→
+  1339→  constructor() {
+  1340→    this.loadDefaultPolicies();
+  1341→  }
+  1342→
+  1343→  async check(
+  1344→    tool: string,
+  1345→    role: AgentRole,
+  1346→    riskLevel: RiskLevel,
+  1347→    agentId: string
+  1348→  ): Promise<PolicyCheckResult> {
+  1349→    const matched: PolicyRule[] = [];
+  1350→    let finalAction: PolicyAction = 'allow';  // Default allow
+  1351→
+  1352→    // Sort by priority (highest first)
+  1353→    const sorted = [...this.policies]
+  1354→      .filter(p => p.enabled)
+  1355→      .sort((a, b) => b.priority - a.priority);
+  1356→
+  1357→    for (const policy of sorted) {
+  1358→      if (this.matchesCondition(policy.condition, tool, role, riskLevel, agentId)) {
+  1359→        matched.push(policy);
+  1360→        // Most specific (highest priority) wins
+  1361→        if (finalAction === 'allow' || policy.priority >= (matched[0]?.priority ?? 0)) {
+  1362→          finalAction = policy.action;
+  1363→        }
+  1364→      }
+  1365→    }
+  1366→
+  1367→    return {
+  1368→      allowed: finalAction === 'allow',
+  1369→      action: finalAction,
+  1370→      matchedPolicies: matched,
+  1371→      requiresApproval: finalAction === 'ask_user'
+  1372→    };
+  1373→  }
+  1374→
+  1375→  private matchesCondition(
+  1376→    condition: PolicyCondition,
+  1377→    tool: string,
+  1378→    role: AgentRole,
+  1379→    riskLevel: RiskLevel,
+  1380→    agentId: string
+  1381→  ): boolean {
+  1382→    if (condition.tools && !condition.tools.includes(tool)) return false;
+  1383→    if (condition.roles && !condition.roles.includes(role)) return false;
+  1384→    if (condition.riskLevels && !condition.riskLevels.includes(riskLevel)) return false;
+  1385→    if (condition.agents && !condition.agents.includes(agentId)) return false;
+  1386→    return true;
+  1387→  }
+  1388→
+  1389→  private loadDefaultPolicies(): void {
+  1390→    this.policies = [
+  1391→      { id: 'p1', name: 'Allow read-only tools', description: 'Search and browse are safe', condition: { tools: ['web_search', 'browse_url'] }, action: 'allow', priority: 10, enabled: true },
+  1392→      { id: 'p2', name: 'Require approval for code execution', description: 'Code execution is high risk', condition: { tools: ['execute_code'] }, action: 'ask_user', priority: 20, enabled: true },
+  1393→      { id: 'p3', name: 'Require approval for write operations', description: 'Writing files is medium risk', condition: { tools: ['write_file'], riskLevels: ['medium', 'high'] }, action: 'ask_user', priority: 15, enabled: true },
+  1394→      { id: 'p4', name: 'Block execution by reviewers', description: 'Reviewers should not execute code', condition: { roles: ['reviewer'], tools: ['execute_code'] }, action: 'block', priority: 30, enabled: true },
+  1395→      { id: 'p5', name: 'Allow all for general role', description: 'General agents can do anything (with approval for high risk)', condition: { roles: ['general'] }, action: 'allow', priority: 5, enabled: true },
+  1396→    ];
+  1397→  }
+  1398→}
+  1399→```
+  1400→
+  1401→### 7.2 — Approval Flow
+  1402→
+  1403→```typescript
+  1404→// Integrated into agent execution loop
+  1405→async function executeWithPolicy(
+  1406→  agent: AgentConfig,
+  1407→  tool: string,
+  1408→  input: string,
+  1409→  policyEngine: PolicyEngine,
+  1410→  emitter: EventEmitter
+  1411→): Promise<{ result: string; approved: boolean }> {
+  1412→  const riskLevel = toolRegistry.get(tool)?.riskLevel ?? 'medium';
+  1413→  const policyResult = await policyEngine.check(tool, agent.role ?? 'general', riskLevel, agent.id);
+  1414→
+  1415→  // Audit log (always written)
+  1416→  await db.auditLog.create({
+  1417→    data: {
+  1418→      agentId: agent.id,
+  1419→      action: 'tool_call',
+  1420→      details: JSON.stringify({ tool, input: input.substring(0, 500), riskLevel }),
+  1421→      outcome: policyResult.action,
+  1422→      riskLevel
+  1423→    }
+  1424→  });
+  1425→
+  1426→  if (policyResult.action === 'block') {
+  1427→    emitter.emit('policy', { type: 'blocked', tool, reason: 'Policy blocks this action' });
+  1428→    return { result: `Action blocked by policy: ${tool}`, approved: false };
+  1429→  }
+  1430→
+  1431→  if (policyResult.action === 'ask_user') {
+  1432→    // Create approval request and pause
+  1433→    const approval = await db.approvalRequest.create({
+  1434→      data: {
+  1435→        agentId: agent.id,
+  1436→        tool,
+  1437→        input: input.substring(0, 1000),
+  1438→        riskLevel,
+  1439→        status: 'pending'
+  1440→      }
+  1441→    });
+  1442→
+  1443→    emitter.emit('policy', { type: 'approval_required', approvalId: approval.id, tool, riskLevel });
+  1444→
+  1445→    // Wait for approval (polling or WebSocket)
+  1446→    const decision = await waitForApproval(approval.id, emitter);
+  1447→    
+  1448→    if (decision === 'denied') {
+  1449→      return { result: `Action denied by user: ${tool}`, approved: false };
+  1450→    }
+  1451→  }
+  1452→
+  1453→  if (policyResult.action === 'shadow') {
+  1454→    // Execute but only log, don't apply effects
+  1455→    emitter.emit('policy', { type: 'shadow_mode', tool });
+  1456→  }
+  1457→
+  1458→  // Execute the tool
+  1459→  const result = await toolRegistry.executeWithVerification(tool, input);
+  1460→  return { result: result.result, approved: true };
+  1461→}
+  1462→```
+  1463→
+  1464→### 7.3 — Observability Timeline
+  1465→
+  1466→```typescript
+  1467→// NEW FILE: src/lib/agent/metrics.ts
+  1468→export interface TimelineEvent {
+  1469→  id: string;
+  1470→  runId: string;
+  1471→  type: TimelineEventType;
+  1472→  timestamp: Date;
+  1473→  durationMs?: number;
+  1474→  tokenCount?: number;
+  1475→  metadata: Record<string, any>;
+  1476→  error?: string;
+  1477→}
+  1478→
+  1479→export type TimelineEventType =
+  1480→  | 'run_start' | 'run_complete' | 'run_error'
+  1481→  | 'step_start' | 'step_complete'
+  1482→  | 'llm_call' | 'tool_execution'
+  1483→  | 'validation' | 'policy_check'
+  1484→  | 'approval_request' | 'approval_response'
+  1485→  | 'reflection_iteration' | 'reflection_complete'
+  1486→  | 'handoff' | 'group_message';
+  1487→
+  1488→export class MetricsCollector {
+  1489→  async record(event: Omit<TimelineEvent, 'id' | 'timestamp'>): Promise<void> {
+  1490→    await db.timelineEvent.create({
+  1491→      data: {
+  1492→        runId: event.runId,
+  1493→        type: event.type,
+  1494→        durationMs: event.durationMs,
+  1495→        tokenCount: event.tokenCount,
+  1496→        metadata: JSON.stringify(event.metadata),
+  1497→        error: event.error
+  1498→      }
+  1499→    });
+  1500→  }
+  1501→
+  1502→  async getRunMetrics(runId: string): Promise<RunMetrics> {
+  1503→    const events = await db.timelineEvent.findMany({
+  1504→      where: { runId },
+  1505→      orderBy: { timestamp: 'asc' }
+  1506→    });
+  1507→
+  1508→    return {
+  1509→      totalSteps: events.filter(e => e.type === 'step_complete').length,
+  1510→      totalDurationMs: events.reduce((sum, e) => sum + (e.durationMs ?? 0), 0),
+  1511→      totalTokens: events.reduce((sum, e) => sum + (e.tokenCount ?? 0), 0),
+  1512→      toolSuccessRate: this.calculateToolSuccessRate(events),
+  1513→      failurePoints: events.filter(e => e.error).map(e => ({ type: e.type, error: e.error! })),
+  1514→      approvalWaitTimeMs: this.calculateApprovalWaitTime(events)
+  1515→    };
+  1516→  }
+  1517→}
+  1518→```
+  1519→
+  1520→### 7.4 — Audit Trail (Immutable)
+  1521→
+  1522→```prisma
+  1523→model AuditLog {
+  1524→  id         String   @id @default(cuid())
+  1525→  timestamp  DateTime @default(now())
+  1526→  agentId    String
+  1527→  runId      String?
+  1528→  action     String   // tool_call | policy_check | approval | state_change | auth
+  1529→  details    String   // JSON
+  1530→  outcome    String   // allowed | blocked | pending | approved | denied
+  1531→  riskLevel  String?
+  1532→  
+  1533→  @@index([agentId])
+  1534→  @@index([runId])
+  1535→  @@index([timestamp])
+  1536→  // NO delete endpoint — append-only
+  1537→}
+  1538→
+  1539→model ApprovalRequest {
+  1540→  id            String   @id @default(cuid())
+  1541→  agentId       String
+  1542→  runId         String?
+  1543→  tool          String
+  1544→  input         String
+  1545→  riskLevel     String   // low | medium | high | critical
+  1546→  status        String   @default("pending") // pending | approved | denied | expired
+  1547→  requestedAt   DateTime @default(now())
+  1548→  respondedAt   DateTime?
+  1549→  respondedBy   String?
+  1550→  reason        String?
+  1551→  
+  1552→  @@index([status])
+  1553→  @@index([agentId])
+  1554→}
+  1555→
+  1556→model TimelineEvent {
+  1557→  id          String   @id @default(cuid())
+  1558→  runId       String
+  1559→  type        String
+  1560→  timestamp   DateTime @default(now())
+  1561→  durationMs  Int?
+  1562→  tokenCount  Int?
+  1563→  metadata    String   // JSON
+  1564→  error       String?
+  1565→  
+  1566→  @@index([runId])
+  1567→  @@index([type])
+  1568→  @@index([timestamp])
+  1569→}
+  1570→```
+  1571→
+  1572→### 7.5 — System State Manager
+  1573→
+  1574→```typescript
+  1575→// NEW FILE: src/lib/agent/system-state.ts
+  1576→export type SystemState = 'idle' | 'planning' | 'running' | 'waiting_approval' | 'error' | 'completed' | 'maintenance';
+  1577→
+  1578→export interface SystemStatus {
+  1579→  state: SystemState;
+  1580→  activeRuns: number;
+  1581→  pendingApprovals: number;
+  1582→  systemLoad: number;       // 0-1
+  1583→  totalTokensUsed: number;
+  1584→  lastActivity: Date;
+  1585→  agentsOnline: number;
+  1586→}
+  1587→
+  1588→export class SystemStateManager {
+  1589→  private state: SystemState = 'idle';
+  1590→  private listeners: Set<(old: SystemState, new_: SystemState) => void> = new Set();
+  1591→
+  1592→  async transition(newState: SystemState, reason?: string): Promise<void> {
+  1593→    const old = this.state;
+  1594→    this.state = newState;
+  1595→    this.listeners.forEach(fn => fn(old, newState));
+  1596→    
+  1597→    // Emit SSE event for UI
+  1598→    // Persist to DB for recovery after restart
+  1599→  }
+  1600→
+  1601→  getStatus(): SystemStatus {
+  1602→    return {
+  1603→      state: this.state,
+  1604→      activeRuns: 0, // from activeOrchestrations.size
+  1605→      pendingApprovals: 0, // from DB count
+  1606→      systemLoad: 0, // from process.memoryUsage()
+  1607→      totalTokensUsed: 0, // from metrics
+  1608→      lastActivity: new Date(),
+  1609→      agentsOnline: 0
+  1610→    };
+  1611→  }
+  1612→
+  1613→  onStateChange(listener: (old: SystemState, new_: SystemState) => void): () => void {
+  1614→    this.listeners.add(listener);
+  1615→    return () => this.listeners.delete(listener);
+  1616→  }
+  1617→}
+  1618→```
+  1619→
+  1620→---
+  1621→
+  1622→## 8. Phase 4: Advanced Execution & Scale
+  1623→
+  1624→### 8.1 — Task Graph System
+  1625→
+  1626→**Research basis:** The planner generates a structured DAG instead of a flat list. Tasks have dependencies and are assigned to agents based on roles.
+  1627→
+  1628→```prisma
+  1629→model TaskGraph {
+  1630→  id         String   @id @default(cuid())
+  1631→  runId      String
+  1632→  status     String   @default("planning")  // planning | executing | completed | failed
+  1633→  createdAt  DateTime @default(now())
+  1634→  updatedAt  DateTime @updatedAt
+  1635→  
+  1636→  tasks      Task[]
+  1637→  
+  1638→  @@index([runId])
+  1639→}
+  1640→
+  1641→model Task {
+  1642→  id              String   @id @default(cuid())
+  1643→  graphId         String
+  1644→  graph           TaskGraph @relation(fields: [graphId], references: [id], onDelete: Cascade)
+  1645→  parentTaskId    String?
+  1646→  title           String
+  1647→  description     String
+  1648→  assignedAgentId String?
+  1649→  status          String   @default("pending")  // pending | in_progress | completed | failed | blocked
+  1650→  dependencies    String   @default("[]")  // JSON array of task IDs
+  1651→  result          String?
+  1652→  createdAt       DateTime @default(now())
+  1653→  updatedAt       DateTime @updatedAt
+  1654→  
+  1655→  @@index([graphId])
+  1656→  @@index([status])
+  1657→}
+  1658→```
+  1659→
+  1660→### 8.2 — Cron & Webhook Triggers
+  1661→
+  1662→```prisma
+  1663→model AgentTrigger {
+  1664→  id        String   @id @default(cuid())
+  1665→  agentId   String
+  1666→  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  1667→  type      String   // cron | webhook | event
+  1668→  config    String   // JSON: cron expression, webhook secret, event filter
+  1669→  enabled   Boolean  @default(true)
+  1670→  lastRunAt DateTime?
+  1671→  createdAt DateTime @default(now())
+  1672→  
+  1673→  @@index([agentId])
+  1674→  @@index([type])
+  1675→}
+  1676→```
+  1677→
+  1678→### 8.3 — Agent Templates V2
+  1679→
+  1680→```prisma
+  1681→model AgentTemplate {
+  1682→  id          String   @id @default(cuid())
+  1683→  name        String
+  1684→  description String
+  1685→  category    String   @default("custom")  // research | writing | code | business | custom
+  1686→  config      String   // JSON: full AgentConfig + TeamConfig
+  1687→  isPublic    Boolean  @default(false)
+  1688→  useCount    Int      @default(0)
+  1689→  createdAt   DateTime @default(now())
+  1690→  
+  1691→  @@index([category])
+  1692→  @@index([isPublic])
+  1693→}
+  1694→```
+  1695→
+  1696→**New multi-agent templates:**
+  1697→
+  1698→| Template | Orchestration | Agents | Use Case |
+  1699→|----------|---------------|--------|----------|
+  1700→| Deep Research | Sequential | researcher → writer | Multi-source research + synthesis |
+  1701→| Code Reviewer | Reflection | executor → critic | Write code, self-critique, iterate |
+  1702→| Project Planner | Hierarchical | planner → 2x executor | Complex project decomposition |
+  1703→| Market Analyst | Parallel | 3x researcher | Parallel market research |
+  1704→| Content Pipeline | Sequential | researcher → writer → reviewer | End-to-end content creation |
+  1705→
+  1706→---
+  1707→
+  1708→## 9. Database Schema Evolution
+  1709→
+  1710→### Complete Schema (All Phases)
+  1711→
+  1712→```prisma
+  1713→datasource db {
+  1714→  provider = "sqlite"
+  1715→  url      = "file:./../db/custom.db"
+  1716→}
+  1717→
+  1718→// ============ CORE MODELS (V1 + V2) ============
+  1719→
+  1720→model User {
+  1721→  id        String   @id @default(cuid())
+  1722→  email     String   @unique
+  1723→  name      String?
+  1724→  createdAt DateTime @default(now())
+  1725→  updatedAt DateTime @updatedAt
+  1726→  agents    Agent[]
+  1727→}
+  1728→
+  1729→model Agent {
+  1730→  id                  String   @id @default(cuid())
+  1731→  userId              String?  // For future auth
+  1732→  name                String
+  1733→  goal                String
+  1734→  personality         String   @default("helpful and thorough")
+  1735→  tools               String   @default("search,write,code,browser")
+  1736→  shortTermMemory     Boolean  @default(true)
+  1737→  longTermMemory      Boolean  @default(false)
+  1738→  maxSteps            Int      @default(10)
+  1739→  autoRun             Boolean  @default(false)
+  1740→  outputFormat        String   @default("markdown")
+  1741→  graphData           String?  // JSON
+  1742→  
+  1743→  // V2 Phase 1 additions
+  1744→  role                String   @default("general")
+  1745→  permissions         String   @default("read,write,execute")
+  1746→  orchestrationMode   String   @default("single")
+  1747→  maxConcurrency      Int      @default(3)
+  1748→  reflectionEnabled   Boolean  @default(false)
+  1749→  reflectionMaxIter   Int      @default(3)
+  1750→  reflectionCriteria  String   @default("APPROVED")
+  1751→  model               String   @default("gemini-2.5-pro")
+  1752→  teamId              String?
+  1753→  
+  1754→  createdAt           DateTime @default(now())
+  1755→  updatedAt           DateTime @updatedAt
+  1756→
+  1757→  runs        AgentRun[]
+  1758→  memories    AgentMemory[]
+  1759→  artifacts   Artifact[]
+  1760→  triggers    AgentTrigger[]
+  1761→  team        Team?       @relation(fields: [teamId], references: [id])
+  1762→
+  1763→  @@index([teamId])
+  1764→  @@index([role])
+  1765→}
+  1766→
+  1767→model AgentRun {
+  1768→  id              String   @id @default(cuid())
+  1769→  agentId         String
+  1770→  agent           Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  1771→  status          String   @default("pending")
+  1772→  result          String?
+  1773→  
+  1774→  // V2 Phase 3 additions
+  1775→  totalTokens     Int?
+  1776→  totalLatencyMs  Int?
+  1777→  metrics         String?  // JSON
+  1778→
+  1779→  createdAt       DateTime @default(now())
+  1780→  updatedAt       DateTime @updatedAt
+  1781→
+  1782→  steps           Step[]
+  1783→  timelineEvents  TimelineEvent[]
+  1784→  reflections     ReflectionIteration[]
+  1785→
+  1786→  @@index([agentId])
+  1787→  @@index([status])
+  1788→  @@index([createdAt])
+  1789→}
+  1790→
+  1791→model Step {
+  1792→  id                  String   @id @default(cuid())
+  1793→  runId               String
+  1794→  run                 AgentRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  1795→  stepNum             Int
+  1796→  tool                String
+  1797→  input               String
+  1798→  result              String
+  1799→  
+  1800→  // V2 additions
+  1801→  verificationStatus  String?  // verified | failed | needs_review
+  1802→  verificationDetails String?  // JSON
+  1803→  latencyMs           Int?
+  1804→  tokenCount          Int?
+  1805→
+  1806→  createdAt           DateTime @default(now())
+  1807→
+  1808→  @@index([runId])
+  1809→  @@index([stepNum])
+  1810→}
+  1811→
+  1812→// ============ TEAM MODELS (Phase 1) ============
+  1813→
+  1814→model Team {
+  1815→  id              String   @id @default(cuid())
+  1816→  name            String
+  1817→  mode            String   @default("sequential")
+  1818→  maxConcurrency  Int      @default(3)
+  1819→  terminationType String   @default("max_steps")
+  1820→  terminationValue Int     @default(20)
+  1821→  sharedContext   Boolean  @default(false)
+  1822→  createdAt       DateTime @default(now())
+  1823→  updatedAt       DateTime @updatedAt
+  1824→
+  1825→  agents          Agent[]
+  1826→}
+  1827→
+  1828→// ============ MEMORY MODELS (Phase 2) ============
+  1829→
+  1830→model AgentMemory {
+  1831→  id        String   @id @default(cuid())
+  1832→  agentId   String
+  1833→  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  1834→  tier      String   @default("persistent")
+  1835→  key       String
+  1836→  value     String
+  1837→  expiresAt DateTime?
+  1838→  createdAt DateTime @default(now())
+  1839→  updatedAt DateTime @updatedAt
+  1840→
+  1841→  @@unique([agentId, key, tier])
+  1842→  @@index([agentId, tier])
+  1843→}
+  1844→
+  1845→model Artifact {
+  1846→  id        String   @id @default(cuid())
+  1847→  agentId   String
+  1848→  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  1849→  runId     String?
+  1850→  name      String
+  1851→  type      String   @default("text")
+  1852→  content   String
+  1853→  metadata  String?
+  1854→  createdAt DateTime @default(now())
+  1855→
+  1856→  @@unique([agentId, name])
+  1857→  @@index([agentId, type])
+  1858→}
+  1859→
+  1860→// ============ GOVERNANCE MODELS (Phase 3) ============
+  1861→
+  1862→model PolicyRule {
+  1863→  id          String   @id @default(cuid())
+  1864→  name        String
+  1865→  description String?
+  1866→  condition   String   // JSON
+  1867→  action      String   // allow | block | ask_user | shadow
+  1868→  priority    Int      @default(0)
+  1869→  enabled     Boolean  @default(true)
+  1870→  createdAt   DateTime @default(now())
+  1871→  updatedAt   DateTime @updatedAt
+  1872→}
+  1873→
+  1874→model ApprovalRequest {
+  1875→  id            String   @id @default(cuid())
+  1876→  agentId       String
+  1877→  runId         String?
+  1878→  tool          String
+  1879→  input         String
+  1880→  riskLevel     String   @default("medium")
+  1881→  status        String   @default("pending")
+  1882→  requestedAt   DateTime @default(now())
+  1883→  respondedAt   DateTime?
+  1884→  respondedBy   String?
+  1885→  reason        String?
+  1886→
+  1887→  @@index([status])
+  1888→  @@index([agentId])
+  1889→}
+  1890→
+  1891→model AuditLog {
+  1892→  id         String   @id @default(cuid())
+  1893→  timestamp  DateTime @default(now())
+  1894→  agentId    String
+  1895→  runId      String?
+  1896→  action     String
+  1897→  details    String   // JSON
+  1898→  outcome    String
+  1899→  riskLevel  String?
+  1900→
+  1901→  @@index([agentId])
+  1902→  @@index([runId])
+  1903→  @@index([timestamp])
+  1904→}
+  1905→
+  1906→model TimelineEvent {
+  1907→  id          String   @id @default(cuid())
+  1908→  runId       String
+  1909→  type        String
+  1910→  timestamp   DateTime @default(now())
+  1911→  durationMs  Int?
+  1912→  tokenCount  Int?
+  1913→  metadata    String   // JSON
+  1914→  error       String?
+  1915→
+  1916→  @@index([runId])
+  1917→  @@index([type])
+  1918→  @@index([timestamp])
+  1919→}
+  1920→
+  1921→model ReflectionIteration {
+  1922→  id          String   @id @default(cuid())
+  1923→  runId       String
+  1924→  iteration   Int
+  1925→  output      String
+  1926→  critique    String
+  1927→  approved    Boolean  @default(false)
+  1928→  createdAt   DateTime @default(now())
+  1929→
+  1930→  @@index([runId])
+  1931→}
+  1932→
+  1933→// ============ ADVANCED MODELS (Phase 4) ============
+  1934→
+  1935→model TaskGraph {
+  1936→  id         String   @id @default(cuid())
+  1937→  runId      String
+  1938→  status     String   @default("planning")
+  1939→  createdAt  DateTime @default(now())
+  1940→  updatedAt  DateTime @updatedAt
+  1941→
+  1942→  tasks      Task[]
+  1943→
+  1944→  @@index([runId])
+  1945→}
+  1946→
+  1947→model Task {
+  1948→  id               String    @id @default(cuid())
+  1949→  graphId          String
+  1950→  graph            TaskGraph @relation(fields: [graphId], references: [id], onDelete: Cascade)
+  1951→  parentTaskId     String?
+  1952→  title            String
+  1953→  description      String
+  1954→  assignedAgentId  String?
+  1955→  status           String    @default("pending")
+  1956→  dependencies     String    @default("[]")
+  1957→  result           String?
+  1958→  createdAt        DateTime  @default(now())
+  1959→  updatedAt        DateTime  @updatedAt
+  1960→
+  1961→  @@index([graphId])
+  1962→  @@index([status])
+  1963→}
+  1964→
+  1965→model AgentTrigger {
+  1966→  id        String   @id @default(cuid())
+  1967→  agentId   String
+  1968→  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  1969→  type      String   // cron | webhook | event
+  1970→  config    String   // JSON
+  1971→  enabled   Boolean  @default(true)
+  1972→  lastRunAt DateTime?
+  1973→  createdAt DateTime @default(now())
+  1974→
+  1975→  @@index([agentId])
+  1976→  @@index([type])
+  1977→}
+  1978→
+  1979→model AgentTemplate {
+  1980→  id          String   @id @default(cuid())
+  1981→  name        String
+  1982→  description String
+  1983→  category    String   @default("custom")
+  1984→  config      String   // JSON
+  1985→  isPublic    Boolean  @default(false)
+  1986→  useCount    Int      @default(0)
+  1987→  createdAt   DateTime @default(now())
+  1988→
+  1989→  @@index([category])
+  1990→  @@index([isPublic])
+  1991→}
+  1992→```
+  1993→
+  1994→---
+  1995→
+  1996→## 10. API Surface
+  1997→
+  1998→### Complete V2 API Map
+  1999→
+  2000→```
+
+[showing lines 1-2000 of 2379; use offset=2001 with limit to continue reading]

@@ -1,0 +1,320 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Agent {
+  id              String   @id @default(cuid())
+  name            String
+  goal            String
+  personality     String   @default("helpful assistant")
+  tools           String   @default("search,write,code,browser") // comma-separated
+  shortTermMemory Boolean  @default(true)
+  longTermMemory  Boolean  @default(false)
+  maxSteps        Int      @default(10)
+  autoRun         Boolean  @default(true)
+  outputFormat    String   @default("markdown") // text | json | markdown
+  graphData       String?  // JSON string for React Flow nodes/edges
+
+  // V2 Phase 1 additions
+  role                String  @default("general") // general|planner|researcher|executor|critic|reviewer
+  model               String  @default("gemini-2.5-pro")
+  orchestrationMode   String  @default("single") // single|sequential|group|hierarchical|parallel
+  maxConcurrency      Int     @default(3)
+  reflectionEnabled   Boolean @default(false)
+  reflectionMaxIter   Int     @default(3)
+  reflectionCriteria  String  @default("APPROVED")
+  teamId              String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  runs     AgentRun[]
+  team     Team?    @relation(fields: [teamId], references: [id])
+
+  @@index([teamId])
+  @@index([role])
+}
+
+model AgentRun {
+  id        String   @id @default(cuid())
+  agentId   String
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  status    String   @default("pending") // pending | running | completed | failed | stopped
+  result    String?  // final result text
+
+  // V2 Phase 3 additions
+  totalTokens    Int?
+  totalLatencyMs Int?
+  metrics        String? // JSON
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  steps     Step[]
+
+  @@index([agentId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Step {
+  id        String   @id @default(cuid())
+  runId     String
+  run       AgentRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  stepNum   Int
+  tool      String   // search | write | code | browser | finish
+  input     String
+  result    String
+
+  // V2 additions
+  verificationStatus  String? // verified | failed | needs_review
+  verificationDetails String? // JSON
+  latencyMs           Int?
+  tokenCount          Int?
+
+  createdAt DateTime @default(now())
+
+  @@index([runId])
+  @@index([stepNum])
+}
+
+// ============ Team Model (Phase 1) ============
+
+model Team {
+  id              String   @id @default(cuid())
+  name            String
+  mode            String   @default("sequential") // sequential|group|hierarchical|parallel
+  maxConcurrency  Int      @default(3)
+  terminationType String   @default("max_steps") // max_steps|text_mention|max_messages
+  terminationValue Int     @default(20)
+  sharedContext   Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  agents Agent[]
+}
+
+// ============ Memory Models (Phase 2) ============
+
+model AgentMemory {
+  id        String   @id @default(cuid())
+  agentId   String
+  tier      String   @default("persistent") // session | persistent | artifact
+  key       String
+  value     String   // JSON
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([agentId, key, tier])
+  @@index([agentId, tier])
+}
+
+model Artifact {
+  id        String   @id @default(cuid())
+  agentId   String
+  runId     String?
+  name      String
+  type      String   @default("text") // code | text | json | markdown | file
+  content   String
+  metadata  String?  // JSON
+  createdAt DateTime @default(now())
+
+  @@unique([agentId, name])
+  @@index([agentId, type])
+}
+
+// ============ Governance Models (Phase 3) ============
+
+model PolicyRule {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  condition   String   // JSON
+  action      String   // allow | block | ask_user | shadow
+  priority    Int      @default(0)
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ApprovalRequest {
+  id            String   @id @default(cuid())
+  agentId       String
+  runId         String?
+  tool          String
+  input         String
+  riskLevel     String   @default("medium") // low | medium | high | critical
+  status        String   @default("pending") // pending | approved | denied | expired
+  requestedAt   DateTime @default(now())
+  respondedAt   DateTime?
+  respondedBy   String?
+  reason        String?
+
+  @@index([status])
+  @@index([agentId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  timestamp  DateTime @default(now())
+  agentId    String
+  runId      String?
+  action     String   // tool_call | policy_check | approval | state_change
+  details    String   // JSON
+  outcome    String   // allowed | blocked | pending | approved | denied
+  riskLevel  String?
+
+  @@index([agentId])
+  @@index([runId])
+  @@index([timestamp])
+}
+
+model TimelineEvent {
+  id          String   @id @default(cuid())
+  runId       String
+  type        String   // run_start|step_start|llm_call|tool_execution|validation|approval_request|error|step_complete|run_complete
+  timestamp   DateTime @default(now())
+  durationMs  Int?
+  tokenCount  Int?
+  metadata    String   // JSON
+  error       String?
+
+  @@index([runId])
+  @@index([type])
+  @@index([timestamp])
+}
+
+model ReflectionIteration {
+  id          String   @id @default(cuid())
+  runId       String
+  iteration   Int
+  output      String
+  critique    String
+  approved    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([runId])
+}
+
+// ============ Template & Trigger Models (Phase 4) ============
+
+model AgentTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  category    String   @default("general") // general | research | coding | writing | business | multi-agent
+  config      String   // JSON string of AgentConfig
+  isPublic    Boolean  @default(true)
+  usageCount  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([isPublic])
+}
+
+model AgentTrigger {
+  id          String   @id @default(cuid())
+  agentId     String
+  type        String   // cron | webhook | event
+  config      String   // JSON: { schedule?, event?, url? }
+  enabled     Boolean  @default(true)
+  lastRunAt   DateTime?
+  nextRunAt   DateTime?
+  runCount    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([agentId])
+  @@index([type])
+  @@index([enabled])
+}
+
+model TaskNode {
+  id          String    @id @default(cuid())
+  graphId     String
+  graph       TaskGraph @relation(fields: [graphId], references: [id], onDelete: Cascade)
+  agentId     String?
+  label       String
+  type        String    @default("agent") // agent | condition | merge | input | output
+  config      String    @default("{}") // JSON
+  positionX   Float     @default(0)
+  positionY   Float     @default(0)
+  createdAt   DateTime  @default(now())
+
+  @@index([graphId])
+}
+
+model TaskEdge {
+  id          String    @id @default(cuid())
+  graphId     String
+  graph       TaskGraph @relation(fields: [graphId], references: [id], onDelete: Cascade)
+  sourceId    String
+  targetId    String
+  condition   String?   // JSON condition for conditional edges
+  label       String?
+  createdAt   DateTime  @default(now())
+
+  @@index([graphId])
+}
+
+model TaskGraph {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  nodes       TaskNode[]
+  edges       TaskEdge[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ============ Hermes Causal DAG Models ============
+
+model HermesEvent {
+  id              String   @id // BrandedEventId
+  runId           String
+  eventType       String   // MODEL | DECISION | EXECUTION | SYSTEM | TELEMETRY
+  parentEventIds  String   // JSON array of BrandedEventId
+  causalDepth     Int      @default(0)
+  topologicalRank Int      @default(-1)
+  payload         String   // JSON
+  contentHash     String
+  agentId         String?
+  branch          String?
+  timestamp       DateTime @default(now())
+
+  @@index([runId])
+  @@index([eventType])
+  @@index([causalDepth])
+  @@index([timestamp])
+}
+
+model CausalCheckpoint {
+  id          String   @id @default(cuid())
+  runId       String
+  atEventId   String
+  eventCount  Int
+  stateHash   String
+  state       String   // JSON serialized HermesState
+  createdAt   DateTime @default(now())
+
+  @@index([runId])
+  @@index([eventCount])
+}

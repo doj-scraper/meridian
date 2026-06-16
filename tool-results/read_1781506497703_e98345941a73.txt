@@ -1,0 +1,2002 @@
+     1→     1→Good. This is the missing mathematical core between “DAG visualization” and “real causal execution semantics.”
+     2→     2→
+     3→     3→What you need here is not UI logic, but a frontier resolution algorithm that defines what “next executable event” even means in a partial order system.
+     4→     4→
+     5→     5→⸻
+     6→     6→
+     7→     7→🧠 Frontier Solver Algorithm (Causal Execution Semantics Core)
+     8→     8→
+     9→     9→1. Problem definition
+    10→    10→
+    11→    11→Given a causal graph:
+    12→    12→
+    13→    13→* nodes = events
+    14→    14→* edges = causal dependencies (directed acyclic, potentially partial)
+    15→    15→* branch constraints exist (optional)
+    16→    16→
+    17→    17→We need to compute:
+    18→    18→
+    19→    19→the set of events that are currently executable
+    20→    20→
+    21→    21→This is the causal frontier.
+    22→    22→
+    23→    23→⸻
+    24→    24→
+    25→    25→2. Formal definition
+    26→    26→
+    27→    27→A node n is in the frontier if:
+    28→    28→
+    29→    29→∀ parent ∈ Parents(n):
+    30→    30→    parent ∈ Visited
+    31→    31→
+    32→    32→AND:
+    33→    33→
+    34→    34→n ∉ Visited
+    35→    35→
+    36→    36→AND (branch constraint):
+    37→    37→
+    38→    38→n.branch ∈ activeBranchSet
+    39→    39→
+    40→    40→⸻
+    41→    41→
+    42→    42→3. Key insight (important)
+    43→    43→
+    44→    44→This is NOT a queue.
+    45→    45→
+    46→    46→It is a constraint satisfaction surface over a DAG.
+    47→    47→
+    48→    48→So you do NOT “pop next event”.
+    49→    49→
+    50→    50→You recompute a frontier set at every step.
+    51→    51→
+    52→    52→⸻
+    53→    53→
+    54→    54→4. Core algorithm
+    55→    55→
+    56→    56→Types
+    57→    57→
+    58→    58→type NodeId = string
+    59→    59→interface FrontierState {
+    60→    60→  visited: Set<NodeId>
+    61→    61→  frontier: Set<NodeId>
+    62→    62→}
+    63→    63→
+    64→    64→⸻
+    65→    65→
+    66→    66→Main solver
+    67→    67→
+    68→    68→export function computeFrontier(
+    69→    69→  graph: CausalGraph,
+    70→    70→  visited: Set<NodeId>,
+    71→    71→  activeBranches?: Set<string>
+    72→    72→): Set<NodeId> {
+    73→    73→  const frontier = new Set<NodeId>()
+    74→    74→  for (const node of graph.nodes) {
+    75→    75→    if (visited.has(node.id)) continue
+    76→    76→    if (!isBranchAllowed(node, activeBranches)) continue
+    77→    77→    const parents = graph.edges
+    78→    78→      .filter(e => e.target === node.id && e.type === "causal")
+    79→    79→      .map(e => e.source)
+    80→    80→    const isReady = parents.every(p => visited.has(p))
+    81→    81→    if (isReady) {
+    82→    82→      frontier.add(node.id)
+    83→    83→    }
+    84→    84→  }
+    85→    85→  return frontier
+    86→    86→}
+    87→    87→
+    88→    88→⸻
+    89→    89→
+    90→    90→5. Branch constraint logic
+    91→    91→
+    92→    92→function isBranchAllowed(
+    93→    93→  node: CausalNode,
+    94→    94→  activeBranches?: Set<string>
+    95→    95→): boolean {
+    96→    96→  if (!activeBranches || activeBranches.size === 0) return true
+    97→    97→  // if node has no branch metadata → global node
+    98→    98→  if (!(node as any).branchId) return true
+    99→    99→  return activeBranches.has((node as any).branchId)
+   100→   100→}
+   101→   101→
+   102→   102→⸻
+   103→   103→
+   104→   104→6. Execution resolution policy (important)
+   105→   105→
+   106→   106→Frontier gives you multiple valid next steps.
+   107→   107→
+   108→   108→You must decide:
+   109→   109→
+   110→   110→Policy A — deterministic (recommended default)
+   111→   111→
+   112→   112→pick = lowest(eventSequence)
+   113→   113→
+   114→   114→Policy B — causal entropy exploration
+   115→   115→
+   116→   116→pick = highest out-degree node first
+   117→   117→
+   118→   118→Policy C — LLM-guided (dangerous but powerful)
+   119→   119→
+   120→   120→pick = model.rank(frontier)
+   121→   121→
+   122→   122→⸻
+   123→   123→
+   124→   124→7. Critical invariant (DO NOT BREAK)
+   125→   125→
+   126→   126→If node ∉ frontier → it is illegal to execute it
+   127→   127→
+   128→   128→This enforces:
+   129→   129→
+   130→   130→* causal correctness
+   131→   131→* replay determinism
+   132→   132→* branch safety
+   133→   133→* kernel reproducibility
+   134→   134→
+   135→   135→⸻
+   136→   136→
+   137→   137→8. Extension: speculative frontier
+   138→   138→
+   139→   139→For Phase 6 readiness:
+   140→   140→
+   141→   141→export function computeSpeculativeFrontier(
+   142→   142→  graph,
+   143→   143→  visited,
+   144→   144→  hypotheticalEvent: CausalNode
+   145→   145→): Set<NodeId> {
+   146→   146→  const simulatedVisited = new Set([...visited, hypotheticalEvent.id])
+   147→   147→  return computeFrontier(graph, simulatedVisited)
+   148→   148→}
+   149→   149→
+   150→   150→This is the basis of:
+   151→   151→
+   152→   152→* “what if this decision was taken?”
+   153→   153→* multi-branch simulation
+   154→   154→* counterfactual replay
+   155→   155→
+   156→   156→⸻
+   157→   157→
+   158→   158→9. Why this is the real kernel primitive
+   159→   159→
+   160→   160→Everything else depends on this:
+   161→   161→
+   162→   162→System layer    Depends on frontier
+   163→   163→Replay engine   YES
+   164→   164→DAG visualizer  YES
+   165→   165→Agent execution inversion       CRITICAL
+   166→   166→Branching system        YES
+   167→   167→Phase 6 ordering algebra        DIRECT REPLACEMENT
+   168→   168→
+   169→   169→⸻
+   170→   170→
+   171→   171→📍 Where this fits in your Hermes plan
+   172→   172→
+   173→   173→This is the important part.
+   174→   174→
+   175→   175→You should NOT create a separate plan.
+   176→   176→
+   177→   177→You should insert this into your existing plan as a foundational sub-phase.
+   178→   178→
+   179→   179→⸻
+   180→   180→
+   181→   181→✅ Recommended integration
+   182→   182→
+   183→   183→Insert between:
+   184→   184→
+   185→   185→Phase 2 (Replay correctness)
+   186→   186→
+   187→   187→and
+   188→   188→
+   189→   189→Phase 3 (Agent inversion)
+   190→   190→
+   191→   191→⸻
+   192→   192→
+   193→   193→➤ New Phase: 2.6 — Causal Frontier & Execution Semantics Layer
+   194→   194→
+   195→   195→Name:
+   196→   196→
+   197→   197→Causal Frontier Solver (Execution Semantics Core)
+   198→   198→
+   199→   199→⸻
+   200→   200→
+   201→   201→What it becomes in your architecture
+   202→   202→
+   203→   203→You now have:
+   204→   204→
+   205→   205→Before
+   206→   206→
+   207→   207→event log → reducer → state → UI
+   208→   208→
+   209→   209→After
+   210→   210→
+   211→   211→event log
+   212→   212→   ↓
+   213→   213→causal graph
+   214→   214→   ↓
+   215→   215→FRONTIER SOLVER   ← NEW CORE
+   216→   216→   ↓
+   217→   217→replay engine / agent execution / speculation
+   218→   218→   ↓
+   219→   219→UI projection (React Flow)
+   220→   220→
+   221→   221→⸻
+   222→   222→
+   223→   223→Why it must exist here (not later)
+   224→   224→
+   225→   225→If you delay this until Phase 6:
+   226→   226→
+   227→   227→* you will accidentally hardcode linear execution assumptions into Phase 3
+   228→   228→* your replay engine will become “timeline-based” instead of “causal”
+   229→   229→* DAG conversion becomes a rewrite instead of a substitution
+   230→   230→
+   231→   231→This module is what makes Phase 3 inversion mathematically sound instead of just architectural
+   232→   232→
+   233→   233→⸻
+   234→   234→
+   235→   235→Final recommendation (very explicit)
+   236→   236→
+   237→   237→Do NOT create a new plan.
+   238→   238→
+   239→   239→Instead:
+   240→   240→
+   241→   241→✔ Insert Phase 2.6 into Hermes plan
+   242→   242→
+   243→   243→Rename Phase 3 dependency chain to:
+   244→   244→
+   245→   245→* Phase 2 ✔ Event Kernel
+   246→   246→* Phase 2.5 ✔ Causal Projection (React Flow)
+   247→   247→* Phase 2.6 ✔ Frontier Solver (this)
+   248→   248→* Phase 3 ✔ Agent inversion
+   249→   249→* Phase 4 ✔ Branching
+   250→   250→* Phase 5 ✔ Constitution runtime
+   251→   251→* Phase 6 ✔ DAG substrate formalization
+   252→   252→
+   253→   253→⸻
+   254→   254→
+   255→   255→Closing structural truth
+   256→   256→
+   257→   257→This piece is the actual execution law of your system.
+   258→   258→
+   259→   259→Everything else is representation.
+   260→   260→
+   261→   261→This is the rule that decides:
+   262→   262→
+   263→   263→“what can happen next in a world where events are causally constrained rather than sequentially scheduled”
+   264→   264→
+   265→   265→If you want next step, the only correct continuation is:
+   266→   266→
+   267→   267→formalizing the ordering algebra (Phase 6 precursor) so frontier resolution becomes mathematically provable instead of heuristic.
+   268→   268→
+   269→   269→
+   270→   270→You integrate this at a very specific layer in your Hermes roadmap: it is not “UI enhancement”, it is the first graphical projection of the causal substrate. That distinction matters because it determines where it sits in the dependency lattice.
+   271→   271→
+   272→   272→Right now your plan has two implicit visualizations:
+   273→   273→
+   274→   274→* Phase 2: linear timeline + replay validation UI
+   275→   275→* Phase 6: DAG substrate + full topology visualization
+   276→   276→
+   277→   277→What you just built (XState machine + React Flow renderer) actually belongs in a new intermediate abstraction layer that bridges Phase 2 → Phase 4/6:
+   278→   278→
+   279→   279→call it: “Causal Projection Layer”
+   280→   280→
+   281→   281→⸻
+   282→   282→
+   283→   283→Where it plugs into your architecture
+   284→   284→
+   285→   285→1. Event Kernel (Phase 1–2 output)
+   286→   286→
+   287→   287→You already have:
+   288→   288→
+   289→   289→* HermesEvent (append-only log)
+   290→   290→* TraceId-scoped event stream
+   291→   291→* previousEventHash linear chain (Phase 1)
+   292→   292→* eventual parentIds DAG upgrade (Phase 6)
+   293→   293→
+   294→   294→This is your raw substrate
+   295→   295→
+   296→   296→⸻
+   297→   297→
+   298→   298→2. Materializer (Phase 2)
+   299→   299→
+   300→   300→You already defined:
+   301→   301→
+   302→   302→* deriveState(traceId)
+   303→   303→* deriveBlackboard(traceId)
+   304→   304→* reducer(state, event)
+   305→   305→
+   306→   306→This is your semantic projection (state)
+   307→   307→
+   308→   308→⸻
+   309→   309→
+   310→   310→3. NEW: Causal Graph Projection Layer (your React Flow + XState output)
+   311→   311→
+   312→   312→This is what your new work becomes:
+   313→   313→
+   314→   314→src/lib/hermes/projections/causal-graph.ts
+   315→   315→
+   316→   316→It takes:
+   317→   317→
+   318→   318→* event stream
+   319→   319→* optional branch metadata (Phase 4)
+   320→   320→* optional causation links (causationId, later parentIds)
+   321→   321→
+   322→   322→and produces:
+   323→   323→
+   324→   324→export interface CausalGraph {
+   325→   325→  nodes: CausalNode[]
+   326→   326→  edges: CausalEdge[]
+   327→   327→}
+   328→   328→export interface CausalNode {
+   329→   329→  id: string
+   330→   330→  type: "MODEL" | "DECISION" | "EXECUTION" | "SYSTEM" | "TELEMETRY"
+   331→   331→  label: string
+   332→   332→  timestamp: number
+   333→   333→  traceId: string
+   334→   334→  payload: unknown
+   335→   335→}
+   336→   336→export interface CausalEdge {
+   337→   337→  id: string
+   338→   338→  source: string
+   339→   339→  target: string
+   340→   340→  type: "causal" | "branch" | "correlation"
+   341→   341→}
+   342→   342→
+   343→   343→This is the visualizable projection of the event log, not state.
+   344→   344→
+   345→   345→Important: it is PURE DERIVATION. No UI logic, no state mutation.
+   346→   346→
+   347→   347→⸻
+   348→   348→
+   349→   349→4. React Flow Renderer (UI layer)
+   350→   350→
+   351→   351→Your React Flow component becomes a renderer only:
+   352→   352→
+   353→   353→CausalDAGView.tsx
+   354→   354→
+   355→   355→Consumes:
+   356→   356→
+   357→   357→const graph = buildCausalGraph(events)
+   358→   358→
+   359→   359→and maps:
+   360→   360→
+   361→   361→* nodes → React Flow nodes
+   362→   362→* edges → React Flow edges
+   363→   363→
+   364→   364→Key constraint:
+   365→   365→
+   366→   366→* React Flow is NOT allowed to define truth
+   367→   367→* it is only a projection of Hermes truth substrate
+   368→   368→
+   369→   369→So:
+   370→   370→
+   371→   371→* no local node mutation as system state
+   372→   372→* no “drag changes meaning”
+   373→   373→* dragging = UI-only annotations unless explicitly emitted as events
+   374→   374→
+   375→   375→⸻
+   376→   376→
+   377→   377→Where XState fits (important correction)
+   378→   378→
+   379→   379→Your instinct to use XState is good, but only in a narrow role:
+   380→   380→
+   381→   381→XState is NOT your kernel
+   382→   382→
+   383→   383→It should NOT model:
+   384→   384→
+   385→   385→* agent execution
+   386→   386→* event causality
+   387→   387→* workflow truth
+   388→   388→
+   389→   389→XState SHOULD model:
+   390→   390→
+   391→   391→* UI state of the DAG viewer
+   392→   392→* inspection modes
+   393→   393→* replay controls
+   394→   394→* branch selection
+   395→   395→* time cursor
+   396→   396→* highlight / focus states
+   397→   397→
+   398→   398→So you split it cleanly:
+   399→   399→
+   400→   400→dagViewer.machine.ts
+   401→   401→
+   402→   402→States:
+   403→   403→
+   404→   404→* idle
+   405→   405→* loadingTrace
+   406→   406→* renderingGraph
+   407→   407→* inspectingNode
+   408→   408→* replaying
+   409→   409→* comparingBranches
+   410→   410→
+   411→   411→Events:
+   412→   412→
+   413→   413→* TRACE_LOADED
+   414→   414→* NODE_SELECTED
+   415→   415→* REPLAY_START
+   416→   416→* REPLAY_STEP
+   417→   417→* BRANCH_SELECTED
+   418→   418→
+   419→   419→This is purely epistemic UI state, not system state.
+   420→   420→
+   421→   421→⸻
+   422→   422→
+   423→   423→The actual integration point in your plan
+   424→   424→
+   425→   425→Insert this as:
+   426→   426→
+   427→   427→▶ Phase 2.5 — Causal Projection Layer (NEW BRIDGE PHASE)
+   428→   428→
+   429→   429→Between Phase 2 and Phase 3.
+   430→   430→
+   431→   431→Why it belongs here
+   432→   432→
+   433→   433→Because:
+   434→   434→
+   435→   435→* Phase 2 proves correctness (replayable event log)
+   436→   436→* Phase 3 inverts execution model
+   437→   437→* Phase 4 introduces branching
+   438→   438→
+   439→   439→You need visualization BEFORE inversion so you can see the substrate before you mutate semantics.
+   440→   440→
+   441→   441→Without this phase:
+   442→   442→
+   443→   443→* Phase 3 becomes invisible complexity
+   444→   444→* debugging kernel inversion becomes impossible
+   445→   445→* DAG transition in Phase 6 becomes abrupt and unsafe
+   446→   446→
+   447→   447→⸻
+   448→   448→
+   449→   449→What you actually gain
+   450→   450→
+   451→   451→With this integration you get:
+   452→   452→
+   453→   453→1. Debuggability of kernel inversion
+   454→   454→
+   455→   455→You can literally see:
+   456→   456→
+   457→   457→* decision → execution → system mutation edges
+   458→   458→* causal violations before Phase 3
+   459→   459→
+   460→   460→2. Early validation of DAG model
+   461→   461→
+   462→   462→Even before parentIds exist, you can simulate:
+   463→   463→
+   464→   464→* inferred causation edges
+   465→   465→* heuristic linking (stepId → executionId → systemEventId)
+   466→   466→
+   467→   467→3. UI becomes a “truth probe”
+   468→   468→
+   469→   469→React Flow stops being UI and becomes:
+   470→   470→
+   471→   471→a projection instrument for verifying kernel correctness
+   472→   472→
+   473→   473→⸻
+   474→   474→
+   475→   475→Minimal integration diff into your plan
+   476→   476→
+   477→   477→Add:
+   478→   478→
+   479→   479→Phase 2.5 — Causal Projection Layer
+   480→   480→
+   481→   481→Deliverables:
+   482→   482→
+   483→   483→* causal-graph.ts (pure projection function)
+   484→   484→* dagViewer.machine.ts (XState UI controller)
+   485→   485→* CausalDAGView.tsx (React Flow renderer)
+   486→   486→* event → node/edge mapping spec
+   487→   487→* replay cursor binding to graph highlighting
+   488→   488→
+   489→   489→Depends on:
+   490→   490→
+   491→   491→* Phase 2 complete (event replay works)
+   492→   492→
+   493→   493→Feeds into:
+   494→   494→
+   495→   495→* Phase 3 (agent inversion debugging surface)
+   496→   496→* Phase 4 (branch visualization)
+   497→   497→* Phase 6 (true DAG substrate rendering)
+   498→   498→
+   499→   499→⸻
+   500→   500→
+   501→   501→Final structural insight
+   502→   502→
+   503→   503→Right now your system has:
+   504→   504→
+   505→   505→* Kernel layer → events
+   506→   506→* State layer → reducer
+   507→   507→* UI layer → dashboards
+   508→   508→
+   509→   509→This addition introduces the missing fourth layer:
+   510→   510→
+   511→   511→Projection layer (causal graph as first-class derived artifact)
+   512→   512→
+   513→   513→That is the real architectural win here.
+   514→   514→
+   515→   515→⸻
+   516→   516→
+   517→   517→If you want next step, I would suggest:
+   518→   518→
+   519→   519→1. define the causation inference rules (how edges are derived before Phase 6 parentIds exist)
+   520→   520→2. then scaffold causal-graph.ts first (pure function, no React)
+   521→   521→3. then wire React Flow
+   522→   522→4. then bind XState viewer machine
+   523→   523→
+   524→   524→That sequence avoids UI-first coupling and keeps your inversion clean.
+   525→   525→
+   526→   526→
+   527→   527→Good. Then the next step is to lock the projection contract first, before any React or XState touches the system. Everything else depends on that invariance.
+   528→   528→
+   529→   529→You want a deterministic mapping from event stream → graph. No ambiguity, no UI leakage.
+   530→   530→
+   531→   531→⸻
+   532→   532→
+   533→   533→1. Define the causal projection rules (this is the real core)
+   534→   534→
+   535→   535→Before code, you need a stable rule set for edge inference.
+   536→   536→
+   537→   537→Node rule
+   538→   538→
+   539→   539→Each event becomes exactly one node:
+   540→   540→
+   541→   541→* node.id = event.eventId
+   542→   542→* node.type = event.tier
+   543→   543→* node.timestamp = event.timestamp
+   544→   544→
+   545→   545→No aggregation, no collapsing.
+   546→   546→
+   547→   547→⸻
+   548→   548→
+   549→   549→Edge rules (Phase 2–4 compatible heuristic model)
+   550→   550→
+   551→   551→You don’t yet have parentIds, so causality is inferred:
+   552→   552→
+   553→   553→A. Explicit links (highest priority)
+   554→   554→
+   555→   555→If present:
+   556→   556→
+   557→   557→* causationId
+   558→   558→* executionEventId
+   559→   559→* correlationId
+   560→   560→
+   561→   561→Then:
+   562→   562→
+   563→   563→* event → causationId
+   564→   564→* decision → execution
+   565→   565→* execution → system mutation
+   566→   566→
+   567→   567→⸻
+   568→   568→
+   569→   569→B. Temporal step-chain (fallback)
+   570→   570→
+   571→   571→Within a traceId:
+   572→   572→
+   573→   573→* sorted by eventSequence
+   574→   574→* connect adjacent lifecycle events:
+   575→   575→
+   576→   576→Rules:
+   577→   577→
+   578→   578→* MODEL → DECISION (same step context)
+   579→   579→* DECISION → EXECUTION (same stepId or correlationId)
+   580→   580→* EXECUTION → SYSTEM (same stepId OR memory mutation reference)
+   581→   581→
+   582→   582→⸻
+   583→   583→
+   584→   584→C. Blackboard write coupling
+   585→   585→
+   586→   586→If:
+   587→   587→
+   588→   588→* SYSTEM.BLACKBOARD_WRITTEN
+   589→   589→
+   590→   590→Then:
+   591→   591→
+   592→   592→* connect from latest EXECUTION in same correlation window
+   593→   593→
+   594→   594→This is critical for visibility of side effects.
+   595→   595→
+   596→   596→⸻
+   597→   597→
+   598→   598→D. Telemetry isolation
+   599→   599→
+   600→   600→* TELEMETRY nodes are attached, not causal
+   601→   601→* edge type = "correlation"
+   602→   602→
+   603→   603→⸻
+   604→   604→
+   605→   605→2. Canonical projection function (this is your contract)
+   606→   606→
+   607→   607→This is the only thing React Flow depends on:
+   608→   608→
+   609→   609→export function buildCausalGraph(events: HermesEvent[]): CausalGraph {
+   610→   610→  const nodes: CausalNode[] = []
+   611→   611→  const edges: CausalEdge[] = []
+   612→   612→  // 1. Create nodes
+   613→   613→  for (const e of events) {
+   614→   614→    nodes.push({
+   615→   615→      id: e.eventId,
+   616→   616→      type: e.tier,
+   617→   617→      label: `${e.tier}:${e.eventSequence}`,
+   618→   618→      timestamp: e.timestamp,
+   619→   619→      traceId: e.traceId,
+   620→   620→      payload: e.payload
+   621→   621→    })
+   622→   622→  }
+   623→   623→  // 2. Build lookup indexes
+   624→   624→  const byId = new Map(nodes.map(n => [n.id, n]))
+   625→   625→  const byCorrelation = groupBy(events, e => e.correlationId)
+   626→   626→  const byStep = groupBy(events, e => (e.payload as any)?.stepId)
+   627→   627→  // 3. Explicit causation edges
+   628→   628→  for (const e of events) {
+   629→   629→    if ((e.payload as any)?.causationId) {
+   630→   630→      edges.push({
+   631→   631→        id: `${e.eventId}->${(e.payload as any).causationId}`,
+   632→   632→        source: e.eventId,
+   633→   633→        target: (e.payload as any).causationId,
+   634→   634→        type: "causal"
+   635→   635→      })
+   636→   636→    }
+   637→   637→  }
+   638→   638→  // 4. Step-chain edges (primary heuristic)
+   639→   639→  const sorted = [...events].sort((a, b) => a.eventSequence - b.eventSequence)
+   640→   640→  for (let i = 0; i < sorted.length - 1; i++) {
+   641→   641→    const a = sorted[i]
+   642→   642→    const b = sorted[i + 1]
+   643→   643→    if (a.traceId !== b.traceId) continue
+   644→   644→    edges.push({
+   645→   645→      id: `${a.eventId}->${b.eventId}`,
+   646→   646→      source: a.eventId,
+   647→   647→      target: b.eventId,
+   648→   648→      type: "causal"
+   649→   649→    })
+   650→   650→  }
+   651→   651→  // 5. Telemetry edges (non-causal)
+   652→   652→  for (const e of events) {
+   653→   653→    if (e.tier === "TELEMETRY") {
+   654→   654→      const anchor = findNearestExecution(e, events)
+   655→   655→      if (anchor) {
+   656→   656→        edges.push({
+   657→   657→          id: `${anchor.eventId}->${e.eventId}`,
+   658→   658→          source: anchor.eventId,
+   659→   659→          target: e.eventId,
+   660→   660→          type: "correlation"
+   661→   661→        })
+   662→   662→      }
+   663→   663→    }
+   664→   664→  }
+   665→   665→  return { nodes, edges }
+   666→   666→}
+   667→   667→
+   668→   668→This is your truth bridge.
+   669→   669→
+   670→   670→⸻
+   671→   671→
+   672→   672→3. React Flow layer (strictly dumb renderer)
+   673→   673→
+   674→   674→At this point React Flow is trivial:
+   675→   675→
+   676→   676→* nodes come from projection
+   677→   677→* edges come from projection
+   678→   678→* nothing else matters
+   679→   679→
+   680→   680→Key constraint:
+   681→   681→
+   682→   682→React Flow must never infer causality
+   683→   683→
+   684→   684→Only display.
+   685→   685→
+   686→   686→⸻
+   687→   687→
+   688→   688→4. XState machine role (clean separation)
+   689→   689→
+   690→   690→Your viewer machine now becomes:
+   691→   691→
+   692→   692→UI concerns only
+   693→   693→
+   694→   694→* loading trace
+   695→   695→* selecting node
+   696→   696→* replay cursor position
+   697→   697→* branch toggle
+   698→   698→* highlight mode
+   699→   699→
+   700→   700→It should NOT:
+   701→   701→
+   702→   702→* compute edges
+   703→   703→* modify graph
+   704→   704→* infer relationships
+   705→   705→
+   706→   706→Think of it as:
+   707→   707→
+   708→   708→“camera controller over a frozen causal object”
+   709→   709→
+   710→   710→⸻
+   711→   711→
+   712→   712→5. How this fits into your Hermes plan
+   713→   713→
+   714→   714→This plugs into your phases like this:
+   715→   715→
+   716→   716→Phase 2 (completed)
+   717→   717→
+   718→   718→✔ event log
+   719→   719→✔ replay
+   720→   720→✔ reducer
+   721→   721→
+   722→   722→⸻
+   723→   723→
+   724→   724→Phase 2.5 (NEW — this is your insertion point)
+   725→   725→
+   726→   726→✔ causal projection layer
+   727→   727→✔ React Flow DAG renderer
+   728→   728→✔ XState viewer controller
+   729→   729→
+   730→   730→This becomes your:
+   731→   731→
+   732→   732→first observable model of “kernel truth”
+   733→   733→
+   734→   734→⸻
+   735→   735→
+   736→   736→Phase 3 (now grounded)
+   737→   737→
+   738→   738→When you invert execution:
+   739→   739→
+   740→   740→you immediately see:
+   741→   741→
+   742→   742→* decision nodes appear
+   743→   743→* execution nodes branch
+   744→   744→* system mutations attach visibly
+   745→   745→
+   746→   746→No blind execution anymore.
+   747→   747→
+   748→   748→⸻
+   749→   749→
+   750→   750→Phase 4 (becomes natural)
+   751→   751→
+   752→   752→Branching becomes trivial because:
+   753→   753→
+   754→   754→* you already have graph nodes
+   755→   755→* you just introduce:
+   756→   756→    * branchId partitioning
+   757→   757→    * edge coloring per branch
+   758→   758→
+   759→   759→⸻
+   760→   760→
+   761→   761→Phase 6 (almost automatic now)
+   762→   762→
+   763→   763→You replace:
+   764→   764→
+   765→   765→* inferred edges ❌
+   766→   766→    with:
+   767→   767→* parentIds edges ✔
+   768→   768→
+   769→   769→Your UI barely changes — only source of truth improves.
+   770→   770→
+   771→   771→⸻
+   772→   772→
+   773→   773→6. The real architectural win
+   774→   774→
+   775→   775→What you just built is not UI.
+   776→   776→
+   777→   777→It is:
+   778→   778→
+   779→   779→a reversible visualization layer for a causal execution substrate
+   780→   780→
+   781→   781→Which gives you something most systems never get:
+   782→   782→
+   783→   783→* debuggable execution topology
+   784→   784→* replayable reasoning structure
+   785→   785→* pre-DAG observability of system causality
+   786→   786→
+   787→   787→⸻
+   788→   788→
+   789→   789→If you continue next step
+   790→   790→
+   791→   791→Do this in order:
+   792→   792→
+   793→   793→1. lock buildCausalGraph() as a pure module
+   794→   794→2. write snapshot tests on event fixtures (critical)
+   795→   795→3. only then wire React Flow
+   796→   796→4. only then connect XState
+   797→   797→
+   798→   798→If you want, next I can:
+   799→   799→
+   800→   800→* ￼ convert this into a strict TypeScript package boundary
+   801→   801→* or ￼ design the replay-time “causal animation engine” (this becomes very powerful for debugging agent reasoning chains)
+   802→   802→
+   803→   803→
+   804→   804→Good. Then the next step is to lock the projection contract first, before any React or XState touches the system. Everything else depends on that invariance.
+   805→   805→
+   806→   806→You want a deterministic mapping from event stream → graph. No ambiguity, no UI leakage.
+   807→   807→
+   808→   808→⸻
+   809→   809→
+   810→   810→1. Define the causal projection rules (this is the real core)
+   811→   811→
+   812→   812→Before code, you need a stable rule set for edge inference.
+   813→   813→
+   814→   814→Node rule
+   815→   815→
+   816→   816→Each event becomes exactly one node:
+   817→   817→
+   818→   818→* node.id = event.eventId
+   819→   819→* node.type = event.tier
+   820→   820→* node.timestamp = event.timestamp
+   821→   821→
+   822→   822→No aggregation, no collapsing.
+   823→   823→
+   824→   824→⸻
+   825→   825→
+   826→   826→Edge rules (Phase 2–4 compatible heuristic model)
+   827→   827→
+   828→   828→You don’t yet have parentIds, so causality is inferred:
+   829→   829→
+   830→   830→A. Explicit links (highest priority)
+   831→   831→
+   832→   832→If present:
+   833→   833→
+   834→   834→* causationId
+   835→   835→* executionEventId
+   836→   836→* correlationId
+   837→   837→
+   838→   838→Then:
+   839→   839→
+   840→   840→* event → causationId
+   841→   841→* decision → execution
+   842→   842→* execution → system mutation
+   843→   843→
+   844→   844→⸻
+   845→   845→
+   846→   846→B. Temporal step-chain (fallback)
+   847→   847→
+   848→   848→Within a traceId:
+   849→   849→
+   850→   850→* sorted by eventSequence
+   851→   851→* connect adjacent lifecycle events:
+   852→   852→
+   853→   853→Rules:
+   854→   854→
+   855→   855→* MODEL → DECISION (same step context)
+   856→   856→* DECISION → EXECUTION (same stepId or correlationId)
+   857→   857→* EXECUTION → SYSTEM (same stepId OR memory mutation reference)
+   858→   858→
+   859→   859→⸻
+   860→   860→
+   861→   861→C. Blackboard write coupling
+   862→   862→
+   863→   863→If:
+   864→   864→
+   865→   865→* SYSTEM.BLACKBOARD_WRITTEN
+   866→   866→
+   867→   867→Then:
+   868→   868→
+   869→   869→* connect from latest EXECUTION in same correlation window
+   870→   870→
+   871→   871→This is critical for visibility of side effects.
+   872→   872→
+   873→   873→⸻
+   874→   874→
+   875→   875→D. Telemetry isolation
+   876→   876→
+   877→   877→* TELEMETRY nodes are attached, not causal
+   878→   878→* edge type = "correlation"
+   879→   879→
+   880→   880→⸻
+   881→   881→
+   882→   882→2. Canonical projection function (this is your contract)
+   883→   883→
+   884→   884→This is the only thing React Flow depends on:
+   885→   885→
+   886→   886→export function buildCausalGraph(events: HermesEvent[]): CausalGraph {
+   887→   887→  const nodes: CausalNode[] = []
+   888→   888→  const edges: CausalEdge[] = []
+   889→   889→  // 1. Create nodes
+   890→   890→  for (const e of events) {
+   891→   891→    nodes.push({
+   892→   892→      id: e.eventId,
+   893→   893→      type: e.tier,
+   894→   894→      label: `${e.tier}:${e.eventSequence}`,
+   895→   895→      timestamp: e.timestamp,
+   896→   896→      traceId: e.traceId,
+   897→   897→      payload: e.payload
+   898→   898→    })
+   899→   899→  }
+   900→   900→  // 2. Build lookup indexes
+   901→   901→  const byId = new Map(nodes.map(n => [n.id, n]))
+   902→   902→  const byCorrelation = groupBy(events, e => e.correlationId)
+   903→   903→  const byStep = groupBy(events, e => (e.payload as any)?.stepId)
+   904→   904→  // 3. Explicit causation edges
+   905→   905→  for (const e of events) {
+   906→   906→    if ((e.payload as any)?.causationId) {
+   907→   907→      edges.push({
+   908→   908→        id: `${e.eventId}->${(e.payload as any).causationId}`,
+   909→   909→        source: e.eventId,
+   910→   910→        target: (e.payload as any).causationId,
+   911→   911→        type: "causal"
+   912→   912→      })
+   913→   913→    }
+   914→   914→  }
+   915→   915→  // 4. Step-chain edges (primary heuristic)
+   916→   916→  const sorted = [...events].sort((a, b) => a.eventSequence - b.eventSequence)
+   917→   917→  for (let i = 0; i < sorted.length - 1; i++) {
+   918→   918→    const a = sorted[i]
+   919→   919→    const b = sorted[i + 1]
+   920→   920→    if (a.traceId !== b.traceId) continue
+   921→   921→    edges.push({
+   922→   922→      id: `${a.eventId}->${b.eventId}`,
+   923→   923→      source: a.eventId,
+   924→   924→      target: b.eventId,
+   925→   925→      type: "causal"
+   926→   926→    })
+   927→   927→  }
+   928→   928→  // 5. Telemetry edges (non-causal)
+   929→   929→  for (const e of events) {
+   930→   930→    if (e.tier === "TELEMETRY") {
+   931→   931→      const anchor = findNearestExecution(e, events)
+   932→   932→      if (anchor) {
+   933→   933→        edges.push({
+   934→   934→          id: `${anchor.eventId}->${e.eventId}`,
+   935→   935→          source: anchor.eventId,
+   936→   936→          target: e.eventId,
+   937→   937→          type: "correlation"
+   938→   938→        })
+   939→   939→      }
+   940→   940→    }
+   941→   941→  }
+   942→   942→  return { nodes, edges }
+   943→   943→}
+   944→   944→
+   945→   945→This is your truth bridge.
+   946→   946→
+   947→   947→⸻
+   948→   948→
+   949→   949→3. React Flow layer (strictly dumb renderer)
+   950→   950→
+   951→   951→At this point React Flow is trivial:
+   952→   952→
+   953→   953→* nodes come from projection
+   954→   954→* edges come from projection
+   955→   955→* nothing else matters
+   956→   956→
+   957→   957→Key constraint:
+   958→   958→
+   959→   959→React Flow must never infer causality
+   960→   960→
+   961→   961→Only display.
+   962→   962→
+   963→   963→⸻
+   964→   964→
+   965→   965→4. XState machine role (clean separation)
+   966→   966→
+   967→   967→Your viewer machine now becomes:
+   968→   968→
+   969→   969→UI concerns only
+   970→   970→
+   971→   971→* loading trace
+   972→   972→* selecting node
+   973→   973→* replay cursor position
+   974→   974→* branch toggle
+   975→   975→* highlight mode
+   976→   976→
+   977→   977→It should NOT:
+   978→   978→
+   979→   979→* compute edges
+   980→   980→* modify graph
+   981→   981→* infer relationships
+   982→   982→
+   983→   983→Think of it as:
+   984→   984→
+   985→   985→“camera controller over a frozen causal object”
+   986→   986→
+   987→   987→⸻
+   988→   988→
+   989→   989→5. How this fits into your Hermes plan
+   990→   990→
+   991→   991→This plugs into your phases like this:
+   992→   992→
+   993→   993→Phase 2 (completed)
+   994→   994→
+   995→   995→✔ event log
+   996→   996→✔ replay
+   997→   997→✔ reducer
+   998→   998→
+   999→   999→⸻
+  1000→  1000→
+  1001→  1001→Phase 2.5 (NEW — this is your insertion point)
+  1002→  1002→
+  1003→  1003→✔ causal projection layer
+  1004→  1004→✔ React Flow DAG renderer
+  1005→  1005→✔ XState viewer controller
+  1006→  1006→
+  1007→  1007→This becomes your:
+  1008→  1008→
+  1009→  1009→first observable model of “kernel truth”
+  1010→  1010→
+  1011→  1011→⸻
+  1012→  1012→
+  1013→  1013→Phase 3 (now grounded)
+  1014→  1014→
+  1015→  1015→When you invert execution:
+  1016→  1016→
+  1017→  1017→you immediately see:
+  1018→  1018→
+  1019→  1019→* decision nodes appear
+  1020→  1020→* execution nodes branch
+  1021→  1021→* system mutations attach visibly
+  1022→  1022→
+  1023→  1023→No blind execution anymore.
+  1024→  1024→
+  1025→  1025→⸻
+  1026→  1026→
+  1027→  1027→Phase 4 (becomes natural)
+  1028→  1028→
+  1029→  1029→Branching becomes trivial because:
+  1030→  1030→
+  1031→  1031→* you already have graph nodes
+  1032→  1032→* you just introduce:
+  1033→  1033→    * branchId partitioning
+  1034→  1034→    * edge coloring per branch
+  1035→  1035→
+  1036→  1036→⸻
+  1037→  1037→
+  1038→  1038→Phase 6 (almost automatic now)
+  1039→  1039→
+  1040→  1040→You replace:
+  1041→  1041→
+  1042→  1042→* inferred edges ❌
+  1043→  1043→    with:
+  1044→  1044→* parentIds edges ✔
+  1045→  1045→
+  1046→  1046→Your UI barely changes — only source of truth improves.
+  1047→  1047→
+  1048→  1048→⸻
+  1049→  1049→
+  1050→  1050→6. The real architectural win
+  1051→  1051→
+  1052→  1052→What you just built is not UI.
+  1053→  1053→
+  1054→  1054→It is:
+  1055→  1055→
+  1056→  1056→a reversible visualization layer for a causal execution substrate
+  1057→  1057→
+  1058→  1058→Which gives you something most systems never get:
+  1059→  1059→
+  1060→  1060→* debuggable execution topology
+  1061→  1061→* replayable reasoning structure
+  1062→  1062→* pre-DAG observability of system causality
+  1063→  1063→
+  1064→  1064→⸻
+  1065→  1065→
+  1066→  1066→If you continue next step
+  1067→  1067→
+  1068→  1068→Do this in order:
+  1069→  1069→
+  1070→  1070→1. lock buildCausalGraph() as a pure module
+  1071→  1071→2. write snapshot tests on event fixtures (critical)
+  1072→  1072→3. only then wire React Flow
+  1073→  1073→4. only then connect XState
+  1074→  1074→
+  1075→  1075→If you want, next I can:
+  1076→  1076→
+  1077→  1077→* ￼ convert this into a strict TypeScript package boundary
+  1078→  1078→* or ￼ design the replay-time “causal animation engine” (this becomes very powerful for debugging agent reasoning chains)
+  1079→  1079→
+  1080→  1080→
+  1081→  1081→Good. This becomes the point where the system stops being “logged execution” and becomes inspectable causal physics. The debugger is not UI polish; it is the operational interface for verifying kernel correctness.
+  1082→  1082→
+  1083→  1083→Below is a Causal Execution Debugger design built on top of your @hermes/causal-graph package.
+  1084→  1084→
+  1085→  1085→⸻
+  1086→  1086→
+  1087→  1087→🧭 @hermes/causal-debugger (Execution Topology Debugger)
+  1088→  1088→
+  1089→  1089→1. Purpose (strict definition)
+  1090→  1090→
+  1091→  1091→This module is a deterministic replay + visualization engine over a causal DAG.
+  1092→  1092→
+  1093→  1093→It answers:
+  1094→  1094→
+  1095→  1095→* What happened?
+  1096→  1096→* Why did it happen?
+  1097→  1097→* What was causally enabled vs merely correlated?
+  1098→  1098→* What would change if a branch diverged?
+  1099→  1099→
+  1100→  1100→It is NOT:
+  1101→  1101→
+  1102→  1102→* a log viewer
+  1103→  1103→* a timeline scrubber
+  1104→  1104→* a React Flow wrapper
+  1105→  1105→
+  1106→  1106→It is:
+  1107→  1107→
+  1108→  1108→a causal replay interpreter
+  1109→  1109→
+  1110→  1110→⸻
+  1111→  1111→
+  1112→  1112→2. Architectural layers
+  1113→  1113→
+  1114→  1114→Layer 1 — Input substrate
+  1115→  1115→
+  1116→  1116→HermesEvent[] (event log)
+  1117→  1117→
+  1118→  1118→Layer 2 — Graph compiler
+  1119→  1119→
+  1120→  1120→@hermes/causal-graph
+  1121→  1121→→ CausalGraph { nodes, edges }
+  1122→  1122→
+  1123→  1123→Layer 3 — Execution model (NEW)
+  1124→  1124→
+  1125→  1125→Causal Replay Engine
+  1126→  1126→
+  1127→  1127→Layer 4 — UI projection
+  1128→  1128→
+  1129→  1129→React Flow (pure renderer)
+  1130→  1130→XState (UI state only)
+  1131→  1131→
+  1132→  1132→⸻
+  1133→  1133→
+  1134→  1134→3. Core abstraction: Replay State Machine
+  1135→  1135→
+  1136→  1136→You introduce a deterministic replay cursor over a DAG, not a timeline.
+  1137→  1137→
+  1138→  1138→Key idea:
+  1139→  1139→
+  1140→  1140→You are not “playing time forward”.
+  1141→  1141→
+  1142→  1142→You are:
+  1143→  1143→
+  1144→  1144→traversing a partially ordered causal structure.
+  1145→  1145→
+  1146→  1146→⸻
+  1147→  1147→
+  1148→  1148→4. Core types
+  1149→  1149→
+  1150→  1150→export interface ReplayState {
+  1151→  1151→  mode: "paused" | "playing" | "stepping" | "scrubbing"
+  1152→  1152→  // current position in causal space
+  1153→  1153→  activeNodeId: string | null
+  1154→  1154→  // frontier = all causally enabled nodes at this moment
+  1155→  1155→  frontier: string[]
+  1156→  1156→  // visited nodes
+  1157→  1157→  visited: Set<string>
+  1158→  1158→  // branch context
+  1159→  1159→  activeBranchId: string
+  1160→  1160→  // time cursor (for UI alignment only)
+  1161→  1161→  logicalTime: number
+  1162→  1162→}
+  1163→  1163→
+  1164→  1164→⸻
+  1165→  1165→
+  1166→  1166→5. Replay engine (core logic)
+  1167→  1167→
+  1168→  1168→export class CausalReplayEngine {
+  1169→  1169→  constructor(
+  1170→  1170→    private graph: CausalGraph
+  1171→  1171→  ) {}
+  1172→  1172→  private state: ReplayState
+  1173→  1173→  stepForward(): ReplayState {
+  1174→  1174→    const next = this.getNextCausalNodes(this.state.activeNodeId)
+  1175→  1175→    const chosen = this.resolveNext(next)
+  1176→  1176→    this.state = {
+  1177→  1177→      ...this.state,
+  1178→  1178→      activeNodeId: chosen,
+  1179→  1179→      visited: new Set([...this.state.visited, chosen]),
+  1180→  1180→      frontier: this.computeFrontier(chosen)
+  1181→  1181→    }
+  1182→  1182→    return this.state
+  1183→  1183→  }
+  1184→  1184→  stepBackward(): ReplayState {
+  1185→  1185→    const prev = this.findPreviousVisited(this.state.visited)
+  1186→  1186→    this.state.activeNodeId = prev
+  1187→  1187→    this.state.visited.delete(this.state.activeNodeId)
+  1188→  1188→    return this.state
+  1189→  1189→  }
+  1190→  1190→  jumpTo(nodeId: string): ReplayState {
+  1191→  1191→    this.state.activeNodeId = nodeId
+  1192→  1192→    this.state.frontier = this.computeFrontier(nodeId)
+  1193→  1193→    return this.state
+  1194→  1194→  }
+  1195→  1195→}
+  1196→  1196→
+  1197→  1197→⸻
+  1198→  1198→
+  1199→  1199→6. The key concept: “causal frontier”
+  1200→  1200→
+  1201→  1201→This is the critical abstraction.
+  1202→  1202→
+  1203→  1203→frontier = all nodes where:
+  1204→  1204→  all parent edges are satisfied
+  1205→  1205→  AND not yet visited
+  1206→  1206→
+  1207→  1207→So:
+  1208→  1208→
+  1209→  1209→* Timeline replay = linear index
+  1210→  1210→* DAG replay = frontier expansion
+  1211→  1211→
+  1212→  1212→This is what makes the debugger non-trivial and powerful.
+  1213→  1213→
+  1214→  1214→⸻
+  1215→  1215→
+  1216→  1216→7. Edge semantics in debugger
+  1217→  1217→
+  1218→  1218→You classify edges explicitly:
+  1219→  1219→
+  1220→  1220→type EdgeSemantic =
+  1221→  1221→  | "causal"        // must precede
+  1222→  1222→  | "correlation"   // observational link
+  1223→  1223→  | "branch"        // divergence point
+  1224→  1224→
+  1225→  1225→Replay engine only respects:
+  1226→  1226→
+  1227→  1227→* causal edges for execution ordering
+  1228→  1228→* branch edges for alternate futures
+  1229→  1229→* ignores correlation for ordering
+  1230→  1230→
+  1231→  1231→⸻
+  1232→  1232→
+  1233→  1233→8. Branch-aware replay model
+  1234→  1234→
+  1235→  1235→Branches are not separate graphs.
+  1236→  1236→
+  1237→  1237→They are:
+  1238→  1238→
+  1239→  1239→constraints on traversal space
+  1240→  1240→
+  1241→  1241→interface BranchContext {
+  1242→  1242→  branchId: string
+  1243→  1243→  allowedEdges: Set<string>
+  1244→  1244→}
+  1245→  1245→
+  1246→  1246→Replay engine filters:
+  1247→  1247→
+  1248→  1248→graph.edges.filter(e => e.branchId === activeBranchId)
+  1249→  1249→
+  1250→  1250→or in advanced mode:
+  1251→  1251→
+  1252→  1252→multi-branch overlay replay
+  1253→  1253→
+  1254→  1254→⸻
+  1255→  1255→
+  1256→  1256→9. Debugger capabilities (functional spec)
+  1257→  1257→
+  1258→  1258→1. Deterministic replay
+  1259→  1259→
+  1260→  1260→* same graph → same traversal order
+  1261→  1261→
+  1262→  1262→2. Step-through causality
+  1263→  1263→
+  1264→  1264→* step = advance frontier, not time index
+  1265→  1265→
+  1266→  1266→3. Backtracking
+  1267→  1267→
+  1268→  1268→* reverse traversal via visited stack
+  1269→  1269→
+  1270→  1270→4. Branch switching
+  1271→  1271→
+  1272→  1272→* swap active branch mid-replay
+  1273→  1273→
+  1274→  1274→5. Causal highlight mode
+  1275→  1275→
+  1276→  1276→* highlight:
+  1277→  1277→    * ancestors of active node
+  1278→  1278→    * descendants enabled from frontier
+  1279→  1279→
+  1280→  1280→6. Execution inspection
+  1281→  1281→
+  1282→  1282→* node click shows:
+  1283→  1283→    * event payload
+  1284→  1284→    * causal parents
+  1285→  1285→    * execution metadata
+  1286→  1286→    * blackboard mutations
+  1287→  1287→
+  1288→  1288→⸻
+  1289→  1289→
+  1290→  1290→10. XState machine (UI controller only)
+  1291→  1291→
+  1292→  1292→This is intentionally narrow:
+  1293→  1293→
+  1294→  1294→type DebuggerEvent =
+  1295→  1295→  | { type: "PLAY" }
+  1296→  1296→  | { type: "PAUSE" }
+  1297→  1297→  | { type: "STEP" }
+  1298→  1298→  | { type: "BACK" }
+  1299→  1299→  | { type: "JUMP"; nodeId: string }
+  1300→  1300→  | { type: "SELECT_BRANCH"; branchId: string }
+  1301→  1301→
+  1302→  1302→States:
+  1303→  1303→
+  1304→  1304→* idle
+  1305→  1305→* playing
+  1306→  1306→* paused
+  1307→  1307→* stepping
+  1308→  1308→* scrubbing
+  1309→  1309→* inspecting
+  1310→  1310→
+  1311→  1311→Important:
+  1312→  1312→
+  1313→  1313→XState never sees graph logic. Only user intent.
+  1314→  1314→
+  1315→  1315→⸻
+  1316→  1316→
+  1317→  1317→11. React Flow integration model
+  1318→  1318→
+  1319→  1319→React Flow is a render target only:
+  1320→  1320→
+  1321→  1321→function CausalDebuggerView() {
+  1322→  1322→  const graph = useCausalGraph(traceId)
+  1323→  1323→  const replay = useReplayEngine(graph)
+  1324→  1324→  const highlighted = deriveHighlightSet(
+  1325→  1325→    graph,
+  1326→  1326→    replay.state.activeNodeId,
+  1327→  1327→    replay.state.frontier
+  1328→  1328→  )
+  1329→  1329→  return (
+  1330→  1330→    <ReactFlow
+  1331→  1331→      nodes={graph.nodes}
+  1332→  1332→      edges={graph.edges.map(e => ({
+  1333→  1333→        ...e,
+  1334→  1334→        animated: highlighted.has(e.target)
+  1335→  1335→      }))}
+  1336→  1336→    />
+  1337→  1337→  )
+  1338→  1338→}
+  1339→  1339→
+  1340→  1340→No logic. Only rendering.
+  1341→  1341→
+  1342→  1342→⸻
+  1343→  1343→
+  1344→  1344→12. Key derived visuals (critical UX layer)
+  1345→  1345→
+  1346→  1346→Node states:
+  1347→  1347→
+  1348→  1348→* visited → dim
+  1349→  1349→* active → glow
+  1350→  1350→* frontier → bright outline
+  1351→  1351→* blocked → red
+  1352→  1352→
+  1353→  1353→Edge states:
+  1354→  1354→
+  1355→  1355→* causal path → bold
+  1356→  1356→* correlation → dashed
+  1357→  1357→* branch → colored overlay
+  1358→  1358→
+  1359→  1359→⸻
+  1360→  1360→
+  1361→  1361→13. Integration into Hermes architecture
+  1362→  1362→
+  1363→  1363→BEFORE:
+  1364→  1364→
+  1365→  1365→event log → reducer → UI
+  1366→  1366→
+  1367→  1367→AFTER:
+  1368→  1368→
+  1369→  1369→event log
+  1370→  1370→   ↓
+  1371→  1371→causal-graph compiler
+  1372→  1372→   ↓
+  1373→  1373→replay engine (THIS MODULE)
+  1374→  1374→   ↓
+  1375→  1375→React Flow renderer
+  1376→  1376→
+  1377→  1377→This creates a full observability loop over execution causality
+  1378→  1378→
+  1379→  1379→⸻
+  1380→  1380→
+  1381→  1381→14. Why this matters (architecturally)
+  1382→  1382→
+  1383→  1383→This debugger is not tooling.
+  1384→  1384→
+  1385→  1385→It is:
+  1386→  1386→
+  1387→  1387→1. Proof mechanism for Phase 2 correctness
+  1388→  1388→
+  1389→  1389→If replay diverges → kernel is wrong
+  1390→  1390→
+  1391→  1391→2. Validation tool for Phase 3 inversion
+  1392→  1392→
+  1393→  1393→You can see agent → decision → execution collapse in real time
+  1394→  1394→
+  1395→  1395→3. Pre-DAG bridge for Phase 6
+  1396→  1396→
+  1397→  1397→It already behaves like a DAG runtime, even before parentIds exist
+  1398→  1398→
+  1399→  1399→⸻
+  1400→  1400→
+  1401→  1401→15. Minimal package layout
+  1402→  1402→
+  1403→  1403→packages/
+  1404→  1404→  causal-graph/
+  1405→  1405→  causal-debugger/
+  1406→  1406→    src/
+  1407→  1407→      engine/
+  1408→  1408→        CausalReplayEngine.ts
+  1409→  1409→        frontier.ts
+  1410→  1410→        traversal.ts
+  1411→  1411→      state/
+  1412→  1412→        replayState.ts
+  1413→  1413→      ui/
+  1414→  1414→        useReplayEngine.ts
+  1415→  1415→        useDebuggerMachine.ts
+  1416→  1416→      index.ts
+  1417→  1417→
+  1418→  1418→⸻
+  1419→  1419→
+  1420→  1420→16. The conceptual shift (important)
+  1421→  1421→
+  1422→  1422→You are no longer building:
+  1423→  1423→
+  1424→  1424→“a system that logs execution”
+  1425→  1425→
+  1426→  1426→You are building:
+  1427→  1427→
+  1428→  1428→“a system whose execution is replayable as a causal physics simulation”
+  1429→  1429→
+  1430→  1430→The debugger is the instrument that proves it.
+  1431→  1431→
+  1432→  1432→⸻
+  1433→  1433→
+  1434→  1434→If you want next step, the highest-leverage continuation is:
+  1435→  1435→
+  1436→  1436→Design the “frontier solver algorithm” for concurrent execution paths (this becomes the precursor to your Phase 6 ordering algebra).
+  1437→  1437→
+  1438→  1438→
+  1439→  1439→Good. This is the missing mathematical core between “DAG visualization” and “real causal execution semantics.”
+  1440→  1440→
+  1441→  1441→What you need here is not UI logic, but a frontier resolution algorithm that defines what “next executable event” even means in a partial order system.
+  1442→  1442→
+  1443→  1443→⸻
+  1444→  1444→
+  1445→  1445→🧠 Frontier Solver Algorithm (Causal Execution Semantics Core)
+  1446→  1446→
+  1447→  1447→1. Problem definition
+  1448→  1448→
+  1449→  1449→Given a causal graph:
+  1450→  1450→
+  1451→  1451→* nodes = events
+  1452→  1452→* edges = causal dependencies (directed acyclic, potentially partial)
+  1453→  1453→* branch constraints exist (optional)
+  1454→  1454→
+  1455→  1455→We need to compute:
+  1456→  1456→
+  1457→  1457→the set of events that are currently executable
+  1458→  1458→
+  1459→  1459→This is the causal frontier.
+  1460→  1460→
+  1461→  1461→⸻
+  1462→  1462→
+  1463→  1463→2. Formal definition
+  1464→  1464→
+  1465→  1465→A node n is in the frontier if:
+  1466→  1466→
+  1467→  1467→∀ parent ∈ Parents(n):
+  1468→  1468→    parent ∈ Visited
+  1469→  1469→
+  1470→  1470→AND:
+  1471→  1471→
+  1472→  1472→n ∉ Visited
+  1473→  1473→
+  1474→  1474→AND (branch constraint):
+  1475→  1475→
+  1476→  1476→n.branch ∈ activeBranchSet
+  1477→  1477→
+  1478→  1478→⸻
+  1479→  1479→
+  1480→  1480→3. Key insight (important)
+  1481→  1481→
+  1482→  1482→This is NOT a queue.
+  1483→  1483→
+  1484→  1484→It is a constraint satisfaction surface over a DAG.
+  1485→  1485→
+  1486→  1486→So you do NOT “pop next event”.
+  1487→  1487→
+  1488→  1488→You recompute a frontier set at every step.
+  1489→  1489→
+  1490→  1490→⸻
+  1491→  1491→
+  1492→  1492→4. Core algorithm
+  1493→  1493→
+  1494→  1494→Types
+  1495→  1495→
+  1496→  1496→type NodeId = string
+  1497→  1497→interface FrontierState {
+  1498→  1498→  visited: Set<NodeId>
+  1499→  1499→  frontier: Set<NodeId>
+  1500→  1500→}
+  1501→  1501→
+  1502→  1502→⸻
+  1503→  1503→
+  1504→  1504→Main solver
+  1505→  1505→
+  1506→  1506→export function computeFrontier(
+  1507→  1507→  graph: CausalGraph,
+  1508→  1508→  visited: Set<NodeId>,
+  1509→  1509→  activeBranches?: Set<string>
+  1510→  1510→): Set<NodeId> {
+  1511→  1511→  const frontier = new Set<NodeId>()
+  1512→  1512→  for (const node of graph.nodes) {
+  1513→  1513→    if (visited.has(node.id)) continue
+  1514→  1514→    if (!isBranchAllowed(node, activeBranches)) continue
+  1515→  1515→    const parents = graph.edges
+  1516→  1516→      .filter(e => e.target === node.id && e.type === "causal")
+  1517→  1517→      .map(e => e.source)
+  1518→  1518→    const isReady = parents.every(p => visited.has(p))
+  1519→  1519→    if (isReady) {
+  1520→  1520→      frontier.add(node.id)
+  1521→  1521→    }
+  1522→  1522→  }
+  1523→  1523→  return frontier
+  1524→  1524→}
+  1525→  1525→
+  1526→  1526→⸻
+  1527→  1527→
+  1528→  1528→5. Branch constraint logic
+  1529→  1529→
+  1530→  1530→function isBranchAllowed(
+  1531→  1531→  node: CausalNode,
+  1532→  1532→  activeBranches?: Set<string>
+  1533→  1533→): boolean {
+  1534→  1534→  if (!activeBranches || activeBranches.size === 0) return true
+  1535→  1535→  // if node has no branch metadata → global node
+  1536→  1536→  if (!(node as any).branchId) return true
+  1537→  1537→  return activeBranches.has((node as any).branchId)
+  1538→  1538→}
+  1539→  1539→
+  1540→  1540→⸻
+  1541→  1541→
+  1542→  1542→6. Execution resolution policy (important)
+  1543→  1543→
+  1544→  1544→Frontier gives you multiple valid next steps.
+  1545→  1545→
+  1546→  1546→You must decide:
+  1547→  1547→
+  1548→  1548→Policy A — deterministic (recommended default)
+  1549→  1549→
+  1550→  1550→pick = lowest(eventSequence)
+  1551→  1551→
+  1552→  1552→Policy B — causal entropy exploration
+  1553→  1553→
+  1554→  1554→pick = highest out-degree node first
+  1555→  1555→
+  1556→  1556→Policy C — LLM-guided (dangerous but powerful)
+  1557→  1557→
+  1558→  1558→pick = model.rank(frontier)
+  1559→  1559→
+  1560→  1560→⸻
+  1561→  1561→
+  1562→  1562→7. Critical invariant (DO NOT BREAK)
+  1563→  1563→
+  1564→  1564→If node ∉ frontier → it is illegal to execute it
+  1565→  1565→
+  1566→  1566→This enforces:
+  1567→  1567→
+  1568→  1568→* causal correctness
+  1569→  1569→* replay determinism
+  1570→  1570→* branch safety
+  1571→  1571→* kernel reproducibility
+  1572→  1572→
+  1573→  1573→⸻
+  1574→  1574→
+  1575→  1575→8. Extension: speculative frontier
+  1576→  1576→
+  1577→  1577→For Phase 6 readiness:
+  1578→  1578→
+  1579→  1579→export function computeSpeculativeFrontier(
+  1580→  1580→  graph,
+  1581→  1581→  visited,
+  1582→  1582→  hypotheticalEvent: CausalNode
+  1583→  1583→): Set<NodeId> {
+  1584→  1584→  const simulatedVisited = new Set([...visited, hypotheticalEvent.id])
+  1585→  1585→  return computeFrontier(graph, simulatedVisited)
+  1586→  1586→}
+  1587→  1587→
+  1588→  1588→This is the basis of:
+  1589→  1589→
+  1590→  1590→* “what if this decision was taken?”
+  1591→  1591→* multi-branch simulation
+  1592→  1592→* counterfactual replay
+  1593→  1593→
+  1594→  1594→⸻
+  1595→  1595→
+  1596→  1596→9. Why this is the real kernel primitive
+  1597→  1597→
+  1598→  1598→Everything else depends on this:
+  1599→  1599→
+  1600→  1600→System layer    Depends on frontier
+  1601→  1601→Replay engine   YES
+  1602→  1602→DAG visualizer  YES
+  1603→  1603→Agent execution inversion       CRITICAL
+  1604→  1604→Branching system        YES
+  1605→  1605→Phase 6 ordering algebra        DIRECT REPLACEMENT
+  1606→  1606→
+  1607→  1607→⸻
+  1608→  1608→
+  1609→  1609→📍 Where this fits in your Hermes plan
+  1610→  1610→
+  1611→  1611→This is the important part.
+  1612→  1612→
+  1613→  1613→You should NOT create a separate plan.
+  1614→  1614→
+  1615→  1615→You should insert this into your existing plan as a foundational sub-phase.
+  1616→  1616→
+  1617→  1617→⸻
+  1618→  1618→
+  1619→  1619→✅ Recommended integration
+  1620→  1620→
+  1621→  1621→Insert between:
+  1622→  1622→
+  1623→  1623→Phase 2 (Replay correctness)
+  1624→  1624→
+  1625→  1625→and
+  1626→  1626→
+  1627→  1627→Phase 3 (Agent inversion)
+  1628→  1628→
+  1629→  1629→⸻
+  1630→  1630→
+  1631→  1631→➤ New Phase: 2.6 — Causal Frontier & Execution Semantics Layer
+  1632→  1632→
+  1633→  1633→Name:
+  1634→  1634→
+  1635→  1635→Causal Frontier Solver (Execution Semantics Core)
+  1636→  1636→
+  1637→  1637→⸻
+  1638→  1638→
+  1639→  1639→What it becomes in your architecture
+  1640→  1640→
+  1641→  1641→You now have:
+  1642→  1642→
+  1643→  1643→Before
+  1644→  1644→
+  1645→  1645→event log → reducer → state → UI
+  1646→  1646→
+  1647→  1647→After
+  1648→  1648→
+  1649→  1649→event log
+  1650→  1650→   ↓
+  1651→  1651→causal graph
+  1652→  1652→   ↓
+  1653→  1653→FRONTIER SOLVER   ← NEW CORE
+  1654→  1654→   ↓
+  1655→  1655→replay engine / agent execution / speculation
+  1656→  1656→   ↓
+  1657→  1657→UI projection (React Flow)
+  1658→  1658→
+  1659→  1659→⸻
+  1660→  1660→
+  1661→  1661→Why it must exist here (not later)
+  1662→  1662→
+  1663→  1663→If you delay this until Phase 6:
+  1664→  1664→
+  1665→  1665→* you will accidentally hardcode linear execution assumptions into Phase 3
+  1666→  1666→* your replay engine will become “timeline-based” instead of “causal”
+  1667→  1667→* DAG conversion becomes a rewrite instead of a substitution
+  1668→  1668→
+  1669→  1669→This module is what makes Phase 3 inversion mathematically sound instead of just architectural
+  1670→  1670→
+  1671→  1671→⸻
+  1672→  1672→
+  1673→  1673→Final recommendation (very explicit)
+  1674→  1674→
+  1675→  1675→Do NOT create a new plan.
+  1676→  1676→
+  1677→  1677→Instead:
+  1678→  1678→
+  1679→  1679→✔ Insert Phase 2.6 into Hermes plan
+  1680→  1680→
+  1681→  1681→Rename Phase 3 dependency chain to:
+  1682→  1682→
+  1683→  1683→* Phase 2 ✔ Event Kernel
+  1684→  1684→* Phase 2.5 ✔ Causal Projection (React Flow)
+  1685→  1685→* Phase 2.6 ✔ Frontier Solver (this)
+  1686→  1686→* Phase 3 ✔ Agent inversion
+  1687→  1687→* Phase 4 ✔ Branching
+  1688→  1688→* Phase 5 ✔ Constitution runtime
+  1689→  1689→* Phase 6 ✔ DAG substrate formalization
+  1690→  1690→
+  1691→  1691→⸻
+  1692→  1692→
+  1693→  1693→Closing structural truth
+  1694→  1694→
+  1695→  1695→This piece is the actual execution law of your system.
+  1696→  1696→
+  1697→  1697→Everything else is representation.
+  1698→  1698→
+  1699→  1699→This is the rule that decides:
+  1700→  1700→
+  1701→  1701→“what can happen next in a world where events are causally constrained rather than sequentially scheduled”
+  1702→  1702→
+  1703→  1703→If you want next step, the only correct continuation is:
+  1704→  1704→
+  1705→  1705→formalizing the ordering algebra (Phase 6 precursor) so frontier resolution becomes mathematically provable instead of heuristic.
+  1706→  1706→
+  1707→  1707→
+  1708→  1708→Below is a strict TypeScript package boundary design for the “Hermes UI DAG + XState orchestration layer”. This isolates your UI state machine + topology renderer as a composable subsystem rather than leaking into the kernel.
+  1709→  1709→
+  1710→  1710→⸻
+  1711→  1711→
+  1712→  1712→🧱 Package: @hermes/ui-topology
+  1713→  1713→
+  1714→  1714→1. Purpose Boundary
+  1715→  1715→
+  1716→  1716→This package is responsible for:
+  1717→  1717→
+  1718→  1718→* Rendering causal DAGs (events, branches, forks)
+  1719→  1719→* Managing UI state via XState v5 machines
+  1720→  1720→* Translating HermesEvent stream → React Flow graph
+  1721→  1721→* Handling interaction → intent emission (NOT execution)
+  1722→  1722→* Maintaining strict separation from:
+  1723→  1723→    * Kernel execution
+  1724→  1724→    * Event store mutation
+  1725→  1725→    * Policy evaluation
+  1726→  1726→    * Agent runtime
+  1727→  1727→
+  1728→  1728→It is a pure projection + interaction layer.
+  1729→  1729→
+  1730→  1730→⸻
+  1731→  1731→
+  1732→  1732→2. Hard Boundary Rules (Non-Negotiable)
+  1733→  1733→
+  1734→  1734→This package MUST:
+  1735→  1735→
+  1736→  1736→* ❌ Never mutate event store
+  1737→  1737→* ❌ Never compute canonical hashes
+  1738→  1738→* ❌ Never evaluate policy or constitution
+  1739→  1739→* ❌ Never execute tools or agents
+  1740→  1740→* ❌ Never own source-of-truth state
+  1741→  1741→
+  1742→  1742→It MAY:
+  1743→  1743→
+  1744→  1744→* ✔ Consume HermesEvent[]
+  1745→  1745→* ✔ Build derived graph structures
+  1746→  1746→* ✔ Maintain UI-only state (selection, hover, expansion)
+  1747→  1747→* ✔ Emit intents (not commands)
+  1748→  1748→
+  1749→  1749→⸻
+  1750→  1750→
+  1751→  1751→3. Package Structure
+  1752→  1752→
+  1753→  1753→packages/ui-topology/
+  1754→  1754→  src/
+  1755→  1755→    machine/
+  1756→  1756→      topology.machine.ts        # XState v5 machine (core)
+  1757→  1757→      selection.machine.ts       # optional UI submachine
+  1758→  1758→      layout.machine.ts          # graph layout state
+  1759→  1759→    adapters/
+  1760→  1760→      event-to-graph.ts          # HermesEvent → DAG nodes/edges
+  1761→  1761→      branch-aggregator.ts       # branch grouping logic
+  1762→  1762→      causation-resolver.ts      # parent/child edge derivation
+  1763→  1763→    graph/
+  1764→  1764→      types.ts                   # UI graph model
+  1765→  1765→      selectors.ts               # derived selectors
+  1766→  1766→    renderer/
+  1767→  1767→      ReactFlowRenderer.tsx      # React Flow binding
+  1768→  1768→      nodeTypes.ts               # custom node registry
+  1769→  1769→      edgeTypes.ts               # causation + branch edges
+  1770→  1770→    hooks/
+  1771→  1771→      useTopologyMachine.ts
+  1772→  1772→      useGraphProjection.ts
+  1773→  1773→    api/
+  1774→  1774→      types.ts                   # boundary contracts only
+  1775→  1775→
+  1776→  1776→⸻
+  1777→  1777→
+  1778→  1778→4. Core Domain Types (STRICT)
+  1779→  1779→
+  1780→  1780→4.1 Input Contract (Immutable)
+  1781→  1781→
+  1782→  1782→export interface HermesEvent {
+  1783→  1783→  eventId: string
+  1784→  1784→  traceId: string
+  1785→  1785→  eventSequence: number
+  1786→  1786→  tier: "MODEL" | "DECISION" | "EXECUTION" | "SYSTEM" | "TELEMETRY"
+  1787→  1787→  branchId: string
+  1788→  1788→  parentEventIds?: string[]        // DAG extension
+  1789→  1789→  causationId?: string            // legacy compatibility
+  1790→  1790→  payload: unknown
+  1791→  1791→  timestamp: number
+  1792→  1792→}
+  1793→  1793→
+  1794→  1794→⸻
+  1795→  1795→
+  1796→  1796→4.2 Graph Model (Derived ONLY)
+  1797→  1797→
+  1798→  1798→export interface TopologyGraph {
+  1799→  1799→  nodes: TopologyNode[]
+  1800→  1800→  edges: TopologyEdge[]
+  1801→  1801→  branches: BranchMeta[]
+  1802→  1802→}
+  1803→  1803→export interface TopologyNode {
+  1804→  1804→  id: string
+  1805→  1805→  type: "model" | "decision" | "execution" | "system" | "telemetry"
+  1806→  1806→  label: string
+  1807→  1807→  eventId: string
+  1808→  1808→  branchId: string
+  1809→  1809→  sequence: number
+  1810→  1810→  data: unknown
+  1811→  1811→}
+  1812→  1812→export interface TopologyEdge {
+  1813→  1813→  id: string
+  1814→  1814→  source: string
+  1815→  1815→  target: string
+  1816→  1816→  type: "causation" | "branch" | "fork"
+  1817→  1817→  weight?: number
+  1818→  1818→}
+  1819→  1819→export interface BranchMeta {
+  1820→  1820→  branchId: string
+  1821→  1821→  parentBranchId?: string
+  1822→  1822→  forkEventId?: string
+  1823→  1823→}
+  1824→  1824→
+  1825→  1825→⸻
+  1826→  1826→
+  1827→  1827→5. XState v5 Machine (CORE BOUNDARY)
+  1828→  1828→
+  1829→  1829→topology.machine.ts
+  1830→  1830→
+  1831→  1831→import { setup, assign } from "xstate"
+  1832→  1832→import { TopologyGraph, HermesEvent } from "../graph/types"
+  1833→  1833→interface Context {
+  1834→  1834→  events: HermesEvent[]
+  1835→  1835→  graph: TopologyGraph | null
+  1836→  1836→  selectedNodeId?: string
+  1837→  1837→  traceId?: string
+  1838→  1838→}
+  1839→  1839→type Event =
+  1840→  1840→  | { type: "LOAD_EVENTS"; events: HermesEvent[] }
+  1841→  1841→  | { type: "SELECT_NODE"; nodeId: string }
+  1842→  1842→  | { type: "DESELECT_NODE" }
+  1843→  1843→  | { type: "REBUILD_GRAPH" }
+  1844→  1844→export const topologyMachine = setup({
+  1845→  1845→  types: {
+  1846→  1846→    context: {} as Context,
+  1847→  1847→    events: {} as Event
+  1848→  1848→  }
+  1849→  1849→}).createMachine({
+  1850→  1850→  id: "topology",
+  1851→  1851→  initial: "idle",
+  1852→  1852→  context: {
+  1853→  1853→    events: [],
+  1854→  1854→    graph: null,
+  1855→  1855→    selectedNodeId: undefined,
+  1856→  1856→    traceId: undefined
+  1857→  1857→  },
+  1858→  1858→  states: {
+  1859→  1859→    idle: {
+  1860→  1860→      on: {
+  1861→  1861→        LOAD_EVENTS: {
+  1862→  1862→          target: "hydrated",
+  1863→  1863→          actions: assign({
+  1864→  1864→            events: ({ event }) => event.events
+  1865→  1865→          })
+  1866→  1866→        }
+  1867→  1867→      }
+  1868→  1868→    },
+  1869→  1869→    hydrated: {
+  1870→  1870→      always: "buildingGraph",
+  1871→  1871→      on: {
+  1872→  1872→        SELECT_NODE: {
+  1873→  1873→          actions: assign({
+  1874→  1874→            selectedNodeId: ({ event }) => event.nodeId
+  1875→  1875→          })
+  1876→  1876→        },
+  1877→  1877→        DESELECT_NODE: {
+  1878→  1878→          actions: assign({
+  1879→  1879→            selectedNodeId: undefined
+  1880→  1880→          })
+  1881→  1881→        },
+  1882→  1882→        LOAD_EVENTS: {
+  1883→  1883→          actions: assign({
+  1884→  1884→            events: ({ event }) => event.events
+  1885→  1885→          }),
+  1886→  1886→          target: "buildingGraph"
+  1887→  1887→        }
+  1888→  1888→      }
+  1889→  1889→    },
+  1890→  1890→    buildingGraph: {
+  1891→  1891→      entry: assign({
+  1892→  1892→        graph: ({ context }) => buildGraph(context.events)
+  1893→  1893→      }),
+  1894→  1894→      always: "ready"
+  1895→  1895→    },
+  1896→  1896→    ready: {
+  1897→  1897→      on: {
+  1898→  1898→        REBUILD_GRAPH: "buildingGraph",
+  1899→  1899→        LOAD_EVENTS: {
+  1900→  1900→          target: "buildingGraph",
+  1901→  1901→          actions: assign({
+  1902→  1902→            events: ({ event }) => event.events
+  1903→  1903→          })
+  1904→  1904→        }
+  1905→  1905→      }
+  1906→  1906→    }
+  1907→  1907→  }
+  1908→  1908→})
+  1909→  1909→
+  1910→  1910→⸻
+  1911→  1911→
+  1912→  1912→6. Graph Construction (PURE FUNCTION)
+  1913→  1913→
+  1914→  1914→event-to-graph.ts
+  1915→  1915→
+  1916→  1916→export function buildGraph(events: HermesEvent[]): TopologyGraph {
+  1917→  1917→  const nodes: TopologyNode[] = []
+  1918→  1918→  const edges: TopologyEdge[] = []
+  1919→  1919→  const nodeIndex = new Map<string, TopologyNode>()
+  1920→  1920→  for (const e of events) {
+  1921→  1921→    const node: TopologyNode = {
+  1922→  1922→      id: e.eventId,
+  1923→  1923→      type: mapTier(e.tier),
+  1924→  1924→      label: `${e.tier}:${e.eventSequence}`,
+  1925→  1925→      eventId: e.eventId,
+  1926→  1926→      branchId: e.branchId,
+  1927→  1927→      sequence: e.eventSequence,
+  1928→  1928→      data: e.payload
+  1929→  1929→    }
+  1930→  1930→    nodes.push(node)
+  1931→  1931→    nodeIndex.set(node.id, node)
+  1932→  1932→    // causation edges (DAG backbone)
+  1933→  1933→    if (e.parentEventIds?.length) {
+  1934→  1934→      for (const parentId of e.parentEventIds) {
+  1935→  1935→        edges.push({
+  1936→  1936→          id: `${parentId}->${e.eventId}`,
+  1937→  1937→          source: parentId,
+  1938→  1938→          target: e.eventId,
+  1939→  1939→          type: "causation"
+  1940→  1940→        })
+  1941→  1941→      }
+  1942→  1942→    }
+  1943→  1943→  }
+  1944→  1944→  return { nodes, edges, branches: extractBranches(events) }
+  1945→  1945→}
+  1946→  1946→
+  1947→  1947→⸻
+  1948→  1948→
+  1949→  1949→7. React Flow Renderer Boundary
+  1950→  1950→
+  1951→  1951→ReactFlowRenderer.tsx
+  1952→  1952→
+  1953→  1953→import ReactFlow from "reactflow"
+  1954→  1954→import { useTopologyMachine } from "../hooks/useTopologyMachine"
+  1955→  1955→export function ReactFlowRenderer() {
+  1956→  1956→  const { graph } = useTopologyMachine()
+  1957→  1957→  if (!graph) return null
+  1958→  1958→  return (
+  1959→  1959→    <ReactFlow
+  1960→  1960→      nodes={graph.nodes}
+  1961→  1961→      edges={graph.edges}
+  1962→  1962→      nodeTypes={nodeTypes}
+  1963→  1963→      edgeTypes={edgeTypes}
+  1964→  1964→      fitView
+  1965→  1965→    />
+  1966→  1966→  )
+  1967→  1967→}
+  1968→  1968→
+  1969→  1969→⸻
+  1970→  1970→
+  1971→  1971→8. Edge Semantics (CRITICAL)
+  1972→  1972→
+  1973→  1973→You will explicitly support 3 edge types:
+  1974→  1974→
+  1975→  1975→1. causation
+  1976→  1976→
+  1977→  1977→* direct execution lineage
+  1978→  1978→* parent → child event dependency
+  1979→  1979→
+  1980→  1980→2. branch
+  1981→  1981→
+  1982→  1982→* divergence from shared history
+  1983→  1983→* visual fork marker
+  1984→  1984→
+  1985→  1985→3. fork
+  1986→  1986→
+  1987→  1987→* explicit speculative execution origin
+  1988→  1988→
+  1989→  1989→⸻
+  1990→  1990→
+  1991→  1991→9. Hooks Boundary
+  1992→  1992→
+  1993→  1993→export function useTopologyMachine(events: HermesEvent[]) {
+  1994→  1994→  const [state, send] = useMachine(topologyMachine, {
+  1995→  1995→    context: { events }
+  1996→  1996→  })
+  1997→  1997→  return {
+  1998→  1998→    graph: state.context.graph,
+  1999→  1999→    selectedNodeId: state.context.selectedNodeId,
+  2000→  2000→    selectNode: (id: string) => send({ type: "SELECT_NODE", nodeId: id })
+
+[showing lines 1-2000 of 2002; use offset=2001 with limit to continue reading]
