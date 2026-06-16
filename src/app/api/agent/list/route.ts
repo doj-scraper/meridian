@@ -1,17 +1,21 @@
 import { db } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
+import { logger, logRequest } from "@/lib/logger";
 
 import { ratelimit } from "@/lib/rate-limit";
 
 // GET /api/agent/list - List all agents
 export async function GET(req: NextRequest) {
+  const start = Date.now();
   const ip = req.headers.get("x-forwarded-for") || "anonymous";
   const limitResult = await ratelimit.api.limit(`list-${ip}`);
   if (!limitResult.success) {
-    return NextResponse.json(
+    const res = NextResponse.json(
       { error: "Too many requests" },
       { status: 429 }
     );
+    logRequest(req, Date.now() - start, 429);
+    return res;
   }
 
   try {
@@ -22,7 +26,7 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    return NextResponse.json(
+    const res = NextResponse.json(
       agents.map((agent) => ({
         id: agent.id,
         name: agent.name,
@@ -48,11 +52,15 @@ export async function GET(req: NextRequest) {
         updatedAt: agent.updatedAt,
       }))
     );
+    logRequest(req, Date.now() - start, 200);
+    return res;
   } catch (error) {
-    console.error("List agents error:", error);
-    return NextResponse.json(
+    logger.error({ error, url: req.url }, "List agents error");
+    const res = NextResponse.json(
       { error: "Failed to list agents" },
       { status: 500 }
     );
+    logRequest(req, Date.now() - start, 500);
+    return res;
   }
 }

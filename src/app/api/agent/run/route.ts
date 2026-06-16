@@ -5,6 +5,7 @@ import { AgentConfig, AgentTool } from "@/lib/agent/types";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { validateBody } from "@/lib/validation";
+import { logger, logRequest } from "@/lib/logger";
 
 import { ratelimit } from "@/lib/rate-limit";
 
@@ -17,17 +18,23 @@ const runAgentSchema = z.object({
 
 // POST /api/agent/run - Start an agent run (supports single-agent and orchestrated modes)
 export async function POST(req: NextRequest) {
+  const start = Date.now();
   const ip = req.headers.get("x-forwarded-for") || "anonymous";
   const limitResult = await ratelimit.agent.limit(`run-${ip}`);
   if (!limitResult.success) {
-    return NextResponse.json(
+    const res = NextResponse.json(
       { error: "Too many requests" },
       { status: 429 }
     );
+    logRequest(req, Date.now() - start, 429);
+    return res;
   }
 
   const validatedBody = await validateBody(runAgentSchema)(req);
-  if (validatedBody instanceof Response) return validatedBody;
+  if (validatedBody instanceof Response) {
+    logRequest(req, Date.now() - start, validatedBody.status);
+    return validatedBody;
+  }
 
   try {
     const { agentId, goal } = validatedBody;
@@ -173,7 +180,7 @@ export async function POST(req: NextRequest) {
         });
     }
 
-    return NextResponse.json({
+    const res = NextResponse.json({
       runId: run.id,
       agentId: run.agentId,
       status: "running",
@@ -185,11 +192,15 @@ export async function POST(req: NextRequest) {
         maxSteps: config.loop.maxSteps,
       },
     });
+    logRequest(req, Date.now() - start, 200);
+    return res;
   } catch (error) {
-    console.error("Run agent error:", error);
-    return NextResponse.json(
+    logger.error({ error, url: req.url }, "Run agent error");
+    const res = NextResponse.json(
       { error: "Failed to start agent run" },
       { status: 500 }
     );
+    logRequest(req, Date.now() - start, 500);
+    return res;
   }
 }

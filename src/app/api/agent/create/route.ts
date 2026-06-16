@@ -5,6 +5,7 @@ import { ratelimit } from "@/lib/rate-limit";
 
 import { z } from "zod";
 import { validateBody } from "@/lib/validation";
+import { logger, logRequest } from "@/lib/logger";
 
 const createAgentSchema = z.object({
   name: z.string("Name and goal are required").min(1, "Name and goal are required").max(100),
@@ -35,17 +36,23 @@ const createAgentSchema = z.object({
 
 // POST /api/agent/create - Create a new agent
 export async function POST(req: NextRequest) {
+  const start = Date.now();
   const ip = req.headers.get("x-forwarded-for") || "anonymous";
   const limitResult = await ratelimit.api.limit(`create-${ip}`);
   if (!limitResult.success) {
-    return NextResponse.json(
+    const res = NextResponse.json(
       { error: "Too many requests" },
       { status: 429 }
     );
+    logRequest(req, Date.now() - start, 429);
+    return res;
   }
 
   const validatedBody = await validateBody(createAgentSchema)(req);
-  if (validatedBody instanceof Response) return validatedBody;
+  if (validatedBody instanceof Response) {
+    logRequest(req, Date.now() - start, validatedBody.status);
+    return validatedBody;
+  }
 
   try {
     const {
@@ -92,7 +99,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({
+    const res = NextResponse.json({
       id: agent.id,
       name: agent.name,
       goal: agent.goal,
@@ -114,11 +121,15 @@ export async function POST(req: NextRequest) {
       teamId: agent.teamId,
       createdAt: agent.createdAt,
     });
+    logRequest(req, Date.now() - start, 200);
+    return res;
   } catch (error) {
-    console.error("Create agent error:", error);
-    return NextResponse.json(
+    logger.error({ error, url: req.url }, "Create agent error");
+    const res = NextResponse.json(
       { error: "Failed to create agent" },
       { status: 500 }
     );
+    logRequest(req, Date.now() - start, 500);
+    return res;
   }
 }
