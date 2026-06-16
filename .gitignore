@@ -47,8 +47,7 @@ local-*
 *.log
 dev.log
 dev.out.log
-/test/*
-!/test/setup.ts
+test
 prompt
 
 server.log

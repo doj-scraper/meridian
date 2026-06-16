@@ -1,8 +1,19 @@
 import { db } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 
+import { ratelimit } from "@/lib/rate-limit";
+
 // GET /api/agent/list - List all agents
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for") || "anonymous";
+  const limitResult = await ratelimit.api.limit(`list-${ip}`);
+  if (!limitResult.success) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429 }
+    );
+  }
+
   try {
     const agents = await db.agent.findMany({
       orderBy: { createdAt: "desc" },

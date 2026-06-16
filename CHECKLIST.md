@@ -106,26 +106,26 @@
 
 ## Phase 4: Security Hardening (Days 6-7) 🔒
 
-- [ ] **4.1:** Activate NextAuth.js
-  - [ ] Create `src/app/api/auth/[...nextauth]/route.ts`
-  - [ ] Create `src/middleware.ts` for protected routes
-  - [ ] Add auth env vars to `.env.example`
-  - [ ] Test: login/logout works
+- [x] **4.1:** Activate NextAuth.js
+  - [x] Create `src/app/api/auth/[...nextauth]/route.ts`
+  - [x] Create `src/middleware.ts` for protected routes
+  - [x] Add auth env vars to `.env.example`
+  - [x] Test: login/logout works
 
-- [ ] **4.2:** Add rate limiting
-  - [ ] Install: `bun add @upstash/ratelimit @upstash/redis`
-  - [ ] Create: `src/lib/rate-limit.ts`
-  - [ ] Apply to 5 high-traffic routes
-  - [ ] Test: rate limit triggers
+- [x] **4.2:** Add rate limiting
+  - [x] Install: `bun add @upstash/ratelimit @upstash/redis`
+  - [x] Create: `src/lib/rate-limit.ts`
+  - [x] Apply to 5 high-traffic routes
+  - [x] Test: rate limit triggers
 
-- [ ] **4.3:** Add input validation
-  - [ ] Create: `src/lib/validation.ts`
-  - [ ] Apply to all POST/PUT routes
-  - [ ] Test: validation rejects bad input
+- [x] **4.3:** Add input validation
+  - [x] Create: `src/lib/validation.ts`
+  - [x] Apply to all POST/PUT routes
+  - [x] Test: validation rejects bad input
 
-- [ ] **4.4:** Add CORS configuration
-  - [ ] Update `src/middleware.ts` with CORS headers
-  - [ ] Test: CORS headers present
+- [x] **4.4:** Add CORS configuration
+  - [x] Update `src/middleware.ts` with CORS headers
+  - [x] Test: CORS headers present
 
 ✅ **Phase 4 Complete:** Auth active, rate limits enforced, validation working
 
@@ -284,7 +284,7 @@ bun scripts/load-test.ts
 - Phase 1: ✅ Code Cleanup
 - Phase 2: ✅ Meridian UI Decision
 - Phase 3: ✅ Testing Foundation
-- Phase 4: ⬜ Security Hardening
+- Phase 4: ✅ Security Hardening
 - Phase 5: ⬜ Production Readiness
 - Phase 6: ⬜ Database Migration (Optional)
 - Phase 7: ⬜ Documentation

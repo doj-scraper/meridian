@@ -6,7 +6,18 @@ import { memoryManager } from "@/lib/agent/memory-v2";
  *
  * Retrieves a specific memory value.
  */
+import { ratelimit } from "@/lib/rate-limit";
+
 export async function GET(request: NextRequest) {
+  const ip = request.headers.get("x-forwarded-for") || "anonymous";
+  const limitResult = await ratelimit.api.limit(`memory-get-${ip}`);
+  if (!limitResult.success) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429 }
+    );
+  }
+
   try {
     const { searchParams } = request.nextUrl;
     const agentId = searchParams.get("agentId");

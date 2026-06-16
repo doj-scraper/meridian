@@ -71,7 +71,8 @@ describe('Agent API Smoke Tests', () => {
   });
 
   it('GET /api/agent/list should return a list of agents', async () => {
-    const response = await listAgents();
+    const request = new Request('http://localhost:3000/api/agent/list');
+    const response = await listAgents(request as any);
     expect(response.status).toBe(200);
 
     const data = await response.json();

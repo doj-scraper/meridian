@@ -3,12 +3,34 @@ import { runAgent, emitEvent, isRunActive } from "@/lib/agent/agent";
 import { getOrchestrator, buildTeamFromAgent } from "@/lib/agent/orchestrator";
 import { AgentConfig, AgentTool } from "@/lib/agent/types";
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { validateBody } from "@/lib/validation";
+
+import { ratelimit } from "@/lib/rate-limit";
+
+const runAgentSchema = z.object({
+  agentId: z.string().optional(),
+  goal: z.string().optional(),
+}).refine((data) => data.agentId || data.goal, {
+  message: "Either agentId or goal is required",
+});
 
 // POST /api/agent/run - Start an agent run (supports single-agent and orchestrated modes)
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for") || "anonymous";
+  const limitResult = await ratelimit.agent.limit(`run-${ip}`);
+  if (!limitResult.success) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429 }
+    );
+  }
+
+  const validatedBody = await validateBody(runAgentSchema)(req);
+  if (validatedBody instanceof Response) return validatedBody;
+
   try {
-    const body = await req.json();
-    const { agentId, goal } = body;
+    const { agentId, goal } = validatedBody;
 
     // Get the agent config
     let agent;
@@ -20,11 +42,6 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Agent not found" }, { status: 404 });
       }
       runGoal = runGoal || agent.goal;
-    } else if (!goal) {
-      return NextResponse.json(
-        { error: "Either agentId or goal is required" },
-        { status: 400 }
-      );
     }
 
     // Create a run record
