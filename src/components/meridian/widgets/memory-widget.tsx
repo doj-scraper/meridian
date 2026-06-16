@@ -1,8 +1,9 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { WidgetContainer } from '@/components/meridian/widget-container'
-import { useMeridianStore } from '@/store/meridian-store'
+import { useAgentStore } from '@/store/agent-store'
 
 interface MemorySegment {
   label: string
@@ -11,17 +12,74 @@ interface MemorySegment {
   color: string
 }
 
-const MEMORY_SEGMENTS: MemorySegment[] = [
-  { label: 'SHORT-TERM', entries: 847, sizeMb: 12.4, color: '#00b4dc' },
-  { label: 'LONG-TERM', entries: 234, sizeMb: 3.8, color: '#ffa500' },
-  { label: 'ARTIFACTS', entries: 42, sizeMb: 8.2, color: '#00ff88' },
-]
-
-const TOTAL_ENTRIES = MEMORY_SEGMENTS.reduce((sum, s) => sum + s.entries, 0)
-const TOTAL_SIZE = MEMORY_SEGMENTS.reduce((sum, s) => sum + s.sizeMb, 0)
-const MAX_SIZE = Math.max(...MEMORY_SEGMENTS.map((s) => s.sizeMb))
-
 export function MemoryWidget() {
+  const { agents } = useAgentStore()
+  const [segments, setSegments] = useState<MemorySegment[]>([
+    { label: 'SHORT-TERM', entries: 0, sizeMb: 0, color: '#00b4dc' },
+    { label: 'LONG-TERM', entries: 0, sizeMb: 0, color: '#ffa500' },
+    { label: 'ARTIFACTS', entries: 0, sizeMb: 0, color: '#00ff88' },
+  ])
+
+  useEffect(() => {
+    if (agents.length === 0) return
+
+    const fetchMemory = async () => {
+      try {
+        const agentId = agents[0]?.id
+        if (!agentId) return
+
+        const [sessionRes, persistentRes, artifactRes] = await Promise.all([
+          fetch(`/api/memory/list?agentId=${agentId}&tier=session`),
+          fetch(`/api/memory/list?agentId=${agentId}&tier=persistent`),
+          fetch(`/api/memory/list?agentId=${agentId}&tier=artifact`),
+        ])
+
+        const [sessionData, persistentData, artifactData] = await Promise.all([
+          sessionRes.json(),
+          persistentRes.json(),
+          artifactRes.json(),
+        ])
+
+        const estimateSize = (entries: any[]) => {
+          const totalBytes = entries.reduce((sum, e) => {
+            const str = JSON.stringify(e.value || e.content || '')
+            return sum + str.length
+          }, 0)
+          return parseFloat((totalBytes / 1024 / 1024).toFixed(2))
+        }
+
+        setSegments([
+          {
+            label: 'SHORT-TERM',
+            entries: sessionData.entries?.length || 0,
+            sizeMb: estimateSize(sessionData.entries || []),
+            color: '#00b4dc',
+          },
+          {
+            label: 'LONG-TERM',
+            entries: persistentData.entries?.length || 0,
+            sizeMb: estimateSize(persistentData.entries || []),
+            color: '#ffa500',
+          },
+          {
+            label: 'ARTIFACTS',
+            entries: artifactData.entries?.length || 0,
+            sizeMb: estimateSize(artifactData.entries || []),
+            color: '#00ff88',
+          },
+        ])
+      } catch (err) {
+        console.error('Failed to fetch memory:', err)
+      }
+    }
+
+    fetchMemory()
+  }, [agents])
+
+  const TOTAL_ENTRIES = segments.reduce((sum, s) => sum + s.entries, 0)
+  const TOTAL_SIZE = segments.reduce((sum, s) => sum + s.sizeMb, 0).toFixed(2)
+  const MAX_SIZE = Math.max(...segments.map((s) => s.sizeMb), 1)
+
   return (
     <WidgetContainer
       id="memory"
@@ -53,7 +111,7 @@ export function MemoryWidget() {
 
         {/* Memory segments */}
         <div className="flex-1 overflow-y-auto space-y-2 pr-0.5 scrollbar-thin">
-          {MEMORY_SEGMENTS.map((segment, i) => {
+          {segments.map((segment, i) => {
             const barPercent = (segment.sizeMb / MAX_SIZE) * 100
             return (
               <motion.div
@@ -111,7 +169,7 @@ export function MemoryWidget() {
         {/* Bottom summary bar */}
         <div className="mt-1.5 pt-1" style={{ borderTop: '1px solid rgba(0,180,220,0.1)' }}>
           <div className="flex items-center gap-1.5 px-1">
-            {MEMORY_SEGMENTS.map((seg) => (
+            {segments.map((seg) => (
               <div key={seg.label} className="flex items-center gap-0.5">
                 <div
                   className="w-1 h-1 rounded-full"

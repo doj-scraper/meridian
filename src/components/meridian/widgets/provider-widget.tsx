@@ -1,8 +1,8 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { WidgetContainer } from '@/components/meridian/widget-container'
-import { useMeridianStore } from '@/store/meridian-store'
 
 const STATUS_COLORS: Record<string, string> = {
   connected: '#00ff88',
@@ -10,8 +10,30 @@ const STATUS_COLORS: Record<string, string> = {
   error: '#ff3344',
 }
 
+interface Provider {
+  id: string
+  name: string
+  status: 'connected' | 'disconnected' | 'error'
+  activeModel?: string
+}
+
 export function ProviderWidget() {
-  const providers = useMeridianStore((s) => s.providers)
+  const [providers, setProviders] = useState<Provider[]>([])
+
+  useEffect(() => {
+    const fetchProviders = async () => {
+      try {
+        const res = await fetch('/api/providers/status')
+        const data = await res.json()
+        setProviders(data.providers || [])
+      } catch (err) {
+        console.error('Failed to fetch providers:', err)
+      }
+    }
+
+    fetchProviders()
+  }, [])
+
   const connectedCount = providers.filter((p) => p.status === 'connected').length
 
   return (
@@ -77,16 +99,6 @@ export function ProviderWidget() {
               </span>
 
               <div className="flex-1" />
-
-              {/* Latency for connected */}
-              {provider.status === 'connected' && (
-                <span
-                  className="text-[9px] font-mono tracking-[0.05em] shrink-0"
-                  style={{ color: '#5a6578' }}
-                >
-                  {provider.latencyMs}ms
-                </span>
-              )}
 
               {/* Active model */}
               {provider.activeModel && (

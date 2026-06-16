@@ -59,20 +59,20 @@
 
 ## Phase 2: Meridian UI Decision (Day 3) 🤔
 
-- [ ] **Decision Made:**
+- [x] **Decision Made:**
   - [ ] Option A: Full integration (3-5 days)
-  - [ ] Option B: Separate `/meridian` route (1-2 days) ← Recommended
+  - [x] Option B: Separate `/meridian` route (1-2 days) ← Recommended
   - [ ] Option C: Remove Meridian UI (2-4 hours)
 
 **If Option B chosen:**
-- [ ] **2.1:** Create `src/app/meridian/page.tsx`
-- [ ] **2.2:** Add navigation buttons between UIs
-- [ ] **2.3:** Wire 5 core widgets to real data
-  - [ ] Agents widget
-  - [ ] Memory widget
-  - [ ] Timeline widget
-  - [ ] Workflow widget
-  - [ ] Inference widget
+- [x] **2.1:** Create `src/app/meridian/page.tsx`
+- [x] **2.2:** Add navigation buttons between UIs
+- [x] **2.3:** Wire 5 core widgets to real data
+  - [x] Agents widget
+  - [x] Memory widget
+  - [x] Timeline widget
+  - [x] Workflow widget
+  - [x] Inference widget
 
 ✅ **Phase 2 Complete:** Meridian UI accessible and functional
 
@@ -282,7 +282,7 @@ bun scripts/load-test.ts
 **Track Progress:**
 - Phase 0: ✅ Emergency Fixes
 - Phase 1: ✅ Code Cleanup
-- Phase 2: ⬜ Meridian UI Decision
+- Phase 2: ✅ Meridian UI Decision
 - Phase 3: ⬜ Testing Foundation
 - Phase 4: ⬜ Security Hardening
 - Phase 5: ⬜ Production Readiness

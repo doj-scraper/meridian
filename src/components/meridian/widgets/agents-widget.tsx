@@ -1,35 +1,24 @@
 'use client'
 
+import { useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { WidgetContainer } from '@/components/meridian/widget-container'
-import { useMeridianStore } from '@/store/meridian-store'
+import { useAgentStore } from '@/store/agent-store'
 
-interface Agent {
-  name: string
-  role: string
-  status: 'active' | 'idle' | 'error'
-  model: string
-}
-
-const SEED_AGENTS: Agent[] = [
-  { name: 'ATLAS', role: 'researcher', status: 'active', model: 'gpt-4o' },
-  { name: 'SCRIBE', role: 'writer', status: 'active', model: 'claude-3.5' },
-  { name: 'FORGE', role: 'coder', status: 'active', model: 'gpt-4o' },
-  { name: 'PRISM', role: 'analyst', status: 'active', model: 'claude-3.5' },
-  { name: 'GAUGE', role: 'evaluator', status: 'active', model: 'gpt-4o' },
-  { name: 'EDGE', role: 'challenger', status: 'active', model: 'o1' },
-  { name: 'WEAVE', role: 'synthesizer', status: 'idle', model: 'claude-3.5' },
-  { name: 'BEACON', role: 'monitor', status: 'error', model: 'gpt-4o' },
-]
-
-const STATUS_COLORS: Record<Agent['status'], string> = {
+const STATUS_COLORS = {
   active: '#00ff88',
   idle: '#5a6578',
   error: '#ff3344',
 }
 
 export function AgentsWidget() {
-  const activeCount = SEED_AGENTS.filter((a) => a.status === 'active').length
+  const { agents, fetchAgents } = useAgentStore()
+
+  useEffect(() => {
+    fetchAgents()
+  }, [fetchAgents])
+
+  const activeCount = agents.filter((a) => a.status === 'active').length
 
   return (
     <WidgetContainer
@@ -44,7 +33,7 @@ export function AgentsWidget() {
             className="text-[9px] tracking-[0.2em] font-bold"
             style={{ color: '#5a6578' }}
           >
-            {SEED_AGENTS.length} AGENTS
+            {agents.length} AGENTS
           </span>
           <span
             className="text-[9px] tracking-[0.1em]"
@@ -62,9 +51,9 @@ export function AgentsWidget() {
 
         {/* Agent list */}
         <div className="flex-1 overflow-y-auto max-h-48 space-y-0.5 pr-0.5 scrollbar-thin">
-          {SEED_AGENTS.map((agent, i) => (
+          {agents.map((agent, i) => (
             <motion.div
-              key={agent.name}
+              key={agent.id}
               initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.03, duration: 0.2 }}
@@ -77,12 +66,12 @@ export function AgentsWidget() {
                 <div
                   className="w-1.5 h-1.5 rounded-full"
                   style={{
-                    background: STATUS_COLORS[agent.status],
+                    background: STATUS_COLORS[agent.status || 'idle'],
                     boxShadow:
                       agent.status === 'active'
-                        ? `0 0 4px ${STATUS_COLORS[agent.status]}`
+                        ? `0 0 4px ${STATUS_COLORS.active}`
                         : agent.status === 'error'
-                          ? `0 0 4px ${STATUS_COLORS[agent.status]}`
+                          ? `0 0 4px ${STATUS_COLORS.error}`
                           : 'none',
                   }}
                 />
@@ -104,7 +93,7 @@ export function AgentsWidget() {
                 className="text-[9px] tracking-[0.15em] uppercase"
                 style={{ color: '#3a4553' }}
               >
-                {agent.role}
+                {agent.role || 'general'}
               </span>
             </motion.div>
           ))}

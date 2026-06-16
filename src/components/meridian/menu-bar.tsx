@@ -1,17 +1,19 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useMeridianStore } from '@/store/meridian-store'
 
 const MENU_ITEMS = {
   File: ['New Workflow', 'New Agent', 'Import Configuration', 'Export Session', 'SSH Connect', '---', 'Quit'],
   Edit: ['Preferences', 'Provider Configuration', 'Model Selection', 'Layout Editor', '---', 'Clear Session'],
-  View: ['Toggle Clock', 'Toggle Heatmap', 'Toggle Network', 'Reset Layout', '---', 'Compact Mode', 'Cinematic Mode'],
+  View: ['Toggle Clock', 'Toggle Heatmap', 'Toggle Network', 'Reset Layout', '---', 'Compact Mode', 'Cinematic Mode', '---', 'Switch to Agent Canvas'],
   Help: ['Documentation', 'Keyboard Shortcuts', 'Architecture Overview', '---', 'About Meridian'],
   About: ['Version 0.1.0', 'Kernel Status', 'License', '---', 'Credits'],
 }
 
 export function MenuBar() {
+  const router = useRouter()
   const { activeMenu, setActiveMenu } = useMeridianStore()
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -86,7 +88,12 @@ export function MenuBar() {
                         ;(e.target as HTMLElement).style.color = '#8a94a3'
                         ;(e.target as HTMLElement).style.background = 'transparent'
                       }}
-                      onClick={() => setActiveMenu(null)}
+                      onClick={() => {
+                        if (item === 'Switch to Agent Canvas') {
+                          router.push('/')
+                        }
+                        setActiveMenu(null)
+                      }}
                     >
                       {item}
                     </button>

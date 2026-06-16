@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useCallback, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAgentStore, type AgentEvent, type AppModule } from "@/store/agent-store";
 import { AgentSidebar } from "./agent-sidebar";
@@ -235,6 +236,7 @@ function HermesModule() {
 }
 
 export function AgentStudio() {
+  const router = useRouter();
   const {
     fetchAgents,
     fetchRuns,
@@ -608,6 +610,14 @@ export function AgentStudio() {
                   ))}
                 </MenubarSubContent>
               </MenubarSub>
+              <MenubarSeparator style={{ background: "#1b2430" }} />
+              <MenubarItem
+                className="text-[11px] gap-2 focus:bg-[#141c25] focus:text-[#d7dde5]"
+                onClick={() => router.push('/meridian')}
+              >
+                <Sparkles size={12} style={{ color: "#00d1ff" }} />
+                Switch to Meridian Runtime
+              </MenubarItem>
             </MenubarContent>
           </MenubarMenu>
 

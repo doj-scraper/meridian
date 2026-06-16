@@ -1,5 +1,9 @@
 'use client'
 
+// NOTE: This widget currently uses mock data from meridian-store.
+// TODO: Wire to workflow API when available (no workflow execution API exists yet).
+// The mock data demonstrates the UI design for workflow visualization.
+
 import { motion } from 'framer-motion'
 import { WidgetContainer } from '@/components/meridian/widget-container'
 import { useMeridianStore } from '@/store/meridian-store'

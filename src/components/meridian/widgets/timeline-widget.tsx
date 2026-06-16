@@ -1,17 +1,33 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { WidgetContainer } from '@/components/meridian/widget-container'
-import { useMeridianStore } from '@/store/meridian-store'
 
 const LEVEL_COLORS: Record<string, string> = {
   info: '#5a6578',
   warn: '#ffa500',
   error: '#ff3344',
   event: '#00b4dc',
+  run_start: '#00ff88',
+  step_start: '#00b4dc',
+  llm_call: '#ffa500',
+  tool_execution: '#00b4dc',
+  run_complete: '#00ff88',
 }
 
-function formatTime(timestamp: number): string {
+interface TimelineEvent {
+  id: string
+  runId: string
+  type: string
+  timestamp: string
+  durationMs?: number
+  tokenCount?: number
+  metadata?: string
+  error?: string
+}
+
+function formatTime(timestamp: string): string {
   const d = new Date(timestamp)
   return d.toLocaleTimeString('en-US', {
     hour12: false,
@@ -21,21 +37,29 @@ function formatTime(timestamp: number): string {
   })
 }
 
-function abbreviateSource(source: string): string {
-  return source
-    .split('-')
-    .map((w) => w.slice(0, 3).toUpperCase())
-    .join('-')
-}
-
 function truncateMessage(message: string, maxLen: number = 48): string {
   if (message.length <= maxLen) return message
   return message.slice(0, maxLen - 1) + '\u2026'
 }
 
 export function TimelineWidget() {
-  const telemetryEntries = useMeridianStore((s) => s.telemetryEntries)
-  const recentEntries = telemetryEntries.slice(-6)
+  const [events, setEvents] = useState<TimelineEvent[]>([])
+
+  useEffect(() => {
+    const fetchTimeline = async () => {
+      try {
+        const res = await fetch('/api/timeline?limit=10')
+        const data = await res.json()
+        setEvents(data.events || [])
+      } catch (err) {
+        console.error('Failed to fetch timeline:', err)
+      }
+    }
+
+    fetchTimeline()
+    const interval = setInterval(fetchTimeline, 5000) // Refresh every 5s
+    return () => clearInterval(interval)
+  }, [])
 
   return (
     <WidgetContainer
@@ -56,7 +80,7 @@ export function TimelineWidget() {
             className="text-[9px] tracking-[0.1em]"
             style={{ color: '#3a4553' }}
           >
-            LAST {recentEntries.length}
+            LAST {events.length}
           </span>
         </div>
 
@@ -68,9 +92,9 @@ export function TimelineWidget() {
 
         {/* Timeline entries */}
         <div className="flex-1 overflow-y-auto max-h-48 pr-0.5 scrollbar-thin">
-          {recentEntries.map((entry, i) => (
+          {events.map((event, i) => (
             <motion.div
-              key={entry.id}
+              key={event.id}
               initial={{ opacity: 0, x: -6 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.04, duration: 0.2 }}
@@ -83,17 +107,17 @@ export function TimelineWidget() {
                 <div
                   className="w-[5px] h-[5px] rounded-full shrink-0"
                   style={{
-                    background: LEVEL_COLORS[entry.level] || '#5a6578',
+                    background: LEVEL_COLORS[event.type] || '#5a6578',
                     boxShadow:
-                      entry.level === 'error'
-                        ? `0 0 4px ${LEVEL_COLORS[entry.level]}`
-                        : entry.level === 'warn'
-                          ? `0 0 3px ${LEVEL_COLORS[entry.level]}`
+                      event.error
+                        ? `0 0 4px #ff3344`
+                        : event.type === 'run_start' || event.type === 'run_complete'
+                          ? `0 0 3px ${LEVEL_COLORS[event.type]}`
                           : 'none',
                   }}
                 />
                 {/* Connector line */}
-                {i < recentEntries.length - 1 && (
+                {i < events.length - 1 && (
                   <div
                     className="w-px flex-1 mt-0.5"
                     style={{
@@ -109,24 +133,24 @@ export function TimelineWidget() {
                 className="text-[9px] font-mono tracking-[0.05em] shrink-0"
                 style={{ color: '#2a3441' }}
               >
-                {formatTime(entry.timestamp)}
+                {formatTime(event.timestamp)}
               </span>
 
-              {/* Source */}
+              {/* Type */}
               <span
-                className="text-[9px] font-mono tracking-[0.05em] shrink-0"
-                style={{ color: LEVEL_COLORS[entry.level] || '#5a6578' }}
+                className="text-[9px] font-mono tracking-[0.05em] shrink-0 uppercase"
+                style={{ color: LEVEL_COLORS[event.type] || '#5a6578' }}
               >
-                [{abbreviateSource(entry.source)}]
+                [{event.type.replace('_', '-')}]
               </span>
 
-              {/* Message */}
+              {/* Run ID (abbreviated) */}
               <span
                 className="text-[9px] tracking-[0.02em] truncate"
                 style={{ color: '#5a6578' }}
-                title={entry.message}
+                title={event.runId}
               >
-                {truncateMessage(entry.message)}
+                {truncateMessage(event.runId, 24)}
               </span>
             </motion.div>
           ))}
