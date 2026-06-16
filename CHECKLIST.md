@@ -37,21 +37,21 @@
 
 ## Phase 1: Code Cleanup (Day 2) 🧹
 
-- [ ] **1.1:** Remove legacy component files
-  - [ ] Delete 5 duplicate files from `src/components/`
-  - [ ] Verify: `bun run build` still succeeds
+- [x] **1.1:** Remove legacy component files
+  - [x] Delete 5 duplicate files from `src/components/`
+  - [x] Verify: `bun run build` still succeeds
 
-- [ ] **1.2:** Sync Prisma database
-  - [ ] Run: `bun run db:generate`
-  - [ ] Run: `bun run db:push`
-  - [ ] Verify: `sqlite3 db/custom.db ".tables"` shows all models
+- [x] **1.2:** Sync Prisma database
+  - [x] Run: `bun run db:generate`
+  - [x] Run: `bun run db:push`
+  - [x] Verify: `sqlite3 db/custom.db ".tables"` shows all models
 
-- [ ] **1.3:** Create environment template
-  - [ ] Create `.env.example` with all required variables
-  - [ ] Verify: can copy to `.env.test` and app starts
+- [x] **1.3:** Create environment template
+  - [x] Create `.env.example` with all required variables
+  - [x] Verify: can copy to `.env.test` and app starts
 
-- [ ] **1.4:** Document API routes (optional)
-  - [ ] Start `API_REFERENCE.md` (complete in Phase 7)
+- [x] **1.4:** Document API routes (optional)
+  - [x] Start `API_REFERENCE.md` (complete in Phase 7)
 
 ✅ **Phase 1 Complete:** Clean codebase, database synced
 
@@ -281,7 +281,7 @@ bun scripts/load-test.ts
 
 **Track Progress:**
 - Phase 0: ✅ Emergency Fixes
-- Phase 1: ⬜ Code Cleanup
+- Phase 1: ✅ Code Cleanup
 - Phase 2: ⬜ Meridian UI Decision
 - Phase 3: ⬜ Testing Foundation
 - Phase 4: ⬜ Security Hardening
