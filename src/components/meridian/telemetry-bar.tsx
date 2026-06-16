@@ -96,6 +96,19 @@ export function TelemetryBar() {
           {telemetryPaused ? 'PAUSED' : 'LIVE'}
         </span>
       </button>
+
+      {/* About Section - Blue Tree Logo */}
+      <div className="flex items-center px-2 border-l shrink-0" style={{ borderColor: 'rgba(57, 255, 20, 0.1)' }} title="Blue Tree Organization">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="16" height="16" role="img" aria-label="Blue Tree">
+          <rect x="56" y="64" width="8" height="28" rx="2" fill="#7a5a3b"/>
+          <circle cx="60" cy="40" r="24" fill="#60a5fa" opacity="0.95"/>
+          <circle cx="42" cy="52" r="18" fill="#7dd3fc" opacity="0.95"/>
+          <circle cx="78" cy="52" r="18" fill="#38bdf8" opacity="0.95"/>
+          <circle cx="60" cy="28" r="3.4" fill="white" opacity="0.9"/>
+          <circle cx="48" cy="54" r="2.6" fill="white" opacity="0.85"/>
+          <circle cx="72" cy="54" r="2.6" fill="white" opacity="0.85"/>
+        </svg>
+      </div>
     </div>
   )
 }

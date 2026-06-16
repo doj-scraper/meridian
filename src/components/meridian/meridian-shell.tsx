@@ -33,7 +33,7 @@ export function MeridianShell() {
   const chatOpen = useMeridianStore((s) => s.chatOpen)
 
   return (
-    <div className="h-screen w-screen flex flex-col overflow-hidden relative" style={{ background: '#030508' }}>
+    <div className="h-screen w-screen flex flex-col overflow-hidden relative" style={{ background: '#030508', border: '8px solid rgba(57, 255, 20, 0.4)' }}>
       {/* Layer 0: Starfield Background */}
       <StarfieldBackground />
 
@@ -54,7 +54,7 @@ export function MeridianShell() {
             gridTemplateRows: 'repeat(5, 1fr)',
             gap: '1px',
             padding: '1px',
-            background: 'rgba(0,180,220,0.08)',
+            background: 'rgba(57, 255, 20, 0.15)',
           }}
         >
           {/* Row 1 - System Status */}
@@ -91,7 +91,7 @@ export function MeridianShell() {
             gridTemplateRows: '140px 1fr',
             gap: '1px',
             padding: '1px',
-            background: 'rgba(0,180,220,0.08)',
+            background: 'rgba(57, 255, 20, 0.15)',
           }}
         >
           {/* Top row: Utility widgets above the globe */}

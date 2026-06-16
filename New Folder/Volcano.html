@@ -1,0 +1,1080 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Volcanic Dashboard Icons — Premium</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+    :root{
+      --bg0:#070815;
+      --bg1:#0B1230;
+      --bg2:#140A14;
+
+      --ink:#EEF2FF;
+      --muted:#A4A8C6;
+
+      --card: rgba(18, 20, 40, .52);
+      --card2: rgba(10, 12, 30, .30);
+      --stroke: rgba(255, 200, 140, .16);
+      --stroke2: rgba(255,255,255,.06);
+
+      --hotA:#FFD36A;
+      --hotB:#FF7A18;
+      --hotC:#E11D48;
+
+      --ashA:#D3D7E3;
+      --ashB:#7B8396;
+
+      --ease: cubic-bezier(.2,.8,.2,1);
+    }
+
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 650px at 20% 10%, rgba(255,122,24,.14), transparent 55%),
+        radial-gradient(900px 650px at 78% 25%, rgba(225,29,72,.12), transparent 55%),
+        radial-gradient(900px 650px at 55% 92%, rgba(255,211,106,.10), transparent 55%),
+        linear-gradient(135deg, var(--bg0), var(--bg1) 45%, var(--bg2));
+      min-height:100vh;
+      overflow-x:hidden;
+    }
+
+    .container{max-width:1320px;margin:0 auto;padding:28px 18px 64px}
+    header{
+      text-align:center;
+      padding: 26px 0 18px;
+    }
+    h1{
+      font-size: clamp(2.1rem, 3.6vw, 3.25rem);
+      letter-spacing: -0.035em;
+      font-weight: 800;
+      background: linear-gradient(135deg, #FFE9B0 0%, #FF8A3A 35%, #FF3D4D 70%, #FFB199 100%);
+      -webkit-background-clip:text;background-clip:text;color:transparent;
+      filter: drop-shadow(0 18px 30px rgba(0,0,0,.40));
+    }
+    .subtitle{
+      margin: 10px auto 0;
+      max-width: 880px;
+      color: var(--muted);
+      font-weight: 380;
+      line-height: 1.6;
+      font-size: 1.02rem;
+    }
+
+    .icon-grid{
+      margin-top: 26px;
+      display:grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 18px;
+    }
+
+    .icon-card{
+      grid-column: span 6;
+      background:
+        radial-gradient(900px 260px at 50% 0%, rgba(255,255,255,.07), transparent 55%),
+        linear-gradient(180deg, rgba(255,255,255,.04), transparent 35%),
+        linear-gradient(180deg, var(--card), var(--card2));
+      border: 1px solid var(--stroke);
+      border-radius: 22px;
+      position: relative;
+      overflow: hidden;
+      padding: 18px;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      box-shadow:
+        0 22px 60px rgba(0,0,0,.42),
+        inset 0 1px 0 rgba(255,255,255,.06);
+      transition: transform .35s var(--ease), border-color .35s var(--ease);
+    }
+    .icon-card:before{
+      content:"";
+      position:absolute; inset:-1px;
+      border-radius: 22px;
+      padding:1px;
+      background: linear-gradient(135deg, rgba(255,211,106,.22), rgba(255,122,24,.16), rgba(225,29,72,.12));
+      -webkit-mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+              mask-composite: exclude;
+      pointer-events:none;
+      opacity:.85;
+    }
+    .icon-card:hover{transform: translateY(-6px); border-color: rgba(255,200,140,.26);}
+
+    .top{
+      display:flex; align-items:flex-start; justify-content:space-between; gap: 10px;
+      margin-bottom: 14px;
+    }
+    .title{font-weight:750;font-size:1.08rem; letter-spacing:-.01em;}
+    .kicker{margin-top:4px;font-size:.84rem;color:#8B90B4;font-weight:450}
+
+    .controls{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end}
+    .btn{
+      padding: 9px 10px;
+      font-size: .72rem;
+      font-weight: 650;
+      letter-spacing:.02em;
+      border-radius: 10px;
+      border: 1px solid rgba(255,200,140,.18);
+      background: rgba(7,10,18,.35);
+      color: rgba(238,242,255,.86);
+      cursor:pointer;
+      transition: transform .2s var(--ease), background .2s var(--ease), border-color .2s var(--ease), color .2s var(--ease);
+      user-select:none;
+    }
+    .btn:hover{transform: translateY(-1px); border-color: rgba(255,200,140,.28); background: rgba(10,16,32,.55); color: #fff;}
+    .btn.active{
+      border-color: transparent;
+      background: linear-gradient(135deg, rgba(255,211,106,.22), rgba(255,122,24,.18), rgba(225,29,72,.14));
+      box-shadow: 0 12px 26px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.10);
+      color:#fff;
+    }
+
+    .stage{
+      position: relative;
+      height: 320px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.08);
+      background:
+        radial-gradient(420px 240px at 50% 45%, rgba(255,122,24,.12), transparent 62%),
+        radial-gradient(340px 220px at 35% 62%, rgba(255,211,106,.10), transparent 60%),
+        radial-gradient(340px 220px at 70% 55%, rgba(225,29,72,.10), transparent 60%),
+        linear-gradient(180deg, rgba(255,255,255,.04), rgba(0,0,0,.12));
+      overflow:hidden;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      margin-bottom: 12px;
+    }
+    .stage:after{
+      content:"";
+      position:absolute; inset:-60px;
+      background:
+        radial-gradient(circle at 20% 40%, rgba(255,255,255,.05), transparent 30%),
+        radial-gradient(circle at 80% 55%, rgba(255,255,255,.04), transparent 28%),
+        radial-gradient(circle at 55% 70%, rgba(255,255,255,.035), transparent 28%);
+      filter: blur(10px);
+      opacity:.55;
+      pointer-events:none;
+      animation: fog 10s var(--ease) infinite;
+    }
+    @keyframes fog{
+      0%,100%{transform: translate3d(0,0,0) scale(1)}
+      50%{transform: translate3d(16px,-10px,0) scale(1.02)}
+    }
+
+    .icon{
+      width: 212px;
+      height: 212px;
+      filter: drop-shadow(0 18px 34px rgba(0,0,0,.45));
+      transition: transform .35s var(--ease), filter .35s var(--ease);
+      transform-origin: 50% 60%;
+    }
+    .icon-card:hover .icon{
+      transform: translateY(-2px) scale(1.03);
+      filter: drop-shadow(0 24px 44px rgba(0,0,0,.58));
+    }
+
+    .desc{
+      color: rgba(164,168,198,.92);
+      font-size:.88rem;
+      line-height:1.55;
+      margin-top: 8px;
+    }
+
+    /* Motion system */
+    .icon[data-state="idle"] .m-float { animation: floaty 4.8s var(--ease) infinite; }
+    .icon[data-state="idle"] .m-glint { animation: glint 6.0s var(--ease) infinite; }
+    .icon[data-state="idle"] .m-breathe { animation: breathe 3.4s var(--ease) infinite; }
+
+    .icon[data-state="alert"] .m-pulse { animation: pulse 1.15s var(--ease) infinite; }
+    .icon[data-state="alert"] .m-scan  { animation: spin 2.8s linear infinite; }
+    .icon[data-state="alert"] .m-shake { animation: shake 900ms var(--ease) infinite; }
+    .icon[data-state="alert"] .m-rise  { animation: rise 1.9s var(--ease) infinite; }
+    .icon[data-state="alert"] .m-glow  { animation: glow 1.1s var(--ease) infinite; }
+
+    .icon[data-state="viewed"]{
+      opacity:.70;
+      filter: drop-shadow(0 14px 26px rgba(0,0,0,.42));
+    }
+    .icon[data-state="viewed"] .m-float,
+    .icon[data-state="viewed"] .m-glint,
+    .icon[data-state="viewed"] .m-breathe,
+    .icon[data-state="viewed"] .m-pulse,
+    .icon[data-state="viewed"] .m-scan,
+    .icon[data-state="viewed"] .m-shake,
+    .icon[data-state="viewed"] .m-rise,
+    .icon[data-state="viewed"] .m-glow{
+      animation:none !important;
+      opacity:.55;
+    }
+
+    @keyframes floaty{ 0%,100%{transform: translateY(0)} 50%{transform: translateY(2.2px)} }
+    @keyframes breathe{ 0%,100%{opacity:.95} 50%{opacity:.72} }
+    @keyframes glint{
+      0%{transform: translateX(-160px); opacity:0}
+      18%{opacity:0}
+      30%{opacity:.65}
+      48%{opacity:0}
+      100%{transform: translateX(320px); opacity:0}
+    }
+    @keyframes pulse{
+      0%,100%{transform: scale(1); opacity:.92}
+      50%{transform: scale(1.09); opacity:1}
+    }
+    @keyframes spin{to{transform: rotate(360deg)}}
+    @keyframes shake{
+      0%,100%{transform: translate3d(0,0,0) rotate(0deg)}
+      20%{transform: translate3d(-.6px,.2px,0) rotate(-.6deg)}
+      40%{transform: translate3d(.9px,-.3px,0) rotate(.7deg)}
+      60%{transform: translate3d(-.7px,.3px,0) rotate(-.5deg)}
+      80%{transform: translate3d(.5px,-.2px,0) rotate(.4deg)}
+    }
+    @keyframes rise{
+      0%,100%{transform: translateY(0); opacity:.70}
+      50%{transform: translateY(-7px); opacity:.95}
+    }
+    @keyframes glow{
+      0%,100%{filter: drop-shadow(0 0 6px rgba(255,122,24,.55)) drop-shadow(0 0 16px rgba(225,29,72,.35));}
+      50%{filter: drop-shadow(0 0 2px rgba(255,122,24,.25)) drop-shadow(0 0 7px rgba(225,29,72,.18));}
+    }
+
+    @media (max-width: 980px){
+      .icon-card{grid-column: span 12}
+      .stage{height: 300px}
+    }
+    @media (prefers-reduced-motion: reduce){
+      *{animation: none !important; transition:none !important}
+      .stage:after{display:none}
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <h1>Volcanic Dashboard Icons</h1>
+      <p class="subtitle">Upgraded “premium” SVGs: refined geometry, modern palettes, metal/glass shading, and subtle micro‑animations with state controls (Idle / Alert / Viewed).</p>
+    </header>
+
+    <section class="icon-grid">
+
+      <!-- ===================== VOLCANO ===================== -->
+      <article class="icon-card" data-icon="volcano">
+        <div class="top">
+          <div>
+            <div class="title">Volcano</div>
+            <div class="kicker">Eruption / Crater</div>
+          </div>
+          <div class="controls">
+            <button class="btn active" data-state="idle">Idle</button>
+            <button class="btn" data-state="alert">Alert</button>
+            <button class="btn" data-state="viewed">Viewed</button>
+          </div>
+        </div>
+
+        <div class="stage">
+          <svg class="icon" viewBox="0 0 200 200" role="img" aria-label="Volcano icon" data-state="idle">
+            <defs>
+              <linearGradient id="v_rock" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#3B2B2A"/>
+                <stop offset="0.45" stop-color="#1B1722"/>
+                <stop offset="1" stop-color="#4B3A36"/>
+              </linearGradient>
+              <linearGradient id="v_rockRim" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="rgba(255,255,255,.35)"/>
+                <stop offset="0.45" stop-color="rgba(255,255,255,.08)"/>
+                <stop offset="1" stop-color="rgba(0,0,0,.55)"/>
+              </linearGradient>
+
+              <linearGradient id="v_lava" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#FFE28A"/>
+                <stop offset="0.35" stop-color="#FF8A2A"/>
+                <stop offset="1" stop-color="#D81B3B"/>
+              </linearGradient>
+              <radialGradient id="v_lavaCore" cx="50%" cy="35%" r="70%">
+                <stop offset="0" stop-color="#FFF7C7"/>
+                <stop offset="0.32" stop-color="#FFD36A"/>
+                <stop offset="0.62" stop-color="#FF7A18"/>
+                <stop offset="1" stop-color="#B40F2D"/>
+              </radialGradient>
+
+              <linearGradient id="v_smoke" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="rgba(220,226,238,.85)"/>
+                <stop offset="0.55" stop-color="rgba(138,146,166,.55)"/>
+                <stop offset="1" stop-color="rgba(80,86,104,.35)"/>
+              </linearGradient>
+
+              <filter id="softShadow" x="-40%" y="-40%" width="180%" height="180%">
+                <feDropShadow dx="0" dy="9" stdDeviation="7" flood-color="rgba(0,0,0,.55)"/>
+              </filter>
+              <filter id="inner" x="-30%" y="-30%" width="160%" height="160%">
+                <feOffset dx="0" dy="1"/>
+                <feGaussianBlur stdDeviation="1.6" result="b"/>
+                <feComposite in="b" in2="SourceAlpha" operator="arithmetic" k2="-1" k3="1" result="i"/>
+                <feColorMatrix in="i" type="matrix"
+                  values="0 0 0 0 0
+                          0 0 0 0 0
+                          0 0 0 0 0
+                          0 0 0 .62 0" />
+                <feComposite in2="SourceGraphic" operator="over"/>
+              </filter>
+
+              <linearGradient id="v_glint" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="rgba(255,255,255,0)"/>
+                <stop offset="0.48" stop-color="rgba(255,255,255,.58)"/>
+                <stop offset="0.52" stop-color="rgba(255,255,255,.12)"/>
+                <stop offset="1" stop-color="rgba(255,255,255,0)"/>
+              </linearGradient>
+
+              <clipPath id="v_clip">
+                <path d="M40 160 L72 86 Q78 72 92 70 H108 Q122 72 128 86 L160 160 Z"/>
+              </clipPath>
+
+              <filter id="lavaGlow" x="-70%" y="-70%" width="240%" height="240%">
+                <feGaussianBlur stdDeviation="3.5" result="b"/>
+                <feColorMatrix in="b" type="matrix"
+                  values="1 0 0 0 0
+                          0 1 0 0 0
+                          0 0 1 0 0
+                          0 0 0 14 -6" result="g"/>
+                <feComposite in="SourceGraphic" in2="g" operator="atop"/>
+              </filter>
+            </defs>
+
+            <g filter="url(#softShadow)" class="m-float">
+              <!-- base shadow plate -->
+              <ellipse cx="100" cy="166" rx="56" ry="16" fill="rgba(0,0,0,.25)"/>
+
+              <!-- volcano body (refined geometry) -->
+              <path d="M40 160 L72 86 Q78 72 92 70 H108 Q122 72 128 86 L160 160 Z"
+                    fill="url(#v_rock)" stroke="rgba(255,255,255,.10)" stroke-width="1.2" filter="url(#inner)"/>
+
+              <!-- bevel rim -->
+              <path d="M72 86 Q78 72 92 70 H108 Q122 72 128 86"
+                    fill="none" stroke="url(#v_rockRim)" stroke-width="2.2" opacity=".9"/>
+
+              <!-- crater lip -->
+              <path d="M78 92 Q84 80 96 79 H104 Q116 80 122 92 Q110 98 100 98 Q90 98 78 92 Z"
+                    fill="rgba(10,12,20,.55)" stroke="rgba(255,255,255,.10)" />
+
+              <!-- lava pool -->
+              <path d="M86 92 Q90 86 97 86 H103 Q110 86 114 92 Q108 96 100 96 Q92 96 86 92 Z"
+                    fill="url(#v_lavaCore)" opacity=".98" class="m-pulse m-glow" filter="url(#lavaGlow)"/>
+
+              <!-- lava stream -->
+              <path d="M100 97 C98 110 103 116 101 130 C99 144 104 151 102 160"
+                    fill="none" stroke="url(#v_lava)" stroke-width="6.5" stroke-linecap="round" opacity=".92"/>
+              <path d="M100 99 C99 110 103 116 101 130 C99 144 104 151 102 160"
+                    fill="none" stroke="rgba(255,255,255,.22)" stroke-width="1.2" stroke-linecap="round" opacity=".45"/>
+
+              <!-- ember sparks -->
+              <g class="m-rise" opacity=".9">
+                <circle cx="90" cy="62" r="3.4" fill="#FFD36A"/>
+                <circle cx="116" cy="58" r="2.8" fill="#FF8A2A"/>
+                <circle cx="104" cy="52" r="2.2" fill="#FFE9B0"/>
+              </g>
+
+              <!-- smoke -->
+              <g opacity=".9" class="m-breathe">
+                <path d="M85 66 C78 52 82 40 92 32 C88 42 96 48 94 58 C92 68 100 72 100 72 C95 74 89 72 85 66 Z"
+                      fill="url(#v_smoke)" opacity=".55"/>
+                <path d="M115 66 C122 52 118 40 108 32 C112 42 104 48 106 58 C108 68 100 72 100 72 C105 74 111 72 115 66 Z"
+                      fill="url(#v_smoke)" opacity=".55"/>
+              </g>
+
+              <!-- rock facet highlights -->
+              <g clip-path="url(#v_clip)" opacity=".55">
+                <rect x="-160" y="64" width="140" height="120" fill="url(#v_glint)" transform="skewX(-16)" class="m-glint"/>
+              </g>
+            </g>
+          </svg>
+        </div>
+
+        <p class="desc">Refined silhouette, crater lip, lava pool with glow, and controlled smoke. Alert mode intensifies lava pulse and adds subtle seismic shake.</p>
+      </article>
+
+
+      <!-- ===================== LAVA FLOW ===================== -->
+      <article class="icon-card" data-icon="lava-flow">
+        <div class="top">
+          <div>
+            <div class="title">Lava Flow</div>
+            <div class="kicker">Molten movement</div>
+          </div>
+          <div class="controls">
+            <button class="btn active" data-state="idle">Idle</button>
+            <button class="btn" data-state="alert">Alert</button>
+            <button class="btn" data-state="viewed">Viewed</button>
+          </div>
+        </div>
+
+        <div class="stage">
+          <svg class="icon" viewBox="0 0 200 200" role="img" aria-label="Lava flow icon" data-state="idle">
+            <defs>
+              <linearGradient id="lf_lava" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#FFE28A"/>
+                <stop offset="0.35" stop-color="#FF7A18"/>
+                <stop offset="1" stop-color="#C1123D"/>
+              </linearGradient>
+              <linearGradient id="lf_crust" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#2B1A1A"/>
+                <stop offset="0.45" stop-color="#140E18"/>
+                <stop offset="1" stop-color="#3B2323"/>
+              </linearGradient>
+              <radialGradient id="lf_hot" cx="50%" cy="45%" r="55%">
+                <stop offset="0" stop-color="#FFF7C7"/>
+                <stop offset="0.35" stop-color="#FFD36A"/>
+                <stop offset="0.7" stop-color="#FF7A18"/>
+                <stop offset="1" stop-color="rgba(225,29,72,0)"/>
+              </radialGradient>
+
+              <filter id="lf_shadow" x="-40%" y="-40%" width="180%" height="180%">
+                <feDropShadow dx="0" dy="9" stdDeviation="7" flood-color="rgba(0,0,0,.55)"/>
+              </filter>
+
+              <linearGradient id="lf_glint" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="rgba(255,255,255,0)"/>
+                <stop offset="0.48" stop-color="rgba(255,255,255,.55)"/>
+                <stop offset="0.52" stop-color="rgba(255,255,255,.12)"/>
+                <stop offset="1" stop-color="rgba(255,255,255,0)"/>
+              </linearGradient>
+
+              <clipPath id="lf_clip">
+                <path d="M40 78 C62 62 86 86 100 76 C116 64 138 66 160 80 L168 154 C137 168 63 168 32 154 Z"/>
+              </clipPath>
+            </defs>
+
+            <g filter="url(#lf_shadow)" class="m-float">
+              <path d="M40 78 C62 62 86 86 100 76 C116 64 138 66 160 80 L168 154 C137 168 63 168 32 154 Z"
+                    fill="url(#lf_lava)" stroke="rgba(255,255,255,.10)" stroke-width="1.2"/>
+
+              <!-- cooled crust edges -->
+              <path d="M44 86 C64 76 84 92 100 84 C116 74 136 76 156 86"
+                    fill="none" stroke="url(#lf_crust)" stroke-width="10" stroke-linecap="round" opacity=".75"/>
+              <path d="M52 110 C74 100 92 122 110 112 C128 102 142 110 160 104"
+                    fill="none" stroke="url(#lf_crust)" stroke-width="8" stroke-linecap="round" opacity=".55"/>
+
+              <!-- hotspots -->
+              <g class="m-pulse m-glow" opacity=".92">
+                <circle cx="78" cy="104" r="10" fill="url(#lf_hot)"/>
+                <circle cx="116" cy="98" r="9" fill="url(#lf_hot)"/>
+                <circle cx="138" cy="116" r="8" fill="url(#lf_hot)"/>
+              </g>
+
+              <!-- glint sweep -->
+              <g clip-path="url(#lf_clip)" opacity=".45">
+                <rect x="-160" y="66" width="140" height="120" fill="url(#lf_glint)" transform="skewX(-16)" class="m-glint"/>
+              </g>
+
+              <!-- subtle flow lines -->
+              <g opacity=".35" class="m-breathe">
+                <path d="M54 92 C74 88 86 104 100 96 C116 86 130 90 150 94"
+                      fill="none" stroke="rgba(255,255,255,.22)" stroke-width="2" stroke-linecap="round"/>
+                <path d="M48 126 C74 118 88 142 108 130 C128 118 142 132 162 124"
+                      fill="none" stroke="rgba(255,255,255,.16)" stroke-width="2" stroke-linecap="round"/>
+              </g>
+            </g>
+          </svg>
+        </div>
+
+        <p class="desc">Layered lava + cooled crust with animated hotspots. Alert mode enhances hotspot pulsing to read as thermal escalation.</p>
+      </article>
+
+
+      <!-- ===================== ASH CLOUD ===================== -->
+      <article class="icon-card" data-icon="ash-cloud">
+        <div class="top">
+          <div>
+            <div class="title">Ash Cloud</div>
+            <div class="kicker">Atmospheric plume</div>
+          </div>
+          <div class="controls">
+            <button class="btn active" data-state="idle">Idle</button>
+            <button class="btn" data-state="alert">Alert</button>
+            <button class="btn" data-state="viewed">Viewed</button>
+          </div>
+        </div>
+
+        <div class="stage">
+          <svg class="icon" viewBox="0 0 200 200" role="img" aria-label="Ash cloud icon" data-state="idle">
+            <defs>
+              <radialGradient id="ac_core" cx="40%" cy="35%" r="70%">
+                <stop offset="0" stop-color="rgba(236,242,255,.95)"/>
+                <stop offset="0.35" stop-color="rgba(179,187,205,.85)"/>
+                <stop offset="0.75" stop-color="rgba(107,115,134,.75)"/>
+                <stop offset="1" stop-color="rgba(68,74,90,.65)"/>
+              </radialGradient>
+              <linearGradient id="ac_edge" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="rgba(255,255,255,.18)"/>
+                <stop offset="1" stop-color="rgba(0,0,0,.28)"/>
+              </linearGradient>
+
+              <filter id="ac_shadow" x="-50%" y="-50%" width="200%" height="200%">
+                <feDropShadow dx="0" dy="10" stdDeviation="8" flood-color="rgba(0,0,0,.55)"/>
+              </filter>
+
+              <linearGradient id="ac_glint" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="rgba(255,255,255,0)"/>
+                <stop offset="0.48" stop-color="rgba(255,255,255,.45)"/>
+                <stop offset="0.52" stop-color="rgba(255,255,255,.10)"/>
+                <stop offset="1" stop-color="rgba(255,255,255,0)"/>
+              </linearGradient>
+
+              <clipPath id="ac_clip">
+                <path d="M52 116 C46 92 66 78 86 82 C92 64 110 54 126 64 C144 58 160 72 158 92 C176 102 174 132 150 138 C138 154 110 154 96 146 C76 152 54 142 52 116 Z"/>
+              </clipPath>
+            </defs>
+
+            <g filter="url(#ac_shadow)" class="m-float">
+              <path d="M52 116 C46 92 66 78 86 82 C92 64 110 54 126 64 C144 58 160 72 158 92 C176 102 174 132 150 138 C138 154 110 154 96 146 C76 152 54 142 52 116 Z"
+                    fill="url(#ac_core)" stroke="rgba(255,255,255,.10)" stroke-width="1.2"/>
+
+              <!-- depth lobes -->
+              <g opacity=".85" class="m-breathe">
+                <ellipse cx="84" cy="106" rx="26" ry="18" fill="rgba(255,255,255,.06)"/>
+                <ellipse cx="126" cy="110" rx="30" ry="20" fill="rgba(0,0,0,.12)"/>
+              </g>
+
+              <!-- particulate specs -->
+              <g opacity=".65" class="m-rise">
+                <circle cx="72" cy="146" r="2.2" fill="rgba(210,216,230,.75)"/>
+                <circle cx="96" cy="158" r="1.8" fill="rgba(160,170,190,.75)"/>
+                <circle cx="132" cy="150" r="2.0" fill="rgba(210,216,230,.7)"/>
+              </g>
+
+              <!-- glint -->
+              <g clip-path="url(#ac_clip)" opacity=".35">
+                <rect x="-160" y="60" width="140" height="120" fill="url(#ac_glint)" transform="skewX(-16)" class="m-glint"/>
+              </g>
+            </g>
+          </svg>
+        </div>
+
+        <p class="desc">Single-path cloud silhouette with internal depth lobes and particulate drift. Alert mode adds a “rising ash” feel via stronger drift and pulse.</p>
+      </article>
+
+
+      <!-- ===================== MAGMA CORE ===================== -->
+      <article class="icon-card" data-icon="magma-core">
+        <div class="top">
+          <div>
+            <div class="title">Magma Core</div>
+            <div class="kicker">Thermal / Chamber</div>
+          </div>
+          <div class="controls">
+            <button class="btn active" data-state="idle">Idle</button>
+            <button class="btn" data-state="alert">Alert</button>
+            <button class="btn" data-state="viewed">Viewed</button>
+          </div>
+        </div>
+
+        <div class="stage">
+          <svg class="icon" viewBox="0 0 200 200" role="img" aria-label="Magma core icon" data-state="idle">
+            <defs>
+              <radialGradient id="mc_core" cx="45%" cy="40%" r="70%">
+                <stop offset="0" stop-color="#FFF7C7"/>
+                <stop offset="0.28" stop-color="#FFD36A"/>
+                <stop offset="0.58" stop-color="#FF7A18"/>
+                <stop offset="1" stop-color="#8E0D2A"/>
+              </radialGradient>
+              <linearGradient id="mc_shell" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#3A1A1E"/>
+                <stop offset="0.55" stop-color="#120A14"/>
+                <stop offset="1" stop-color="#4B1E24"/>
+              </linearGradient>
+
+              <filter id="mc_shadow" x="-45%" y="-45%" width="190%" height="190%">
+                <feDropShadow dx="0" dy="10" stdDeviation="8" flood-color="rgba(0,0,0,.55)"/>
+              </filter>
+
+              <filter id="mc_glow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="4" result="b"/>
+                <feColorMatrix in="b" type="matrix"
+                  values="1 0 0 0 0
+                          0 1 0 0 0
+                          0 0 1 0 0
+                          0 0 0 15 -6" result="g"/>
+                <feComposite in="SourceGraphic" in2="g" operator="atop"/>
+              </filter>
+
+              <linearGradient id="mc_glint" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="rgba(255,255,255,0)"/>
+                <stop offset="0.48" stop-color="rgba(255,255,255,.48)"/>
+                <stop offset="0.52" stop-color="rgba(255,255,255,.10)"/>
+                <stop offset="1" stop-color="rgba(255,255,255,0)"/>
+              </linearGradient>
+
+              <clipPath id="mc_clip">
+                <circle cx="100" cy="106" r="60"/>
+              </clipPath>
+            </defs>
+
+            <g filter="url(#mc_shadow)" class="m-float">
+              <!-- shell -->
+              <circle cx="100" cy="106" r="62" fill="url(#mc_shell)" stroke="rgba(255,255,255,.10)" stroke-width="1.2"/>
+              <!-- core -->
+              <circle cx="100" cy="106" r="54" fill="url(#mc_core)" opacity=".98" class="m-pulse m-glow" filter="url(#mc_glow)"/>
+              <!-- heat seams -->
+              <g opacity=".55" class="m-breathe">
+                <path d="M100 62 C90 80 92 94 100 106 C108 94 110 80 100 62 Z" fill="rgba(255,247,199,.45)"/>
+                <path d="M70 106 C88 100 112 100 130 106 C112 112 88 112 70 106 Z" fill="rgba(255,247,199,.30)"/>
+                <path d="M100 150 C90 132 92 118 100 106 C108 118 110 132 100 150 Z" fill="rgba(255,247,199,.24)"/>
+              </g>
+              <!-- glint -->
+              <g clip-path="url(#mc_clip)" opacity=".35">
+                <rect x="-160" y="52" width="140" height="140" fill="url(#mc_glint)" transform="skewX(-16)" class="m-glint"/>
+              </g>
+            </g>
+          </svg>
+        </div>
+
+        <p class="desc">Cleaner concentric design with a hot core glow, dark shell, and heat seams. Alert mode emphasizes the thermal pulse.</p>
+      </article>
+
+
+      <!-- ===================== SEISMIC ACTIVITY ===================== -->
+      <article class="icon-card" data-icon="seismic">
+        <div class="top">
+          <div>
+            <div class="title">Seismic Activity</div>
+            <div class="kicker">Signal / tremor</div>
+          </div>
+          <div class="controls">
+            <button class="btn active" data-state="idle">Idle</button>
+            <button class="btn" data-state="alert">Alert</button>
+            <button class="btn" data-state="viewed">Viewed</button>
+          </div>
+        </div>
+
+        <div class="stage">
+          <svg class="icon" viewBox="0 0 200 200" role="img" aria-label="Seismic activity icon" data-state="idle">
+            <defs>
+              <linearGradient id="s_line" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="#FF4FA7"/>
+                <stop offset="0.5" stop-color="#FF86C8"/>
+                <stop offset="1" stop-color="#FF2E7D"/>
+              </linearGradient>
+              <linearGradient id="s_frame" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#FFFFFF"/>
+                <stop offset="0.2" stop-color="#B7C6DC"/>
+                <stop offset="0.55" stop-color="#2A2F48"/>
+                <stop offset="1" stop-color="#F1F6FF"/>
+              </linearGradient>
+              <filter id="s_shadow" x="-45%" y="-45%" width="190%" height="190%">
+                <feDropShadow dx="0" dy="10" stdDeviation="8" flood-color="rgba(0,0,0,.55)"/>
+              </filter>
+              <filter id="s_glow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="4" result="b"/>
+                <feColorMatrix in="b" type="matrix"
+                  values="1 0 0 0 0
+                          0 1 0 0 0
+                          0 0 1 0 0
+                          0 0 0 15 -6" result="g"/>
+                <feComposite in="SourceGraphic" in2="g" operator="atop"/>
+              </filter>
+            </defs>
+
+            <g filter="url(#s_shadow)" class="m-float">
+              <!-- frame -->
+              <rect x="42" y="64" width="116" height="86" rx="18" fill="rgba(10,12,30,.55)" stroke="rgba(255,255,255,.10)" stroke-width="1.2"/>
+              <rect x="48" y="70" width="104" height="74" rx="14" fill="rgba(255,255,255,.05)"/>
+              <!-- chrome lip -->
+              <rect x="42" y="64" width="116" height="86" rx="18" fill="none" stroke="url(#s_frame)" stroke-width="2.2" opacity=".75"/>
+
+              <!-- baseline -->
+              <path d="M58 118 H142" stroke="rgba(255,255,255,.12)" stroke-width="2" stroke-linecap="round"/>
+
+              <!-- waveform (refined) -->
+              <path d="M58 118 L72 110 L84 126 L96 96 L108 134 L120 88 L132 126 L142 118"
+                    stroke="url(#s_line)" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"
+                    class="m-shake m-glow" filter="url(#s_glow)"/>
+
+              <!-- nodes -->
+              <g opacity=".95" class="m-pulse">
+                <circle cx="58" cy="118" r="3.2" fill="#FF2E7D"/>
+                <circle cx="108" cy="134" r="3.2" fill="#FF2E7D"/>
+                <circle cx="142" cy="118" r="3.2" fill="#FF2E7D"/>
+              </g>
+            </g>
+          </svg>
+        </div>
+
+        <p class="desc">Premium “monitor” framing with a neon waveform. Alert mode adds a subtle tremor shake to imply active events.</p>
+      </article>
+
+
+      <!-- ===================== ERUPTION BURST ===================== -->
+      <article class="icon-card" data-icon="burst">
+        <div class="top">
+          <div>
+            <div class="title">Eruption Burst</div>
+            <div class="kicker">Impact / event</div>
+          </div>
+          <div class="controls">
+            <button class="btn active" data-state="idle">Idle</button>
+            <button class="btn" data-state="alert">Alert</button>
+            <button class="btn" data-state="viewed">Viewed</button>
+          </div>
+        </div>
+
+        <div class="stage">
+          <svg class="icon" viewBox="0 0 200 200" role="img" aria-label="Eruption burst icon" data-state="idle">
+            <defs>
+              <radialGradient id="b_core" cx="50%" cy="45%" r="65%">
+                <stop offset="0" stop-color="#FFF7C7"/>
+                <stop offset="0.35" stop-color="#FFD36A"/>
+                <stop offset="0.7" stop-color="#FF7A18"/>
+                <stop offset="1" stop-color="#C1123D"/>
+              </radialGradient>
+              <linearGradient id="b_star" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#FFE9B0"/>
+                <stop offset="0.45" stop-color="#FF8A2A"/>
+                <stop offset="1" stop-color="#D81B3B"/>
+              </linearGradient>
+              <filter id="b_shadow" x="-45%" y="-45%" width="190%" height="190%">
+                <feDropShadow dx="0" dy="10" stdDeviation="8" flood-color="rgba(0,0,0,.55)"/>
+              </filter>
+              <filter id="b_glow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="4" result="b"/>
+                <feColorMatrix in="b" type="matrix"
+                  values="1 0 0 0 0
+                          0 1 0 0 0
+                          0 0 1 0 0
+                          0 0 0 15 -6" result="g"/>
+                <feComposite in="SourceGraphic" in2="g" operator="atop"/>
+              </filter>
+            </defs>
+
+            <g filter="url(#b_shadow)" class="m-float">
+              <!-- outer starburst (cleaner symmetric) -->
+              <path d="M100 44 L112 78 L148 88 L122 110 L130 146 L100 126 L70 146 L78 110 L52 88 L88 78 Z"
+                    fill="url(#b_star)" stroke="rgba(255,255,255,.10)" stroke-width="1.2" class="m-pulse"/>
+
+              <!-- core -->
+              <circle cx="100" cy="102" r="30" fill="url(#b_core)" class="m-pulse m-glow" filter="url(#b_glow)"/>
+              <circle cx="100" cy="102" r="12" fill="rgba(225,29,72,.95)" opacity=".9"/>
+
+              <!-- sparks -->
+              <g opacity=".85" class="m-rise">
+                <circle cx="78" cy="72" r="2.6" fill="#FFD36A"/>
+                <circle cx="130" cy="74" r="2.2" fill="#FFE9B0"/>
+                <circle cx="120" cy="56" r="2.0" fill="#FF8A2A"/>
+              </g>
+            </g>
+          </svg>
+        </div>
+
+        <p class="desc">Symmetric starburst + glowing core for “event occurred”. Alert mode tightens the pulse to read more urgent.</p>
+      </article>
+
+
+      <!-- ===================== ROCK & DEBRIS ===================== -->
+      <article class="icon-card" data-icon="rock-debris">
+        <div class="top">
+          <div>
+            <div class="title">Rock & Debris</div>
+            <div class="kicker">Ejecta / fragments</div>
+          </div>
+          <div class="controls">
+            <button class="btn active" data-state="idle">Idle</button>
+            <button class="btn" data-state="alert">Alert</button>
+            <button class="btn" data-state="viewed">Viewed</button>
+          </div>
+        </div>
+
+        <div class="stage">
+          <svg class="icon" viewBox="0 0 200 200" role="img" aria-label="Rock and debris icon" data-state="idle">
+            <defs>
+              <linearGradient id="rd_stone" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#B59C7A"/>
+                <stop offset="0.45" stop-color="#5B4036"/>
+                <stop offset="1" stop-color="#D2B894"/>
+              </linearGradient>
+              <linearGradient id="rd_shadowStone" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#3A2A26"/>
+                <stop offset="1" stop-color="#1A1216"/>
+              </linearGradient>
+              <filter id="rd_shadow" x="-45%" y="-45%" width="190%" height="190%">
+                <feDropShadow dx="0" dy="10" stdDeviation="8" flood-color="rgba(0,0,0,.55)"/>
+              </filter>
+              <linearGradient id="rd_glint" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="rgba(255,255,255,0)"/>
+                <stop offset="0.48" stop-color="rgba(255,255,255,.45)"/>
+                <stop offset="0.52" stop-color="rgba(255,255,255,.10)"/>
+                <stop offset="1" stop-color="rgba(255,255,255,0)"/>
+              </linearGradient>
+            </defs>
+
+            <g filter="url(#rd_shadow)" class="m-float">
+              <!-- main rock -->
+              <path d="M56 78 L94 68 L118 92 L112 128 L78 140 L50 112 Z"
+                    fill="url(#rd_stone)" stroke="rgba(255,255,255,.10)" stroke-width="1.2"/>
+              <path d="M58 84 L92 74 L108 96 L104 122 L78 132 L56 112 Z"
+                    fill="url(#rd_shadowStone)" opacity=".35"/>
+
+              <!-- secondary rocks -->
+              <path d="M122 108 L150 100 L160 124 L142 144 Z"
+                    fill="url(#rd_stone)" stroke="rgba(255,255,255,.10)" stroke-width="1.2"/>
+              <path d="M74 148 L102 156 L98 182 L66 176 Z"
+                    fill="url(#rd_stone)" stroke="rgba(255,255,255,.10)" stroke-width="1.2"/>
+
+              <!-- speck texture -->
+              <g opacity=".55" class="m-breathe">
+                <circle cx="82" cy="104" r="2.0" fill="rgba(255,255,255,.22)"/>
+                <circle cx="94" cy="110" r="1.6" fill="rgba(0,0,0,.22)"/>
+                <circle cx="132" cy="122" r="1.8" fill="rgba(255,255,255,.18)"/>
+                <circle cx="84" cy="166" r="1.6" fill="rgba(0,0,0,.22)"/>
+              </g>
+
+              <!-- glints -->
+              <g opacity=".25">
+                <path d="M60 90 C76 82 92 90 112 88" fill="none" stroke="url(#rd_glint)" stroke-width="4" stroke-linecap="round" class="m-glint"/>
+              </g>
+            </g>
+          </svg>
+        </div>
+
+        <p class="desc">More “stone-like” geometry with internal shadow facets and micro‑glints. Alert mode adds a subtle shake.</p>
+      </article>
+
+
+      <!-- ===================== TEMPERATURE GAUGE ===================== -->
+      <article class="icon-card" data-icon="temp-gauge">
+        <div class="top">
+          <div>
+            <div class="title">Temperature Gauge</div>
+            <div class="kicker">Thermometer</div>
+          </div>
+          <div class="controls">
+            <button class="btn active" data-state="idle">Idle</button>
+            <button class="btn" data-state="alert">Alert</button>
+            <button class="btn" data-state="viewed">Viewed</button>
+          </div>
+        </div>
+
+        <div class="stage">
+          <svg class="icon" viewBox="0 0 200 200" role="img" aria-label="Temperature gauge icon" data-state="idle">
+            <defs>
+              <linearGradient id="tg_chrome" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="#F7FBFF"/>
+                <stop offset="0.16" stop-color="#A7BED8"/>
+                <stop offset="0.34" stop-color="#FFFFFF"/>
+                <stop offset="0.62" stop-color="#7C91A8"/>
+                <stop offset="1" stop-color="#F0F6FF"/>
+              </linearGradient>
+              <linearGradient id="tg_tube" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#33A3FF"/>
+                <stop offset="0.52" stop-color="#FFD36A"/>
+                <stop offset="1" stop-color="#FF2A2A"/>
+              </linearGradient>
+              <radialGradient id="tg_bulb" cx="40%" cy="35%" r="70%">
+                <stop offset="0" stop-color="#FFF7C7"/>
+                <stop offset="0.35" stop-color="#FFD36A"/>
+                <stop offset="0.8" stop-color="#FF2A2A"/>
+                <stop offset="1" stop-color="#7A0012"/>
+              </radialGradient>
+              <filter id="tg_shadow" x="-45%" y="-45%" width="190%" height="190%">
+                <feDropShadow dx="0" dy="10" stdDeviation="8" flood-color="rgba(0,0,0,.55)"/>
+              </filter>
+              <filter id="tg_glow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="4" result="b"/>
+                <feColorMatrix in="b" type="matrix"
+                  values="1 0 0 0 0
+                          0 1 0 0 0
+                          0 0 1 0 0
+                          0 0 0 15 -6" result="g"/>
+                <feComposite in="SourceGraphic" in2="g" operator="atop"/>
+              </filter>
+            </defs>
+
+            <g filter="url(#tg_shadow)" class="m-float">
+              <!-- chrome housing -->
+              <rect x="84" y="40" width="32" height="92" rx="16" fill="url(#tg_chrome)" opacity=".92" stroke="rgba(0,0,0,.22)" stroke-width="1.2"/>
+              <rect x="90" y="46" width="20" height="80" rx="10" fill="rgba(10,12,30,.55)" stroke="rgba(255,255,255,.12)" stroke-width="1"/>
+              <!-- liquid -->
+              <rect x="93" y="60" width="14" height="64" rx="7" fill="url(#tg_tube)" opacity=".98"/>
+
+              <!-- bulb -->
+              <circle cx="100" cy="146" r="22" fill="rgba(10,12,30,.55)" stroke="rgba(255,255,255,.12)" stroke-width="1.2"/>
+              <circle cx="100" cy="146" r="16" fill="url(#tg_bulb)" class="m-pulse m-glow" filter="url(#tg_glow)" opacity=".95"/>
+
+              <!-- tick arc -->
+              <path d="M78 146 A 22 22 0 0 1 122 146" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="2" stroke-linecap="round" opacity=".8"/>
+              <path d="M82 146 A 18 18 0 0 1 118 146" fill="none" stroke="rgba(0,0,0,.25)" stroke-width="2" stroke-linecap="round" opacity=".55"/>
+
+              <!-- needle highlight -->
+              <path d="M100 146 V112" stroke="rgba(255,255,255,.45)" stroke-width="1.6" stroke-linecap="round" opacity=".55"/>
+            </g>
+          </svg>
+        </div>
+
+        <p class="desc">Chrome housing, dark glass cavity, and gradient liquid. Alert mode increases bulb glow to suggest overheating.</p>
+      </article>
+
+
+      <!-- ===================== PRESSURE & GAS ===================== -->
+      <article class="icon-card" data-icon="pressure-gas">
+        <div class="top">
+          <div>
+            <div class="title">Pressure & Gas</div>
+            <div class="kicker">Emission / buildup</div>
+          </div>
+          <div class="controls">
+            <button class="btn active" data-state="idle">Idle</button>
+            <button class="btn" data-state="alert">Alert</button>
+            <button class="btn" data-state="viewed">Viewed</button>
+          </div>
+        </div>
+
+        <div class="stage">
+          <svg class="icon" viewBox="0 0 200 200" role="img" aria-label="Pressure and gas icon" data-state="idle">
+            <defs>
+              <linearGradient id="pg_core" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#B46CFF"/>
+                <stop offset="0.55" stop-color="#6D28D9"/>
+                <stop offset="1" stop-color="#FF4FA7"/>
+              </linearGradient>
+              <linearGradient id="pg_rim" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="#F7FBFF"/>
+                <stop offset="0.18" stop-color="#A7BED8"/>
+                <stop offset="0.36" stop-color="#FFFFFF"/>
+                <stop offset="0.62" stop-color="#7C91A8"/>
+                <stop offset="1" stop-color="#F0F6FF"/>
+              </linearGradient>
+              <radialGradient id="pg_ring" cx="50%" cy="50%" r="60%">
+                <stop offset="0" stop-color="rgba(255,214,165,.85)"/>
+                <stop offset="0.55" stop-color="rgba(255,211,106,.30)"/>
+                <stop offset="1" stop-color="rgba(255,211,106,0)"/>
+              </radialGradient>
+
+              <filter id="pg_shadow" x="-45%" y="-45%" width="190%" height="190%">
+                <feDropShadow dx="0" dy="10" stdDeviation="8" flood-color="rgba(0,0,0,.55)"/>
+              </filter>
+              <filter id="pg_glow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="4" result="b"/>
+                <feColorMatrix in="b" type="matrix"
+                  values="1 0 0 0 0
+                          0 1 0 0 0
+                          0 0 1 0 0
+                          0 0 0 15 -6" result="g"/>
+                <feComposite in="SourceGraphic" in2="g" operator="atop"/>
+              </filter>
+            </defs>
+
+            <g filter="url(#pg_shadow)" class="m-float">
+              <circle cx="100" cy="106" r="58" fill="rgba(10,12,30,.55)" stroke="rgba(255,255,255,.10)" stroke-width="1.2"/>
+              <circle cx="100" cy="106" r="52" fill="url(#pg_core)" opacity=".98"/>
+              <circle cx="100" cy="106" r="52" fill="none" stroke="url(#pg_rim)" stroke-width="2.2" opacity=".65"/>
+
+              <!-- pressure rings -->
+              <circle cx="100" cy="106" r="34" fill="none" stroke="rgba(255,211,106,.70)" stroke-width="2.2" opacity=".65" class="m-breathe"/>
+              <circle cx="100" cy="106" r="20" fill="none" stroke="rgba(255,211,106,.45)" stroke-width="2" opacity=".55" class="m-breathe"/>
+
+              <!-- emission ticks -->
+              <g stroke="rgba(255,211,106,.85)" stroke-width="2.6" stroke-linecap="round" opacity=".9" class="m-pulse m-glow" filter="url(#pg_glow)">
+                <path d="M100 54 V40"/>
+                <path d="M134 70 L146 58"/>
+                <path d="M150 106 H166"/>
+              </g>
+
+              <!-- inner glow -->
+              <circle cx="100" cy="106" r="44" fill="url(#pg_ring)" opacity=".45" class="m-breathe"/>
+            </g>
+          </svg>
+        </div>
+
+        <p class="desc">Chrome-rimmed pressure cell with pulsing rings and emission ticks. Alert mode makes the rings feel more “pressurized”.</p>
+      </article>
+
+
+      <!-- ===================== ALERT & WARNING ===================== -->
+      <article class="icon-card" data-icon="alert-warning">
+        <div class="top">
+          <div>
+            <div class="title">Alert & Warning</div>
+            <div class="kicker">Hazard indicator</div>
+          </div>
+          <div class="controls">
+            <button class="btn active" data-state="idle">Idle</button>
+            <button class="btn" data-state="alert">Alert</button>
+            <button class="btn" data-state="viewed">Viewed</button>
+          </div>
+        </div>
+
+        <div class="stage">
+          <svg class="icon" viewBox="0 0 200 200" role="img" aria-label="Alert warning icon" data-state="idle">
+            <defs>
+              <linearGradient id="aw_tri" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#FFB06A"/>
+                <stop offset="0.35" stop-color="#FF5A1F"/>
+                <stop offset="1" stop-color="#B10F33"/>
+              </linearGradient>
+              <linearGradient id="aw_rim" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="rgba(255,255,255,.35)"/>
+                <stop offset="0.55" stop-color="rgba(255,255,255,.10)"/>
+                <stop offset="1" stop-color="rgba(0,0,0,.55)"/>
+              </linearGradient>
+              <radialGradient id="aw_gold" cx="45%" cy="40%" r="70%">
+                <stop offset="0" stop-color="#FFF7C7"/>
+                <stop offset="0.35" stop-color="#FFD36A"/>
+                <stop offset="1" stop-color="#C78A1B"/>
+              </radialGradient>
+
+              <filter id="aw_shadow" x="-45%" y="-45%" width="190%" height="190%">
+                <feDropShadow dx="0" dy="10" stdDeviation="8" flood-color="rgba(0,0,0,.55)"/>
+              </filter>
+              <filter id="aw_glow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="4" result="b"/>
+                <feColorMatrix in="b" type="matrix"
+                  values="1 0 0 0 0
+                          0 1 0 0 0
+                          0 0 1 0 0
+                          0 0 0 15 -6" result="g"/>
+                <feComposite in="SourceGraphic" in2="g" operator="atop"/>
+              </filter>
+            </defs>
+
+            <g filter="url(#aw_shadow)" class="m-float">
+              <path d="M100 44 L162 154 H38 Z" fill="url(#aw_tri)" stroke="rgba(255,255,255,.10)" stroke-width="1.2"/>
+              <path d="M100 52 L154 150 H46 Z" fill="none" stroke="url(#aw_rim)" stroke-width="3.2" opacity=".85"/>
+
+              <!-- exclamation -->
+              <rect x="94" y="76" width="12" height="54" rx="6" fill="url(#aw_gold)" class="m-pulse m-glow" filter="url(#aw_glow)" opacity=".95"/>
+              <circle cx="100" cy="142" r="7.6" fill="url(#aw_gold)" class="m-pulse m-glow" filter="url(#aw_glow)" opacity=".95"/>
+
+              <!-- base ripple -->
+              <path d="M66 158 Q100 168 134 158" stroke="rgba(0,0,0,.28)" stroke-width="4" fill="none" opacity=".35"/>
+              <path d="M70 156 Q100 166 130 156" stroke="rgba(255,255,255,.14)" stroke-width="2" fill="none" opacity=".35" class="m-breathe"/>
+            </g>
+          </svg>
+        </div>
+
+        <p class="desc">Bevelled warning triangle with a gold “lens” exclamation. Alert mode adds a more urgent pulse without becoming noisy.</p>
+      </article>
+
+    </section>
+  </div>
+
+  <script>
+    // State controls (Idle / Alert / Viewed)
+    document.querySelectorAll('.icon-card').forEach(card => {
+      const svg = card.querySelector('svg.icon');
+      const buttons = card.querySelectorAll('.btn');
+
+      const setState = (state) => {
+        svg.setAttribute('data-state', state);
+        buttons.forEach(b => b.classList.toggle('active', b.dataset.state === state));
+      };
+
+      buttons.forEach(btn => btn.addEventListener('click', () => setState(btn.dataset.state)));
+      setState('idle');
+    });
+  </script>
+</body>
+</html>

@@ -37,11 +37,31 @@ export function MenuBar() {
       }}
     >
       {/* Logo */}
-      <div className="flex items-center px-3 h-full border-r" style={{ borderColor: 'rgba(0,180,220,0.12)' }}>
-        <span className="text-[11px] tracking-[0.3em] font-bold" style={{ color: '#00b4dc' }}>
+      <div className="flex items-center px-3 h-full border-r" style={{ borderColor: 'rgba(57, 255, 20, 0.12)' }}>
+        <svg viewBox="0 0 200 200" width="20" height="20" className="mr-2" role="img" aria-label="Volcano icon">
+          <defs>
+            <linearGradient id="v_rock_menu" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stopColor="#3B2B2A"/>
+              <stop offset="0.45" stopColor="#1B1722"/>
+              <stop offset="1" stopColor="#4B3A36"/>
+            </linearGradient>
+            <radialGradient id="v_lavaCore_menu" cx="50%" cy="35%" r="70%">
+              <stop offset="0" stopColor="#FFF7C7"/>
+              <stop offset="0.32" stopColor="#FFD36A"/>
+              <stop offset="1" stopColor="#B40F2D"/>
+            </radialGradient>
+          </defs>
+          <g>
+            <path d="M40 160 L72 86 Q78 72 92 70 H108 Q122 72 128 86 L160 160 Z" fill="url(#v_rock_menu)" stroke="rgba(255,255,255,.10)" strokeWidth="1.2"/>
+            <path d="M78 92 Q84 80 96 79 H104 Q116 80 122 92 Q110 98 100 98 Q90 98 78 92 Z" fill="rgba(10,12,20,.55)" />
+            <path d="M86 92 Q90 86 97 86 H103 Q110 86 114 92 Q108 96 100 96 Q92 96 86 92 Z" fill="url(#v_lavaCore_menu)" opacity=".98"/>
+            <path d="M100 97 C98 110 103 116 101 130 C99 144 104 151 102 160" fill="none" stroke="#FF8A2A" strokeWidth="6.5" strokeLinecap="round" opacity=".92"/>
+          </g>
+        </svg>
+        <span className="text-[11px] tracking-[0.3em] font-bold" style={{ color: '#E11D48' }}>
           MERIDIAN
         </span>
-        <span className="text-[9px] tracking-[0.15em] ml-1.5" style={{ color: '#3a4553' }}>
+        <span className="text-[9px] tracking-[0.15em] ml-1.5" style={{ color: '#FF3D4D' }}>
           RUNTIME
         </span>
       </div>

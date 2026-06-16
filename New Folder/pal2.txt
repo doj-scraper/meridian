@@ -1,0 +1,756 @@
+aimport React, { useState, useEffect } from 'react';
+
+// ── TYPE ARCHITECTURE DECLARATIONS ──────────────────────────────────────
+interface Entity {
+  id: string;
+  name: string;
+  type: string;
+  cat: 'Process Actors' | 'Data Stores' | 'Artifacts';
+}
+
+interface GraphData {
+  nodes: string[];
+  edges: [string, string][];
+}
+
+interface MatrixItem {
+  name: string;
+  desc: string;
+  val: number;
+  color?: string;
+}
+
+interface Deliverable {
+  num: string;
+  name: string;
+  desc: string;
+  status: 'Draft' | 'Pending' | 'Review' | 'Final';
+}
+
+interface ProfileData {
+  label: string;
+  title: string;
+  sub: string;
+  entities: Entity[];
+  graphData: GraphData;
+  matrix: MatrixItem[];
+  deliverables: Deliverable[];
+}
+
+interface LayoutNode {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  ntype: string;
+  labelText: string;
+}
+
+interface LayoutEdge {
+  id: string;
+  d: string;
+  pathId: string;
+}
+
+interface LayoutGraph {
+  width: number;
+  height: number;
+  nodes: LayoutNode[];
+  edges: LayoutEdge[];
+}
+
+// ── STRUCTURAL SOURCE OF TRUTH (DATA PROFILES) ──────────────────────────
+const DATA_PROFILES: Record<'premium' | 'foundational', ProfileData> = {
+  premium: {
+    label: "PREMIUM_ASSESSMENT.JSON",
+    title: "10-Day Operational Leverage Assessment",
+    sub: "RESOLVING THE INTAKE → VERIFICATION → ROUTING BOTTLENECK",
+    entities: [
+      { id: "client", name: "Client Ops Data", type: "Input", cat: "Artifacts" },
+      { id: "assessor", name: "Assessment Core", type: "Orch.", cat: "Artifacts" },
+      { id: "phase1", name: "Process Mapping", type: "Phase 1", cat: "Process Actors" },
+      { id: "phase2", name: "Rule Extraction", type: "Phase 2", cat: "Process Actors" },
+      { id: "phase3", name: "Architecture Design", type: "Phase 3", cat: "Process Actors" },
+      { id: "phase4", name: "ROI Calculation", type: "Phase 4", cat: "Process Actors" },
+      { id: "phase5", name: "Exec Briefout", type: "Phase 5", cat: "Process Actors" },
+      { id: "wf_store", name: "Workflow DB", type: "Store", cat: "Data Stores" },
+      { id: "rules_store", name: "Rules Engine", type: "Store", cat: "Data Stores" },
+      { id: "arch_store", name: "Sys Graph", type: "Store", cat: "Data Stores" },
+      { id: "roi_store", name: "ROI Model", type: "Store", cat: "Data Stores" },
+      { id: "report", name: "Value-at-Stake Report", type: "Output", cat: "Artifacts" }
+    ],
+    graphData: {
+      nodes: ["client", "assessor", "phase1", "phase2", "phase3", "phase4", "phase5", "wf_store", "rules_store", "arch_store", "roi_store", "report"],
+      edges: [
+        ["client", "assessor"], ["assessor", "phase1"], ["assessor", "phase2"], ["assessor", "phase3"],
+        ["assessor", "phase4"], ["assessor", "phase5"], ["phase1", "wf_store"], ["phase2", "rules_store"],
+        ["phase3", "arch_store"], ["phase4", "roi_store"], ["wf_store", "phase2"], ["rules_store", "phase3"],
+        ["arch_store", "phase4"], ["roi_store", "phase5"], ["phase5", "report"]
+      ]
+    },
+    matrix: [
+      { name: "Rule Clarity", desc: "Policy-constrained and deterministic. Logic trees verified with no subjective judgment.", val: 88 },
+      { name: "Economic Value", desc: "Quantifiable cycle time reduction. Direct margin impact identified across intake loops.", val: 80, color: "var(--amber)" },
+      { name: "Volume & Frequency", desc: "High-frequency loop justifies automation infrastructure investment.", val: 75 },
+      { name: "System Access", desc: "CRM API confirmed. EHR connector mapped. Data cleanliness rated 7/10.", val: 80, color: "var(--cobalt)" },
+      { name: "Exception Simplicity", desc: "Exception classes mapped. Escalation path defined for human-in-the-loop handoff.", val: 60, color: "var(--amber)" }
+    ],
+    deliverables: [
+      { num: "01", name: "Automation Blueprint", desc: "Deterministic software-agent infrastructure mapping intake forms to enterprise CRM.", status: "Draft" },
+      { num: "02", name: "ROI Labor Calculation", desc: "Exact calculation of FTE labor hours returned to the business via automation.", status: "Pending" },
+      { num: "03", name: "Threat Map", desc: "Compliance and security architecture. Data residency and access control layers.", status: "Review" }
+    ]
+  },
+  foundational: {
+    label: "FOUNDATIONAL_AUDIT.JSON",
+    title: "5-Step Foundational Agentic Audit",
+    sub: "SYSTEMATICALLY DIAGNOSING OPERATIONAL BOTTLENECKS",
+    entities: [
+      { id: "org_data", name: "Organization Data", type: "Input", cat: "Artifacts" },
+      { id: "audit_engine", name: "Audit Engine", type: "Orch.", cat: "Artifacts" },
+      { id: "f1", name: "Map All Tools", type: "Step 1", cat: "Process Actors" },
+      { id: "f2", name: "Find Knowledge", type: "Step 2", cat: "Process Actors" },
+      { id: "f3", name: "Document Processes", type: "Step 3", cat: "Process Actors" },
+      { id: "f4", name: "Identify Owners", type: "Step 4", cat: "Process Actors" },
+      { id: "f5", name: "Measure Results", type: "Step 5", cat: "Process Actors" },
+      { id: "stack_db", name: "Tech Stack DB", type: "Store", cat: "Data Stores" },
+      { id: "know_idx", name: "Knowledge Index", type: "Store", cat: "Data Stores" },
+      { id: "proc_map", name: "Process Maps", type: "Store", cat: "Data Stores" },
+      { id: "own_mat", name: "Stakeholder Matrix", type: "Store", cat: "Data Stores" },
+      { id: "res_dash", name: "Metrics Dash", type: "Store", cat: "Data Stores" },
+      { id: "f_report", name: "AI Audit Report", type: "Output", cat: "Artifacts" }
+    ],
+    graphData: {
+      nodes: ["org_data", "audit_engine", "f1", "f2", "f3", "f4", "f5", "stack_db", "know_idx", "proc_map", "own_mat", "res_dash", "f_report"],
+      edges: [
+        ["org_data", "audit_engine"], ["audit_engine", "f1"], ["audit_engine", "f2"], ["audit_engine", "f3"],
+        ["audit_engine", "f4"], ["audit_engine", "f5"], ["f1", "stack_db"], ["f2", "know_idx"],
+        ["f3", "proc_map"], ["f4", "own_mat"], ["f5", "res_dash"], ["stack_db", "f2"],
+        ["know_idx", "f3"], ["proc_map", "f4"], ["own_mat", "f5"], ["res_dash", "f_report"], ["f5", "f_report"]
+      ]
+    },
+    matrix: [
+      { name: "Tech Stack Mapped", desc: "Complete inventory of CRMs, email providers, Google Sheets, and ancillary tools.", val: 100 },
+      { name: "Knowledge Sourced", desc: "Data silos identified. Explicit understanding of where LLMs must connect.", val: 85, color: "var(--cobalt)" },
+      { name: "Process Documented", desc: "Raw inputs, desired outputs, and tool requirements formally codified.", val: 65, color: "var(--amber)" },
+      { name: "Owners Identified", desc: "Stakeholders and budget owners mapped to specific operational workflows.", val: 90 },
+      { name: "Success Metrics", desc: "Baseline error rates, cost per transaction, and expected accuracy improvements set.", val: 70 }
+    ],
+    deliverables: [
+      { num: "01", name: "Tech Stack Topology", desc: "Visual map of the entire software ecosystem and data transit paths.", status: "Final" },
+      { num: "02", name: "Knowledge Source Index", desc: "Directory of vectorizable data stores for RAG implementation.", status: "Final" },
+      { num: "03", name: "Stakeholder Blueprint", desc: "Departmental breakdown of workflow owners and associated budgets.", status: "Draft" }
+    ]
+  }
+};
+
+export default function App() {
+  // ── STATE SEGMENTS ────────────────────────────────────────────────────
+  const [currentProfile, setCurrentProfile] = useState<'premium' | 'foundational'>('premium');
+  const [activeTab, setActiveTab] = useState<'graph' | 'matrix' | 'deliverables'>('graph');
+  const [dropdownOpen, setDropdownOpen] = useState<boolean>(false);
+  const [animParticles, setAnimParticles] = useState<boolean>(true);
+  const [elkScale, setElkScale] = useState<number>(1);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
+  const [layoutGraph, setLayoutGraph] = useState<LayoutGraph | null>(null);
+
+  const activeData = DATA_PROFILES[currentProfile];
+
+  // ── ASYNCHRONOUS GRAPH COMPUTE ENGINE (ELK INTEGRATION) ───────────────
+  useEffect(() => {
+    let active = true;
+    
+    const runLayout = async () => {
+      if (typeof window === 'undefined') return;
+
+      let ElkClass = (window as any).ELK;
+      
+      // Inject ELK bundle into context if absent from main head assembly
+      if (!ElkClass) {
+        if (!document.getElementById('elk-script')) {
+          const script = document.createElement('script');
+          script.id = 'elk-script';
+          script.src = 'https://cdn.jsdelivr.net/npm/elkjs@0.9.3/lib/elk.bundled.min.js';
+          script.async = true;
+          document.head.appendChild(script);
+          script.onload = () => { if (active) runLayout(); };
+          return;
+        } else {
+          setTimeout(() => { if (active) runLayout(); }, 150);
+          return;
+        }
+      }
+
+      try {
+        const elkInstance = new ElkClass();
+        const eNodes = activeData.graphData.nodes.map(id => {
+          const ent = activeData.entities.find(e => e.id === id);
+          return {
+            id: id,
+            width: 54,
+            height: 54,
+            labels: [{ text: ent ? ent.name.replace(/ /g, "\n") : id }],
+            ntype: ent ? ent.type : ''
+          };
+        });
+
+        const eEdges = activeData.graphData.edges.map((e, i) => ({
+          id: `edge${i}`,
+          sources: [e[0]],
+          targets: [e[1]]
+        }));
+
+        const graphStructure = {
+          id: "root",
+          layoutOptions: {
+            "elk.algorithm": "layered",
+            "elk.direction": "RIGHT",
+            "elk.layered.spacing.nodeNodeBetweenLayers": "80",
+            "elk.spacing.nodeNode": "40"
+          },
+          children: eNodes,
+          edges: eEdges
+        };
+
+        const computedGraph = await elkInstance.layout(graphStructure);
+        if (!active) return;
+
+        const PAD = 64;
+        let maxX = 0;
+        let maxY = 0;
+
+        computedGraph.children?.forEach((n: any) => {
+          maxX = Math.max(maxX, (n.x || 0) + (n.width || 0));
+          maxY = Math.max(maxY, (n.y || 0) + (n.height || 0));
+        });
+
+        const W = maxX + PAD * 2;
+        const H = maxY + PAD * 2;
+
+        const nodesMapped: LayoutNode[] = (computedGraph.children || []).map((n: any) => ({
+          id: n.id,
+          x: n.x + PAD,
+          y: n.y + PAD,
+          width: n.width,
+          height: n.height,
+          ntype: n.ntype,
+          labelText: n.labels?.[0]?.text || ''
+        }));
+
+        const edgesMapped: LayoutEdge[] = (computedGraph.edges || []).map((edge: any) => {
+          const sec = edge.sections?.[0];
+          if (!sec) return null;
+          
+          const sx = sec.startPoint.x + PAD;
+          const sy = sec.startPoint.y + PAD;
+          const ex = sec.endPoint.x + PAD;
+          const ey = sec.endPoint.y + PAD;
+          
+          let pathD = `M ${sx} ${sy}`;
+          if (sec.bendPoints) {
+            sec.bendPoints.forEach((bp: any) => {
+              pathD += ` L ${bp.x + PAD} ${bp.y + PAD}`;
+            });
+          }
+          pathD += ` L ${ex} ${ey}`;
+          
+          return {
+            id: edge.id,
+            d: pathD,
+            pathId: `p_${edge.id}`
+          };
+        }).filter((e): e is LayoutEdge => e !== null);
+
+        setLayoutGraph({ width: W, height: H, nodes: nodesMapped, edges: edgesMapped });
+      } catch (err) {
+        console.error("Critical pipeline breakdown in ELK execution loop:", err);
+      }
+    };
+
+    setLayoutGraph(null);
+    runLayout();
+
+    return () => { active = false; };
+  }, [currentProfile]);
+
+  const categories: Array<'Process Actors' | 'Data Stores' | 'Artifacts'> = ['Process Actors', 'Data Stores', 'Artifacts'];
+  const selectedEntity = activeData.entities.find(e => e.id === selectedEntityId);
+
+  return (
+    <div className="app">
+      {/* Dynamic Style Injection Assembly Capsule */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&family=Barlow+Condensed:wght@400;500;600;700&display=swap');
+        :root {
+          --void:        #030704;
+          --bg-panel:    rgba(7, 12, 9, 0.94);
+          --bg-input:    #0b1410;
+          --bg-hover:    #101c15;
+          --bdr-dim:     #111d16;
+          --bdr-mid:     #1b2e23;
+          --bdr-bright:  #2c4438;
+          --bdr-accent:  #3a5548;
+          --fern:        #10b981;
+          --fern-dim:    rgba(16,185,129,0.08);
+          --fern-glow:   rgba(16,185,129,0.15);
+          --fern-pulse:  rgba(16,185,129,0.35);
+          --amber:       #f59e0b;
+          --cobalt:      #60a5fa;
+          --t-bright:    #edf7f1;
+          --t-mid:       #7aa88c;
+          --t-dim:       #3e5c4a;
+          --mono:       'Share Tech Mono', monospace;
+          --sans:       'DM Sans', sans-serif;
+          --cond:       'Barlow Condensed', sans-serif;
+          --panel-w:    296px;
+        }
+        .app {
+          display: grid;
+          grid-template-rows: 48px 1fr 26px;
+          height: 100vh;
+          width: 100vw;
+          position: relative;
+          z-index: 1;
+          background: var(--void);
+          color: var(--t-bright);
+          font-family: var(--sans);
+          font-size: 13px;
+          overflow: hidden;
+        }
+        .app::after {
+          content: ''; position: fixed; inset: 0;
+          background: radial-gradient(ellipse 65% 55% at 52% 48%, rgba(16,185,129,.035) 0%, transparent 68%);
+          pointer-events: none; z-index: 0;
+        }
+        .topnav {
+          background: rgba(3,7,4,.97);
+          border-bottom: 1px solid var(--bdr-mid);
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 0 16px; z-index: 100;
+        }
+        .nav-left { display: flex; align-items: center; gap: 14px; }
+        .logotype { display: flex; align-items: center; gap: 9px; }
+        .logo-mark {
+          width: 22px; height: 22px; border: 1.5px solid var(--fern);
+          display: flex; align-items: center; justify-content: center;
+        }
+        .logo-mark::before {
+          content: ''; width: 7px; height: 7px; background: var(--fern);
+          animation: pulse-dot 2.4s ease-in-out infinite;
+        }
+        @keyframes pulse-dot { 0%, 100% { opacity: 1; transform: scale(1) } 50% { opacity: .5; transform: scale(.65) } }
+        .logo-text { font-family: var(--cond); font-size: 17px; font-weight: 700; letter-spacing: .2em; color: var(--t-bright); }
+        .logo-text .sep { color: var(--fern); margin: 0 4px; }
+        .vbar { width: 1px; height: 24px; background: var(--bdr-mid); }
+        .profile-loader { position: relative; display: flex; align-items: center; }
+        .btn-load {
+          display: flex; align-items: center; gap: 8px; padding: 6px 12px;
+          background: var(--bg-input); border: 1px solid var(--bdr-bright);
+          cursor: pointer; transition: all 0.2s; user-select: none;
+        }
+        .btn-load:hover { border-color: var(--fern); }
+        .btn-load .lbl { font-family: var(--mono); font-size: 9px; color: var(--t-dim); letter-spacing: 0.1em; }
+        .btn-load .val { font-family: var(--mono); font-size: 11px; color: var(--fern); }
+        .btn-load .caret { font-size: 8px; color: var(--t-dim); }
+        .dropdown-menu {
+          position: absolute; top: 100%; left: 0; margin-top: 4px;
+          background: var(--bg-panel); border: 1px solid var(--bdr-mid);
+          width: 220px; display: none; flex-direction: column; z-index: 200;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.8);
+        }
+        .dropdown-menu.show { display: flex; }
+        .dd-item {
+          padding: 10px 12px; font-family: var(--mono); font-size: 10px;
+          color: var(--t-mid); cursor: pointer; border-bottom: 1px solid var(--bdr-dim); transition: all 0.1s;
+        }
+        .dd-item:hover { background: var(--bg-hover); color: var(--t-bright); border-left: 2px solid var(--fern); }
+        .dd-item.active { background: var(--fern-dim); color: var(--fern); border-left: 2px solid var(--fern); }
+        .nav-tabs { display: flex; height: 100%; }
+        .nav-tab {
+          height: 100%; padding: 0 18px; display: flex; align-items: center; gap: 7px;
+          font-family: var(--mono); font-size: 10px; color: var(--t-dim);
+          text-transform: uppercase; letter-spacing: .12em; border-left: 1px solid var(--bdr-dim);
+          cursor: pointer; transition: all .2s; user-select: none;
+        }
+        .nav-tab:hover { color: var(--t-mid); background: rgba(16,185,129,.02); }
+        .nav-tab.active {
+          color: var(--fern); border-bottom: 2px solid var(--fern);
+          background: linear-gradient(180deg, transparent, rgba(16,185,129,.04));
+        }
+        .tab-pip { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+        .workspace { display: flex; position: relative; flex: 1; overflow: hidden; }
+        .tab-view { display: none; position: absolute; inset: 0; transition: opacity 0.3s; opacity: 0; width: 100%; height: 100%; }
+        .tab-view.active { display: flex; opacity: 1; }
+        .panel {
+          width: var(--panel-w); flex-shrink: 0; background: var(--bg-panel);
+          display: flex; flex-direction: column; z-index: 10; backdrop-filter: blur(10px);
+        }
+        .panel-l { border-right: 1px solid var(--bdr-mid); }
+        .panel-r { border-left: 1px solid var(--bdr-mid); }
+        .panel-hdr {
+          padding: 10px 14px; border-bottom: 1px solid var(--bdr-mid);
+          display: flex; justify-content: space-between; align-items: center;
+          background: rgba(0,0,0,.18); flex-shrink: 0;
+        }
+        .panel-title { font-family: var(--mono); font-size: 9px; color: var(--t-dim); text-transform: uppercase; letter-spacing: .18em; }
+        .panel-badge { font-family: var(--mono); font-size: 9px; padding: 2px 6px; border: 1px solid var(--bdr-bright); color: var(--t-dim); }
+        .panel-badge.live { border-color: var(--fern); color: var(--fern); }
+        .panel-body { flex: 1; overflow-y: auto; padding: 12px; }
+        .filter-row { display: flex; align-items: center; margin-bottom: 14px; border: 1px solid var(--bdr-mid); }
+        .filter-icon { padding: 7px 9px; color: var(--t-dim); font-size: 10px; font-family: var(--mono); background: var(--bg-input); border-right: 1px solid var(--bdr-mid); }
+        .filter-input { background: var(--bg-input); border: none; padding: 7px 10px; font-family: var(--mono); font-size: 10px; color: var(--t-bright); outline: none; width: 100%; }
+        .ent-section { margin-bottom: 16px; }
+        .ent-sect-label { font-family: var(--mono); font-size: 8px; color: var(--t-dim); text-transform: uppercase; letter-spacing: .2em; padding: 3px 0; margin-bottom: 4px; border-bottom: 1px solid var(--bdr-dim); }
+        .ent-item { display: flex; align-items: center; gap: 9px; padding: 6px 6px; cursor: pointer; border-left: 2px solid transparent; transition: all .15s; }
+        .ent-item:hover { background: var(--bg-hover); border-left-color: var(--fern); }
+        .ent-dot { width: 13px; height: 13px; border-radius: 50%; border: 1.5px solid; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 6px; font-family: var(--mono); }
+        .dn-actor { border-color: var(--fern); color: var(--fern); }
+        .dn-store { border-color: var(--amber); color: var(--amber); }
+        .dn-output { border-color: var(--cobalt); color: var(--cobalt); }
+        .dn-input { border-color: var(--t-mid); color: var(--t-mid); }
+        .dn-core { border-color: var(--fern); color: var(--fern); background: rgba(16,185,129,.1); }
+        .ent-name { font-size: 12px; font-weight: 400; flex: 1; color: var(--t-bright); line-height: 1.3; }
+        .ent-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+        .ent-type { font-family: var(--mono); font-size: 8px; color: var(--t-dim); }
+        .prop-sec { margin-bottom: 20px; }
+        .prop-sec-title { font-family: var(--cond); font-size: 13px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--t-bright); padding-bottom: 6px; margin-bottom: 10px; border-bottom: 1px solid var(--bdr-mid); }
+        .kv { display: flex; justify-content: space-between; align-items: baseline; padding: 5px 0; gap: 8px; }
+        .kv-k { font-size: 11px; color: var(--t-mid); flex-shrink: 0; }
+        .kv-v { font-family: var(--mono); font-size: 11px; color: var(--fern); text-align: right; word-break: break-all; }
+        .kv-v.warn { color: var(--amber); }
+        .graph-canvas {
+          flex: 1; position: relative; display: flex; align-items: center; justify-content: center;
+          overflow: hidden; background-image: radial-gradient(var(--bdr-bright) 1px, transparent 1px);
+          background-size: 24px 24px; background-position: center center;
+        }
+        .graph-tools {
+          position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+          display: flex; gap: 3px; padding: 6px; background: var(--bg-panel); border: 1px solid var(--bdr-mid);
+          backdrop-filter: blur(8px); z-index: 20;
+        }
+        .tool-btn { width: 30px; height: 30px; background: transparent; border: 1px solid var(--bdr-dim); color: var(--t-dim); font-family: var(--mono); font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; user-select: none; }
+        .tool-btn:hover { border-color: var(--fern); color: var(--fern); background: var(--fern-dim); }
+        .scroll-view { flex: 1; overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding: 36px 40px; gap: 24px; width: 100%; height: 100%; }
+        .view-header { text-align: center; }
+        .v-title { font-family: var(--cond); font-size: 26px; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; color: var(--t-bright); margin-bottom: 5px; }
+        .v-sub { font-family: var(--mono); font-size: 9px; color: var(--t-dim); letter-spacing: .1em; }
+        .card-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; width: 100%; max-width: 820px; }
+        .g-card { background: var(--bg-panel); border: 1px solid var(--bdr-mid); padding: 18px; transition: border-color .2s; }
+        .g-card:hover { border-color: var(--fern); }
+        .c-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .c-name { font-family: var(--cond); font-size: 14px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--t-bright); }
+        .c-bar { height: 3px; background: var(--bdr-dim); margin-bottom: 10px; position: relative; overflow: hidden; }
+        .c-bar-fill { height: 100%; background: var(--fern); transition: width 1.2s cubic-bezier(.4,0,.2,1); }
+        .c-desc { font-size: 11px; color: var(--t-mid); line-height: 1.6; }
+        .statusbar {
+          background: rgba(3,7,4,.98); border-top: 1px solid var(--bdr-dim);
+          display: flex; align-items: center; padding: 0 16px; gap: 20px; z-index: 100;
+        }
+        .sbar-item { display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 9px; color: var(--t-dim); }
+        .ind { width: 5px; height: 5px; border-radius: 50%; }
+        .ind.g { background: var(--fern); }
+        .sbar-r { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+        ::-webkit-scrollbar { width: 3px; }
+        ::-webkit-scrollbar-thumb { background: var(--bdr-bright); }
+        ::-webkit-scrollbar-track { background: transparent; }
+      `}</style>
+
+      {/* ── TOP ASSEMBLY NAVIGATION BAR ────────────────────────────────────── */}
+      <nav className="topnav">
+        <div className="nav-left">
+          <div className="logotype">
+            <div className="logo-mark"></div>
+            <div className="logo-text">CRODA <span className="sep">//</span> <span className="sub">FOUNDRY</span></div>
+          </div>
+          <div className="vbar"></div>
+          
+          <div className="profile-loader">
+            <div className="btn-load" onClick={() => setDropdownOpen(!dropdownOpen)}>
+              <span className="lbl">PROFILE //</span>
+              <span className="val">{activeData.label}</span>
+              <span className="caret"> ▼</span>
+            </div>
+            <div className={`dropdown-menu ${dropdownOpen ? 'show' : ''}`}>
+              <div 
+                className={`dd-item ${currentProfile === 'premium' ? 'active' : ''}`}
+                onClick={() => { setCurrentProfile('premium'); setSelectedEntityId(null); setDropdownOpen(false); }}
+              >
+                PREMIUM_ASSESSMENT.JSON
+              </div>
+              <div 
+                className={`dd-item ${currentProfile === 'foundational' ? 'active' : ''}`}
+                onClick={() => { setCurrentProfile('foundational'); setSelectedEntityId(null); setDropdownOpen(false); }}
+              >
+                FOUNDATIONAL_AUDIT.JSON
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="nav-tabs">
+          <div className={`nav-tab ${activeTab === 'graph' ? 'active' : ''}`} onClick={() => setActiveTab('graph')}>
+            <span className="tab-pip"></span>Ontology Graph
+          </div>
+          <div className={`nav-tab ${activeTab === 'matrix' ? 'active' : ''}`} onClick={() => setActiveTab('matrix')}>
+            <span className="tab-pip"></span>Diagnostic Matrix
+          </div>
+          <div className={`nav-tab ${activeTab === 'deliverables' ? 'active' : ''}`} onClick={() => setActiveTab('deliverables')}>
+            <span className="tab-pip"></span>Deliverables
+          </div>
+        </div>
+      </nav>
+
+      {/* ── WORKSPACE MODULE SHIFT GRID ───────────────────────────────────── */}
+      <div className="workspace">
+        
+        {/* VIEW SEGMENT: ONTOLOGY LAYER */}
+        <div className={`tab-view ${activeTab === 'graph' ? 'active' : ''}`}>
+          <aside className="panel panel-l">
+            <div className="panel-hdr">
+              <span className="panel-title">Entity Explorer</span>
+              <span className="panel-badge live">LIVE</span>
+            </div>
+            <div className="panel-body">
+              <div className="filter-row">
+                <div className="filter-icon">SRC</div>
+                <input 
+                  type="text" 
+                  className="filter-input" 
+                  placeholder="Filter entities..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+
+              {categories.map(cat => {
+                const targetEntities = activeData.entities.filter(
+                  e => e.cat === cat && e.name.toLowerCase().includes(searchTerm.toLowerCase())
+                );
+                if (targetEntities.length === 0) return null;
+                return (
+                  <div className="ent-section" key={cat}>
+                    <div className="ent-sect-label">{cat}</div>
+                    {targetEntities.map(e => {
+                      let icon = 'P'; let cls = 'dn-actor';
+                      if (e.type === 'Store') { icon = 'S'; cls = 'dn-store'; }
+                      if (e.type === 'Input') { icon = 'I'; cls = 'dn-input'; }
+                      if (e.type === 'Output') { icon = 'O'; cls = 'dn-output'; }
+                      if (e.type === 'Orch.') { icon = 'C'; cls = 'dn-core'; }
+                      return (
+                        <div 
+                          className={`ent-item ${selectedEntityId === e.id ? 'bg-hover' : ''}`} 
+                          key={e.id}
+                          onClick={() => setSelectedEntityId(e.id)}
+                          style={{ borderLeft: selectedEntityId === e.id ? '2px solid var(--fern)' : undefined }}
+                        >
+                          <div className={`ent-dot ${cls}`}>{icon}</div>
+                          <span className="ent-name">{e.name}</span>
+                          <div className="ent-meta"><span className="ent-type">{e.type}</span></div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          </aside>
+
+          {/* ASYNCHRONOUS CANVAS ELEMENT */}
+          <main className="graph-canvas">
+            {layoutGraph ? (
+              <svg 
+                viewBox={`0 0 ${layoutGraph.width} ${layoutGraph.height}`}
+                style={{
+                  width: '88%',
+                  height: '82%',
+                  maxWidth: '1080px',
+                  display: 'block',
+                  margin: 'auto',
+                  transform: `scale(${elkScale})`,
+                  transition: 'transform 0.2s'
+                }}
+              >
+                <g id="edges-spine">
+                  {layoutGraph.edges.map(edge => (
+                    <g key={edge.id}>
+                      <path 
+                        id={edge.pathId}
+                        d={edge.d}
+                        fill="none"
+                        stroke="#1b2e23"
+                        strokeWidth="1.5"
+                      />
+                      {animParticles && (
+                        <circle r="2.5" fill="#10b981">
+                          <animateMotion dur={`${1.8 + Math.random() * 1.5}s`} repeatCount="indefinite">
+                            <mpath href={`#${edge.pathId}`} />
+                          </animateMotion>
+                        </circle>
+                      )}
+                    </g>
+                  ))}
+                </g>
+
+                <g id="nodes-spine">
+                  {layoutGraph.nodes.map(node => {
+                    const r = 26;
+                    const cx = node.x + r;
+                    const cy = node.y + r;
+                    const lines = node.labelText.split('\n');
+
+                    let fill = 'rgba(16,185,129,0.05)';
+                    let stroke = '#10b981';
+                    if (node.ntype === 'Store') { fill = 'rgba(245,158,11,0.05)'; stroke = '#f59e0b'; }
+                    if (node.ntype === 'Output') { fill = 'rgba(96,165,250,0.05)'; stroke = '#60a5fa'; }
+                    if (node.ntype === 'Input') { stroke = '#7aa88c'; }
+                    if (node.ntype === 'Orch.') { fill = 'rgba(16,185,129,0.1)'; stroke = '#10b981'; }
+
+                    const isSelected = selectedEntityId === node.id;
+
+                    return (
+                      <g 
+                        key={node.id} 
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => setSelectedEntityId(node.id)}
+                      >
+                        <circle 
+                          cx={cx} cy={cy} r={r} 
+                          fill={fill} 
+                          stroke={isSelected ? '#edf7f1' : stroke} 
+                          strokeWidth={isSelected ? "3" : "2"}
+                          style={{ transition: 'stroke-width 0.15s, stroke 0.15s' }}
+                        />
+                        <text 
+                          x={cx} y={cy + r + 14} 
+                          fill={isSelected ? '#edf7f1' : '#7aa88c'}
+                          fontFamily='"DM Sans",sans-serif'
+                          fontSize="10"
+                          textAnchor="middle"
+                        >
+                          {lines.map((line, idx) => (
+                            <tspan key={idx} x={cx} dy={idx === 0 ? 0 : 12}>{line}</tspan>
+                          ))}
+                        </text>
+                      </g>
+                    );
+                  })}
+                </g>
+              </svg>
+            ) : (
+              <div style={{ fontFamily: 'var(--mono)', color: 'var(--t-dim)', letterSpacing: '0.1em' }}>
+                COMPUTING TOPOLOGY MATRIX...
+              </div>
+            )}
+
+            <div className="graph-tools">
+              <button className="tool-btn" onClick={() => setElkScale(Math.min(elkScale + 0.15, 2.5))}>+</button>
+              <button className="tool-btn" onClick={() => setElkScale(Math.max(elkScale - 0.15, 0.4))}>−</button>
+              <div style={{ width: '1px', background: 'var(--bdr-mid)', margin: '3px 2px' }}></div>
+              <button className="tool-btn" onClick={() => setElkScale(1)}>⛶</button>
+              <div style={{ width: '1px', background: 'var(--bdr-mid)', margin: '3px 2px' }}></div>
+              <button className="tool-btn" onClick={() => setAnimParticles(!animParticles)} title="Toggle particles">
+                {animParticles ? '▶' : '⏸'}
+              </button>
+            </div>
+          </main>
+
+          <aside className="panel panel-r">
+            <div className="panel-hdr"><span class="panel-title">System Metrics</span></div>
+            <div className="panel-body">
+              <div className="prop-sec">
+                <div className="prop-sec-title">Orchestrator</div>
+                <div className="kv"><span className="kv-k">Architecture</span><span className="kv-v">Deterministic</span></div>
+                <div className="kv"><span className="kv-k">Methodology</span><span className="kv-v">{activeData.label.replace('.JSON', '')}</span></div>
+                <div className="kv"><span className="kv-k">Nodes Mapped</span><span className="kv-v">{activeData.entities.length}</span></div>
+              </div>
+
+              {selectedEntity ? (
+                <div className="prop-sec" style={{ marginTop: '24px', borderTop: '1px solid var(--bdr-mid)', paddingTop: '16px' }}>
+                  <div className="prop-sec-title">Selected Node Details</div>
+                  <div className="kv"><span className="kv-k">Node ID</span><span className="kv-v" style={{ color: 'var(--cobalt)' }}>{selectedEntity.id}</span></div>
+                  <div className="kv"><span className="kv-k">Label</span><span className="kv-v" style={{ color: 'var(--t-bright)' }}>{selectedEntity.name}</span></div>
+                  <div className="kv"><span className="kv-k">Type Spectrum</span><span className="kv-v" style={{ color: 'var(--amber)' }}>{selectedEntity.type}</span></div>
+                  <div className="kv"><span className="kv-k">Data Class</span><span className="kv-v">{selectedEntity.cat}</span></div>
+                </div>
+              ) : (
+                <div className="prop-sec" style={{ marginTop: '24px', borderTop: '1px solid var(--bdr-mid)', paddingTop: '16px' }}>
+                  <div className="prop-sec-title">Telemetry Index</div>
+                  <p style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: 'var(--t-dim)', lineHeight: '1.5' }}>
+                    SELECT A GRAPH TERMINAL NODE ENTRY TO BIND DATA-STREAM MATRIX SPECIFICATIONS INTERNALLY.
+                  </p>
+                </div>
+              )}
+            </div>
+          </aside>
+        </div>
+
+        {/* VIEW SEGMENT: DIAGNOSTIC MATRIX */}
+        <div className={`tab-view ${activeTab === 'matrix' ? 'active' : ''}`}>
+          <div className="scroll-view">
+            <div className="view-header">
+              <div className="v-title">Diagnostic Matrix</div>
+              <div className="v-sub">{activeData.sub}</div>
+            </div>
+            <div className="card-grid">
+              {activeData.matrix.map((m, idx) => {
+                const barColor = m.color || 'var(--fern)';
+                return (
+                  <div className="g-card" key={idx}>
+                    <div className="c-hdr">
+                      <span className="c-name">{m.name}</span>
+                      <span style={{ fontFamily: 'var(--mono)', color: barColor }}>{m.val}%</span>
+                    </div>
+                    <div className="c-bar">
+                      <div className="c-bar-fill" style={{ width: `${m.val}%`, backgroundColor: barColor }}></div>
+                    </div>
+                    <div className="c-desc">{m.desc}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* VIEW SEGMENT: DELIVERABLES */}
+        <div className={`tab-view ${activeTab === 'deliverables' ? 'active' : ''}`}>
+          <div className="scroll-view">
+            <div className="view-header">
+              <div className="v-title">Deliverables Output</div>
+              <div className="v-sub">{activeData.title.toUpperCase()} // ARTIFACTS</div>
+            </div>
+            <div className="card-grid">
+              {activeData.deliverables.map((d, idx) => (
+                <div className="g-card" key={idx}>
+                  <div style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: 'var(--t-dim)', marginBottom: '6px' }}>
+                    DELIVERABLE {d.num}
+                  </div>
+                  <div className="c-name" style={{ marginBottom: '8px' }}>{d.name}</div>
+                  <div className="c-desc">{d.desc}</div>
+                  <div style={{ marginTop: '12px', paddingTop: '8px', borderTop: '1px solid var(--bdr-dim)', fontFamily: 'var(--mono)', fontSize: '9px', color: 'var(--t-mid)' }}>
+                    STATUS: {d.status.toUpperCase()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* ── FOOTER STATUS BOUNDARY LED BAR ────────────────────────────────── */}
+      <footer className="statusbar">
+        <div className="sbar-item">
+          <div className="ind g"></div>
+          SYSTEM NOMINAL
+        </div>
+        <div className="sbar-r">
+          <div className="sbar-item">
+            CRODA CONSULTING // <span style={{ color: 'var(--fern)' }}>{activeData.label}</span>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}

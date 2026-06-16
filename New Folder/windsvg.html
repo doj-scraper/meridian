@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Elemental Vault — SVG Systems Showcase</title>
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      background: radial-gradient(circle at 50% 0%, #0f1b34, #060b16 70%);
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    header {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2.5rem 1rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 1rem;
+    }
+
+    .brand h1 {
+      font-size: 1.4rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #ffd2a1;
+    }
+
+    .brand p {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      margin-top: 0.4rem;
+      max-width: 60ch;
+    }
+
+    .global-controls {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+    }
+
+    .toggle {
+      padding: 0.5rem 1rem;
+      font-size: 0.7rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.18);
+      color: #e5e7eb;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+
+    .toggle.active {
+      background: #d79a4a;
+      color: #020C1B;
+      border-color: #d79a4a;
+    }
+
+    main {
+      padding: 1.5rem 1rem 3rem;
+    }
+
+    /* === Vault grid === */
+    .vault {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+      gap: 2rem;
+    }
+
+    /* === Animation kill-switch === */
+    body[data-animate="off"] * {
+      animation: none !important;
+    }
+  </style>
+</head>
+
+<body data-animate="on">
+
+<header>
+  <div class="brand">
+    <h1>Elemental Vault</h1>
+    <p>
+      A premium SVG systems showcase exploring motion, material, and state.
+      Each module demonstrates production-grade iconography with internal logic,
+      layered animation, and semantic state control.
+    </p>
+  </div>
+
+  <div class="global-controls">
+    <button id="toggleAnim" class="toggle active">
+      Animation On
+    </button>
+  </div>
+</header>
+
+<main>
+<svg class="icon" width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Background gradient -->
+    <radialGradient id="bg_gradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+      <stop offset="0%" stop-color="rgba(0, 20, 50, 0.2)" />
+      <stop offset="100%" stop-color="rgba(0, 0, 20, 0.9)" />
+    </radialGradient>
+
+    <!-- Wind gradient -->
+    <linearGradient id="g_wind" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="rgba(255, 255, 255, 0)" />
+      <stop offset="50%" stop-color="rgba(255, 255, 255, 0.8)" />
+      <stop offset="100%" stop-color="rgba(255, 255, 255, 0)" />
+    </linearGradient>
+
+    <!-- Metallic gradient -->
+    <linearGradient id="g_metal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#f59e0b" />
+    </linearGradient>
+
+    <!-- Glow filter -->
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="200" height="200" fill="url(#bg_gradient)" />
+
+  <!-- Center Core with glow -->
+  <circle cx="100" cy="100" r="3" fill="none" stroke="rgba(255, 255, 255, 0.5)" stroke-width="2" filter="url(#glow)" />
+
+  <!-- Spirals -->
+  <g class="m-spin" style="transform-origin: center;">
+    <!-- Main spirals -->
+    <path d="M100 100 Q140 60 180 100" fill="none" stroke="url(#g_wind)" stroke-width="3" stroke-linecap="round" stroke-dasharray="10 100">
+      <animate attributeName="stroke-dashoffset" values="110; 0" dur="1.5s" repeatCount="indefinite" />
+    </path>
+    <path d="M100 100 Q60 140 20 100" fill="none" stroke="url(#g_wind)" stroke-width="3" stroke-linecap="round" stroke-dasharray="10 100">
+      <animate attributeName="stroke-dashoffset" values="110; 0" dur="1.5s" repeatCount="indefinite" />
+    </path>
+    <path d="M100 100 Q140 140 100 180" fill="none" stroke="url(#g_wind)" stroke-width="2" stroke-linecap="round" stroke-dasharray="5 80">
+      <animate attributeName="stroke-dashoffset" values="85; 0" dur="2s" repeatCount="indefinite" />
+    </path>
+    <path d="M100 100 Q60 60 100 20" fill="none" stroke="url(#g_wind)" stroke-width="2" stroke-linecap="round" stroke-dasharray="5 80">
+      <animate attributeName="stroke-dashoffset" values="85; 0" dur="2s" repeatCount="indefinite" />
+    </path>
+
+    <!-- Additional spirals for depth -->
+    <path d="M100 100 Q120 80 160 100" fill="none" stroke="rgba(255, 255, 255, 0.3)" stroke-width="2" stroke-linecap="round" stroke-dasharray="5 60">
+      <animate attributeName="stroke-dashoffset" values="65; 0" dur="1.8s" repeatCount="indefinite" />
+    </path>
+    <path d="M100 100 Q80 120 40 100" fill="none" stroke="rgba(255, 255, 255, 0.3)" stroke-width="2" stroke-linecap="round" stroke-dasharray="5 60">
+      <animate attributeName="stroke-dashoffset" values="65; 0" dur="1.8s" repeatCount="indefinite" />
+    </path>
+  </g>
+
+  <!-- Metallic Shards -->
+  <g class="m-float">
+    <rect x="150" y="70" width="8" height="2" fill="url(#g_metal)" rx="1" opacity="0.8">
+      <animateMotion path="M0 0 C-50 20 -100 -20 -150 0" dur="3s" repeatCount="indefinite" />
+      <animate attributeName="opacity" values="0.4;0.8;0.4" dur="2s" repeatCount="indefinite" />
+    </rect>
+    <rect x="140" y="130" width="6" height="1.5" fill="url(#g_metal)" rx="1" opacity="0.6">
+      <animateMotion path="M0 0 C-40 -30 -80 30 -140 0" dur="2.5s" repeatCount="indefinite" begin="1s" />
+      <animate attributeName="opacity" values="0.3;0.7;0.3" dur="1.5s" repeatCount="indefinite" />
+    </rect>
+    <rect x="160" y="110" width="5" height="1" fill="url(#g_metal)" rx="1" opacity="0.5">
+      <animateMotion path="M0 0 C-30 10 -70 -10 -120 0" dur="4s" repeatCount="indefinite" begin="0.5s" />
+      <animate attributeName="opacity" values="0.2;0.6;0.2" dur="3s" repeatCount="indefinite" />
+    </rect>
+  </g>
+</svg>
+
+
+<svg class="icon" width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Background gradient -->
+    <radialGradient id="bg_gradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+      <stop offset="0%" stop-color="rgba(0, 20, 50, 0.2)" />
+      <stop offset="100%" stop-color="rgba(0, 0, 20, 0.9)" />
+    </radialGradient>
+
+    <!-- Wind gradient -->
+    <linearGradient id="g_wind" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="rgba(255, 255, 255, 0)" />
+      <stop offset="50%" stop-color="rgba(255, 255, 255, 0.8)" />
+      <stop offset="100%" stop-color="rgba(255, 255, 255, 0)" />
+    </linearGradient>
+
+    <!-- Metallic gradient -->
+    <linearGradient id="g_metal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#f59e0b" />
+    </linearGradient>
+
+    <!-- Glow filter -->
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="200" height="200" fill="url(#bg_gradient)" />
+
+  <!-- Subtle center spiral -->
+
+<!-- Wind vortex spiral -->
+<!-- Wind vortex spiral -->
+<path d="M100,100
+         C120,90 140,110 120,120
+         C100,130 80,110 100,100"
+      fill="none"
+      stroke="rgba(255, 255, 255, 0.6)"
+      stroke-width="2"
+      stroke-linecap="round">
+  <animateTransform attributeName="transform"
+                   type="rotate"
+                   from="0 100 100"
+                   to="360 100 100"
+                   dur="3s"
+                   repeatCount="indefinite" />
+</path>
+        fill="none"
+        stroke="rgba(255, 255, 255, 0.3)"
+        stroke-width="1.5"
+        stroke-linecap="round">
+    <animateTransform attributeName="transform"
+                       type="rotate"
+                       from="360 100 100"
+                       to="0 100 100"
+                       dur="4s"
+                       repeatCount="indefinite" />
+  </path>
+
+  <!-- Spirals -->
+  <g class="m-spin" style="transform-origin: center;">
+    <!-- Main spirals -->
+    <path d="M100 100 Q140 60 180 100" fill="none" stroke="url(#g_wind)" stroke-width="3" stroke-linecap="round" stroke-dasharray="10 100">
+      <animate attributeName="stroke-dashoffset" values="110; 0" dur="1.5s" repeatCount="indefinite" />
+    </path>
+    <path d="M100 100 Q60 140 20 100" fill="none" stroke="url(#g_wind)" stroke-width="3" stroke-linecap="round" stroke-dasharray="10 100">
+      <animate attributeName="stroke-dashoffset" values="110; 0" dur="1.5s" repeatCount="indefinite" />
+    </path>
+    <path d="M100 100 Q140 140 100 180" fill="none" stroke="url(#g_wind)" stroke-width="2" stroke-linecap="round" stroke-dasharray="5 80">
+      <animate attributeName="stroke-dashoffset" values="85; 0" dur="2s" repeatCount="indefinite" />
+    </path>
+    <path d="M100 100 Q60 60 100 20" fill="none" stroke="url(#g_wind)" stroke-width="2" stroke-linecap="round" stroke-dasharray="5 80">
+      <animate attributeName="stroke-dashoffset" values="85; 0" dur="2s" repeatCount="indefinite" />
+    </path>
+
+    <!-- Additional spirals for depth -->
+    <path d="M100 100 Q120 80 160 100" fill="none" stroke="rgba(255, 255, 255, 0.3)" stroke-width="2" stroke-linecap="round" stroke-dasharray="5 60">
+      <animate attributeName="stroke-dashoffset" values="65; 0" dur="1.8s" repeatCount="indefinite" />
+    </path>
+    <path d="M100 100 Q80 120 40 100" fill="none" stroke="rgba(255, 255, 255, 0.3)" stroke-width="2" stroke-linecap="round" stroke-dasharray="5 60">
+      <animate attributeName="stroke-dashoffset" values="65; 0" dur="1.8s" repeatCount="indefinite" />
+    </path>
+  </g>
+
+  <!-- Metallic Shards -->
+  <g class="m-float">
+    <rect x="150" y="70" width="8" height="2" fill="url(#g_metal)" rx="1" opacity="0.8">
+      <animateMotion path="M0 0 C-50 20 -100 -20 -150 0" dur="3s" repeatCount="indefinite" />
+      <animate attributeName="opacity" values="0.4;0.8;0.4" dur="2s" repeatCount="indefinite" />
+    </rect>
+    <rect x="140" y="130" width="6" height="1.5" fill="url(#g_metal)" rx="1" opacity="0.6">
+      <animateMotion path="M0 0 C-40 -30 -80 30 -140 0" dur="2.5s" repeatCount="indefinite" begin="1s" />
+      <animate attributeName="opacity" values="0.3;0.7;0.3" dur="1.5s" repeatCount="indefinite" />
+    </rect>
+    <rect x="160" y="110" width="5" height="1" fill="url(#g_metal)" rx="1" opacity="0.5">
+      <animateMotion path="M0 0 C-30 10 -70 -10 -120 0" dur="4s" repeatCount="indefinite" begin="0.5s" />
+      <animate attributeName="opacity" values="0.2;0.6;0.2" dur="3s" repeatCount="indefinite" />
+    </rect>
+  </g>
+</svg>
+
+  <!-- Paste the entire <div class="vault"> ... </div> block unchanged -->
+</main>
+
+<script>
+  /* ===== Global Animation Toggle ===== */
+  const toggle = document.getElementById('toggleAnim');
+  const body = document.body;
+
+  toggle.addEventListener('click', () => {
+    const on = body.getAttribute('data-animate') === 'on';
+    body.setAttribute('data-animate', on ? 'off' : 'on');
+    toggle.classList.toggle('active', !on);
+    toggle.textContent = on ? 'Animation Off' : 'Animation On';
+  });
+
+  /* ===== Per-card state logic (unchanged, but scoped cleanly) ===== */
+  document.querySelectorAll('.card').forEach(card => {
+    const svg = card.querySelector('.icon');
+    const buttons = card.querySelectorAll('.btn');
+
+    buttons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        buttons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        svg.setAttribute('data-state', btn.dataset.state);
+      });
+    });
+  });
+</script>
+
+</body>
+</html>

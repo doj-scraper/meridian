@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Elemental Vault - SVG Showcase</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      background: #0b1222;
+      color: #e2e8f0;
+      padding: 2rem 1rem;
+      min-height: 100vh;
+    }
+    
+    .vault {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+      gap: 2rem;
+    }
+    
+    .card {
+      background: #111c33;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    
+    .title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #ffd2a1;
+    }
+    
+    .kicker {
+      font-size: 0.75rem;
+      color: #7dd3fc;
+      margin-top: 0.25rem;
+    }
+    
+    .controls {
+      display: flex;
+      gap: 0.5rem;
+      flex-shrink: 0;
+    }
+    
+    .btn {
+      padding: 0.35rem 0.75rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.05);
+      color: #cbd5e1;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      transition: all 0.2s ease;
+    }
+    
+    .btn.active {
+      background: #d79a4a;
+      color: #020C1B;
+      border-color: #d79a4a;
+    }
+    
+    .btn:hover {
+      border-color: rgba(255,255,255,0.3);
+    }
+    
+    .stage {
+      height: 260px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0a1525;
+      position: relative;
+    }
+    
+    .icon {
+      width: 180px;
+      height: 180px;
+    }
+    
+    .desc {
+      font-size: 0.85rem;
+      line-height: 1.5;
+      color: #94a3b8;
+      max-width: 80ch;
+    }
+    
+    /* Animation definitions */
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+    
+    @keyframes rotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 0.8; }
+    }
+    
+    @keyframes blink {
+      0% { opacity: 0; }
+      50% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+    
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 1; }
+    }
+    
+    @keyframes glint {
+      0% { transform: skewX(-20deg) translateX(-100px); }
+      100% { transform: skewX(-20deg) translateX(200px); }
+    }
+    
+    @keyframes urgent {
+      0%, 100% { opacity: 0.8; }
+      50% { opacity: 1; }
+    }
+    
+    @keyframes scan {
+      0% { stroke-dashoffset: -60; }
+      100% { stroke-dashoffset: 60; }
+    }
+    
+    .m-float { animation: float 4s ease-in-out infinite; }
+    .m-rotate-slow { transform-origin: center; animation: rotate 20s linear infinite; }
+    .m-pulse { animation: pulse 2s ease-in-out infinite; }
+    .m-pulse-slow { animation: pulse 6s ease-in-out infinite; }
+    .m-blink { animation: blink 1.5s ease infinite; }
+    .m-twinkle { animation: twinkle 3s ease-in-out infinite; }
+    .m-glint { animation: glint 10s ease-in-out infinite; }
+    .m-urgent { animation: urgent 0.8s ease-in-out infinite; }
+    .m-scan { stroke-dasharray: 20 40; animation: scan 3s linear infinite; }
+  </style>
+</head>
+<body>
+  <div class="vault">
+    
+    <!-- ===================== EARTH GLOBE ===================== -->
+    <article class="card">
+      <div class="top">
+        <div>
+          <div class="title">Biosphere Core</div>
+          <div class="kicker">Global Localization</div>
+        </div>
+        <div class="controls">
+          <button class="btn active" data-state="idle">Idle</button>
+          <button class="btn" data-state="alert">Alert</button>
+          <button class="btn" data-state="viewed">Viewed</button>
+        </div>
+      </div>
+
+      <div class="stage">
+        <svg class="icon" viewBox="0 0 200 200" role="img" aria-label="Earth Globe" data-state="idle">
+          <defs>
+            <!-- Background: Space -->
+            <linearGradient id="ea_space" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#020C1B"/>
+              <stop offset="1" stop-color="#0A1525"/>
+            </linearGradient>
+
+            <!-- Ocean -->
+            <radialGradient id="ea_ocean" cx="30%" cy="30%" r="80%">
+              <stop offset="0" stop-color="#1E4D78"/>
+              <stop offset="0.5" stop-color="#0D2545"/>
+              <stop offset="1" stop-color="#050F1E"/>
+            </radialGradient>
+
+            <!-- Land -->
+            <linearGradient id="ea_land" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#4CB050"/>
+              <stop offset="0.5" stop-color="#2E7D32"/>
+              <stop offset="1" stop-color="#1B5E20"/>
+            </linearGradient>
+
+            <!-- Copper -->
+            <linearGradient id="ea_copper" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#FFD2A1"/>
+              <stop offset="0.3" stop-color="#D79A4A"/>
+              <stop offset="0.7" stop-color="#8B5A22"/>
+              <stop offset="1" stop-color="#F7C77A"/>
+            </linearGradient>
+
+            <!-- Chrome -->
+            <linearGradient id="ea_chrome" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#F7FBFF"/>
+              <stop offset="0.5" stop-color="#9CB2C9"/>
+              <stop offset="1" stop-color="#F3F7FF"/>
+            </linearGradient>
+
+            <!-- Atmosphere -->
+            <radialGradient id="ea_atmos" cx="50%" cy="50%" r="50%">
+              <stop offset="0.6" stop-color="rgba(110,231,255,0)"/>
+              <stop offset="1" stop-color="rgba(110,231,255,0.6)"/>
+            </radialGradient>
+
+            <!-- Core Alert -->
+            <radialGradient id="ea_coreAlert" cx="50%" cy="50%" r="60%">
+              <stop offset="0" stop-color="#FF5555"/>
+              <stop offset="1" stop-color="#8B0000"/>
+            </radialGradient>
+
+            <!-- Shadow -->
+            <filter id="ea_shadow" x="-40%" y="-40%" width="180%" height="180%">
+              <feDropShadow dx="0" dy="10" stdDeviation="8" flood-color="rgba(0,0,0,.6)"/>
+            </filter>
+
+            <!-- Glint -->
+            <linearGradient id="ea_glintGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="rgba(255,255,255,0)"/>
+              <stop offset="0.45" stop-color="rgba(255,255,255,.8)"/>
+              <stop offset="0.55" stop-color="rgba(255,255,255,.3)"/>
+              <stop offset="1" stop-color="rgba(255,255,255,0)"/>
+            </linearGradient>
+
+            <!-- Clip Path -->
+            <clipPath id="ea_clip">
+              <circle cx="100" cy="100" r="54"/>
+            </clipPath>
+          </defs>
+
+          <!-- Background -->
+          <rect width="200" height="200" fill="url(#ea_space)"/>
+
+          <!-- Stars -->
+          <g fill="white" opacity="0.8">
+            <circle cx="30" cy="25" r="0.8" class="m-twinkle"/>
+            <circle cx="180" cy="40" r="0.5" class="m-twinkle"/>
+            <circle cx="50" cy="180" r="0.7" class="m-twinkle"/>
+          </g>
+
+          <g class="m-float" filter="url(#ea_shadow)">
+            <!-- Orbital Ring (Enhanced) -->
+            <path d="M100 100 m-80 0 a 80 25 0 1 0 160 0 a 80 25 0 1 0 -160 0"
+                  fill="none" stroke="url(#ea_chrome)" stroke-width="2" stroke-linecap="round" stroke-dasharray="10 20" class="m-rotate-slow">
+              <animate attributeName="stroke-dashoffset" values="0; 30" dur="4s" repeatCount="indefinite"/>
+            </path>
+
+            <!-- Planet Body -->
+            <circle cx="100" cy="100" r="54" fill="url(#ea_ocean)" stroke="rgba(0,0,0,0.5)" stroke-width="2"/>
+
+            <!-- Continents (Enhanced) -->
+            <g clip-path="url(#ea_clip)">
+              <path d="M60 80 Q80 70 90 90 T120 100 T140 130 V160 H40 V100 Z" fill="url(#ea_land)" opacity="0.8"/>
+              <path d="M110 50 Q130 40 140 60 T150 90" fill="none" stroke="url(#ea_land)" stroke-width="8" stroke-linecap="round"/>
+              <path d="M70 120 Q90 110 100 130 T120 140" fill="none" stroke="url(#ea_land)" stroke-width="6" stroke-linecap="round"/>
+
+              <!-- Grid -->
+              <ellipse cx="100" cy="100" rx="54" ry="15" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+              <ellipse cx="100" cy="100" rx="25" ry="54" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+              <line x1="100" y1="46" x2="100" y2="154" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+
+              <!-- Alert State: Core Glow -->
+              <circle cx="100" cy="100" r="20" fill="url(#ea_coreAlert)" opacity="0" class="m-pulse m-blink"/>
+            </g>
+
+            <!-- Atmosphere Glow (Enhanced) -->
+            <circle cx="100" cy="100" r="54" fill="url(#ea_atmos)" pointer-events="none"/>
+            <circle cx="100" cy="100" r="60" fill="none" stroke="rgba(110,231,255,0.4)" stroke-width="2" class="m-pulse-slow"/>
+
+            <!-- Axis Stand (Enhanced) -->
+            <path d="M100 156 v14" stroke="url(#ea_chrome)" stroke-width="4"/>
+            <path d="M80 170 h40" stroke="url(#ea_chrome)" stroke-width="4" stroke-linecap="round"/>
+            <path d="M90 170 v8" stroke="url(#ea_chrome)" stroke-width="3" stroke-linecap="round"/>
+            <path d="M110 170 v8" stroke="url(#ea_chrome)" stroke-width="3" stroke-linecap="round"/>
+
+            <!-- Glint (Enhanced) -->
+            <g clip-path="url(#ea_clip)" opacity="0.6">
+              <rect x="-100" y="30" width="100" height="100" fill="url(#ea_glintGrad)" transform="skewX(-20)" class="m-glint">
+                <animateTransform attributeName="transform" type="skewX" values="-20; -30; -20" dur="8s" repeatCount="indefinite"/>
+              </rect>
+            </g>
+          </g>
+        </svg>
+      </div>
+      <p class="desc">Deep ocean sphere with copper-edged continents and a holographic atmosphere ring. Alert mode triggers a red core warning and accelerates the orbital path.</p>
+    </article>
+
+    <!-- WATER DROPLET (ENHANCED) -->
+    <article class="card">
+      <div class="top">
+        <div><div class="title">Hydro-Crystalline</div><div class="kicker">Liquid Module</div></div>
+        <div class="controls">
+          <button class="btn active" data-state="idle">Idle</button>
+          <button class="btn" data-state="alert">Alert</button>
+          <button class="btn" data-state="viewed">Viewed</button>
+        </div>
+      </div>
+      <div class="stage">
+        <svg class="icon" viewBox="0 0 200 200" data-state="idle">
+          <defs>
+            <!-- Water gradient (enhanced) -->
+            <linearGradient id="g_water" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#7dd3fc" />
+              <stop offset="30%" stop-color="#38bdf8" />
+              <stop offset="70%" stop-color="#0ea5e9" />
+              <stop offset="100%" stop-color="#1e40af" />
+            </linearGradient>
+
+            <!-- Highlight gradient (enhanced) -->
+            <radialGradient id="g_highlight" cx="30%" cy="30%" r="50%">
+              <stop offset="0%" stop-color="white" stop-opacity="0.8" />
+              <stop offset="100%" stop-color="white" stop-opacity="0" />
+            </radialGradient>
+
+            <!-- Inner glow for subsurface scattering -->
+            <radialGradient id="g_innerGlow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="rgba(147, 197, 253, 0.3)" />
+              <stop offset="100%" stop-color="rgba(147, 197, 253, 0)" />
+            </radialGradient>
+
+            <!-- Glow filter -->
+            <filter id="g_glow" x="-30%" y="-30%" width="160%" height="160%">
+              <feGaussianBlur stdDeviation="8" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+
+            <!-- Ripple distortion -->
+            <filter id="g_ripple" x="-20%" y="-20%" width="140%" height="140%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" result="noise" />
+              <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G" />
+            </filter>
+          </defs>
+
+          <g class="m-float">
+            <!-- Back glow (enhanced) -->
+            <path d="M100 20 C140 80 165 110 165 145 A65 65 0 1 1 35 145 C35 110 60 80 100 20 Z"
+                  fill="#0ea5e9" opacity="0.2" filter="url(#g_glow)" />
+
+            <!-- Main body (with inner glow) -->
+            <path d="M100 25 C135 80 155 105 155 140 A55 55 0 1 1 45 140 C45 105 65 80 100 25 Z"
+                  fill="url(#g_water)"
+                  stroke="rgba(255,255,255,0.3)"
+                  stroke-width="1" />
+            <path d="M100 25 C135 80 155 105 155 140 A55 55 0 1 1 45 140 C45 105 65 80 100 25 Z"
+                  fill="url(#g_innerGlow)" opacity="0.7" />
+
+            <!-- Refraction layers (enhanced) -->
+            <path d="M100 35 C125 85 140 105 140 135 A40 40 0 1 1 60 135 C60 105 75 85 100 35 Z"
+                  fill="rgba(255,255,255,0.15)" filter="url(#g_ripple)" />
+            <path d="M100 40 C120 90 135 110 135 130 A35 35 0 1 1 65 130 C65 110 80 90 100 40 Z"
+                  fill="rgba(255,255,255,0.1)" />
+
+            <!-- Specular highlights (enhanced) -->
+            <ellipse cx="75" cy="110" rx="12" ry="25" fill="url(#g_highlight)" transform="rotate(25, 75, 110)">
+              <animateTransform attributeName="transform" type="rotate" values="25; 30; 25" dur="8s" repeatCount="indefinite" />
+            </ellipse>
+            <ellipse cx="120" cy="100" rx="8" ry="20" fill="url(#g_highlight)" transform="rotate(-15, 120, 100)" opacity="0.6">
+              <animateTransform attributeName="transform" type="rotate" values="-15; -20; -15" dur="6s" repeatCount="indefinite" />
+            </ellipse>
+
+            <!-- Micro bubbles (enhanced) -->
+            <circle cx="110" cy="150" r="3" fill="white" opacity="0.5">
+              <animate attributeName="cy" values="160;90" dur="4s" repeatCount="indefinite" />
+              <animate attributeName="cx" values="110;105;110" dur="4s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0;0.6;0" dur="4s" repeatCount="indefinite" />
+            </circle>
+            <circle cx="90" cy="140" r="2" fill="white" opacity="0.4">
+              <animate attributeName="cy" values="160;70" dur="5s" repeatCount="indefinite" begin="1s" />
+              <animate attributeName="cx" values="90;85;90" dur="5s" repeatCount="indefinite" begin="1s" />
+            </circle>
+            <circle cx="130" cy="130" r="2.5" fill="white" opacity="0.3">
+              <animate attributeName="cy" values="150;80" dur="6s" repeatCount="indefinite" begin="2s" />
+              <animate attributeName="cx" values="130;125;130" dur="6s" repeatCount="indefinite" begin="2s" />
+            </circle>
+
+            <!-- Ripple effect -->
+            <path d="M100 140 Q110 145 120 140 Q130 135 125 130 Q115 135 100 140 Z"
+                  fill="rgba(255,255,255,0.2)" opacity="0.5">
+              <animate attributeName="opacity" values="0;0.5;0" dur="3s" repeatCount="indefinite" />
+              <animateTransform attributeName="transform" type="scale" values="1;1.1;1" dur="3s" repeatCount="indefinite" />
+            </path>
+          </g>
+        </svg>
+      </div>
+      <p class="desc">Engineered teardrop silhouette with triple-layer refraction and subsurface scattering. Features procedural micro-buoyancy particles.</p>
+    </article>
+
+    <!-- WIND (VORTEX AERO) -->
+    <article class="card">
+      <div class="top">
+        <div><div class="title">Zephyr Vortex</div><div class="kicker">Aero Dynamics</div></div>
+        <div class="controls">
+          <button class="btn active" data-state="idle">Idle</button>
+          <button class="btn" data-state="alert">Alert</button>
+          <button class="btn" data-state="viewed">Viewed</button>
+        </div>
+      </div>
+      <div class="stage">
+        <svg class="icon" viewBox="0 0 200 200" data-state="idle" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <!-- Background gradient -->
+            <radialGradient id="bg_gradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+              <stop offset="0%" stop-color="rgba(0, 20, 50, 0.2)" />
+              <stop offset="100%" stop-color="rgba(0, 0, 20, 0.9)" />
+            </radialGradient>
+
+            <!-- Wind gradient -->
+            <linearGradient id="g_wind" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="rgba(255, 255, 255, 0)" />
+              <stop offset="50%" stop-color="rgba(255, 255, 255, 0.8)" />
+              <stop offset="100%" stop-color="rgba(255, 255, 255, 0)" />
+            </linearGradient>
+
+            <!-- Metallic gradient -->
+            <linearGradient id="g_metal" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#fbbf24" />
+              <stop offset="100%" stop-color="#f59e0b" />
+            </linearGradient>
+
+            <!-- Glow filter -->
+            <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+              <feGaussianBlur stdDeviation="4" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+          </defs>
+
+          <!-- Background -->
+          <rect width="200" height="200" fill="url(#bg_gradient)" />
+
+          <!-- Center Core with glow -->
+          <circle cx="100" cy="100" r="3" fill="none" stroke="rgba(255, 255, 255, 0.5)" stroke-width="2" filter="url(#glow)" />
+
+          <!-- Spirals -->
+          <g class="m-spin" style="transform-origin: center;">
+            <!-- Main spirals -->
+            <path d="M100 100 Q140 60 180 100" fill="none" stroke="url(#g_wind)" stroke-width="3" stroke-linecap="round" stroke-dasharray="10 100">
+              <animate attributeName="stroke-dashoffset" values="110; 0" dur="1.5s" repeatCount="indefinite" />
+            </path>
+            <path d="M100 100 Q60 140 20 100" fill="none" stroke="url(#g_wind)" stroke-width="3" stroke-linecap="round" stroke-dasharray="10 100">
+              <animate attributeName="stroke-dashoffset" values="110; 0" dur="1.5s" repeatCount="indefinite" />
+            </path>
+            <path d="M100 100 Q140 140 100 180" fill="none" stroke="url(#g_wind)" stroke-width="2" stroke-linecap="round" stroke-dasharray="5 80">
+              <animate attributeName="stroke-dashoffset" values="85; 0" dur="2s" repeatCount="indefinite" />
+            </path>
+            <path d="M100 100 Q60 60 100 20" fill="none" stroke="url(#g_wind)" stroke-width="2" stroke-linecap="round" stroke-dasharray="5 80">
+              <animate attributeName="stroke-dashoffset" values="85; 0" dur="2s" repeatCount="indefinite" />
+            </path>
+
+            <!-- Additional spirals for depth -->
+            <path d="M100 100 Q120 80 160 100" fill="none" stroke="rgba(255, 255, 255, 0.3)" stroke-width="2" stroke-linecap="round" stroke-dasharray="5 60">
+              <animate attributeName="stroke-dashoffset" values="65; 0" dur="1.8s" repeatCount="indefinite" />
+            </path>
+            <path d="M100 100 Q80 120 40 100" fill="none" stroke="rgba(255, 255, 255, 0.3)" stroke-width="2" stroke-linecap="round" stroke-dasharray="5 60">
+              <animate attributeName="stroke-dashoffset" values="65; 0" dur="1.8s" repeatCount="indefinite" />
+            </path>
+          </g>
+
+          <!-- Metallic Shards -->
+          <g class="m-float">
+            <rect x="150" y="70" width="8" height="2" fill="url(#g_metal)" rx="1" opacity="0.8">
+              <animateMotion path="M0 0 C-50 20 -100 -20 -150 0" dur="3s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.4;0.8;0.4" dur="2s" repeatCount="indefinite" />
+            </rect>
+            <rect x="140" y="130" width="6" height="1.5" fill="url(#g_metal)" rx="1" opacity="0.6">
+              <animateMotion path="M0 0 C-40 -30 -80 30 -140 0" dur="2.5s" repeatCount="indefinite" begin="1s" />
+              <animate attributeName="opacity" values="0.3;0.7;0.3" dur="1.5s" repeatCount="indefinite" />
+            </rect>
+            <rect x="160" y="110" width="5" height="1" fill="url(#g_metal)" rx="1" opacity="0.5">
+              <animateMotion path="M0 0 C-30 10 -70 -10 -120 0" dur="4s" repeatCount="indefinite" begin="0.5s" />
+              <animate attributeName="opacity" values="0.2;0.6;0.2" dur="3s" repeatCount="indefinite" />
+            </rect>
+          </g>
+        </svg>
+      </div>
+      <p class="desc">Kinetic vortex simulation using logarithmic spirals. Air-flow tracers utilize oscillating stroke-dash patterns to represent varying wind pressure.</p>
+    </article>
+
+    <!-- PYRO-CORE IGNITION (ENHANCED) -->
+    <article class="card">
+      <div class="top">
+        <div><div class="title">Pyro-Core Ignition</div><div class="kicker">Thermal Module</div></div>
+        <div class="controls">
+          <button class="btn active" data-state="idle">Idle</button>
+          <button class="btn" data-state="alert">Alert</button>
+          <button class="btn" data-state="viewed">Viewed</button>
+        </div>
+      </div>
+      <div class="stage">
+        <svg class="icon" viewBox="0 0 200 200" data-state="idle">
+          <defs>
+            <!-- Enhanced flame gradients -->
+            <linearGradient id="g_fireOuter" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0%"  stop-color="#1a0505"/>
+              <stop offset="25%" stop-color="#8a1b0a"/>
+              <stop offset="50%" stop-color="#ff4d1a"/>
+              <stop offset="75%" stop-color="#ff9a3a"/>
+              <stop offset="100%" stop-color="#ffd08a"/>
+            </linearGradient>
+
+            <linearGradient id="g_fireMid" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0%"  stop-color="#5a1010"/>
+              <stop offset="35%" stop-color="#ff2a0a"/>
+              <stop offset="70%" stop-color="#ff8c3a"/>
+              <stop offset="100%" stop-color="#fff6d6"/>
+            </linearGradient>
+
+            <!-- New deeper flame layer -->
+            <linearGradient id="g_fireInner" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0%"  stop-color="#ff1a0a"/>
+              <stop offset="50%" stop-color="#ff5a1a"/>
+              <stop offset="100%" stop-color="#ff9a3a"/>
+            </linearGradient>
+
+            <!-- Enhanced core gradient -->
+            <radialGradient id="g_fireCore" cx="50%" cy="70%" r="55%">
+              <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+              <stop offset="30%" stop-color="#fff4c7" stop-opacity="0.9"/>
+              <stop offset="70%" stop-color="#ffcc5c" stop-opacity="0.4"/>
+              <stop offset="100%" stop-color="#ff5a1a" stop-opacity="0"/>
+            </radialGradient>
+
+            <!-- Dynamic ambient glow -->
+            <radialGradient id="g_ambientGlow" cx="50%" cy="62%" r="70%">
+              <stop offset="0%" stop-color="#ff8c3a" stop-opacity="0.4"/>
+              <stop offset="50%" stop-color="#ff3a0a" stop-opacity="0.2"/>
+              <stop offset="100%" stop-color="#ff1a0a" stop-opacity="0"/>
+            </radialGradient>
+
+            <!-- Enhanced heat shimmer -->
+            <filter id="f_heatShimmer" x="-30%" y="-30%" width="160%" height="160%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="3" seed="7" result="noise">
+                <animate attributeName="baseFrequency" values="0.015;0.025;0.018" dur="1.8s" repeatCount="indefinite"/>
+                <animate attributeName="seed" values="5;15;10" dur="3s" repeatCount="indefinite"/>
+              </feTurbulence>
+              <feDisplacementMap in="SourceGraphic" in2="noise" scale="18" xChannelSelector="R" yChannelSelector="G"/>
+            </filter>
+
+            <!-- Second displacement filter for layered effect -->
+            <filter id="f_heatShimmer2" x="-30%" y="-30%" width="160%" height="160%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" seed="12" result="noise2"/>
+              <feDisplacementMap in="SourceGraphic" in2="noise2" scale="10" xChannelSelector="R" yChannelSelector="G"/>
+            </filter>
+
+            <!-- Enhanced bloom -->
+            <filter id="f_bloom" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur stdDeviation="8" result="b"/>
+              <feColorMatrix in="b" type="matrix"
+                values="1 0 0 0 0
+                        0 0.8 0 0 0
+                        0 0 0.3 0 0
+                        0 0 0 1.2 0" result="tinted"/>
+              <feMerge>
+                <feMergeNode in="tinted"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+
+            <!-- Enhanced hot filter -->
+            <filter id="f_hot" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="12" result="bb"/>
+              <feColorMatrix in="bb" type="matrix"
+                values="1 0 0 0 0
+                        0 0.3 0 0 0
+                        0 0 0.2 0 0
+                        0 0 0 1.2 0" result="redGlow"/>
+              <feMerge>
+                <feMergeNode in="redGlow"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+
+            <!-- Spark gradient -->
+            <radialGradient id="g_spark" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#fff3c4" stop-opacity="1"/>
+              <stop offset="60%" stop-color="#ffb34a" stop-opacity="0.8"/>
+              <stop offset="100%" stop-color="#ff1a0a" stop-opacity="0"/>
+            </radialGradient>
+
+            <!-- Ember gradient -->
+            <radialGradient id="g_ember" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#ff5a1a" stop-opacity="1"/>
+              <stop offset="80%" stop-color="#ff1a0a" stop-opacity="0.5"/>
+              <stop offset="100%" stop-color="#8a0505" stop-opacity="0"/>
+            </radialGradient>
+
+            <!-- Flame mask -->
+            <mask id="m_flame">
+              <rect width="200" height="200" fill="black"/>
+              <path fill="white" d="
+                M100 22
+                C112 40 132 52 136 78
+                C140 104 126 120 121 136
+                C116 152 122 162 132 170
+                C114 171 104 168 98 160
+                C93 168 82 172 68 170
+                C80 161 86 151 82 136
+                C77 120 60 105 65 78
+                C70 50 88 41 100 22 Z
+              "/>
+            </mask>
+
+            <!-- Base gradient -->
+            <linearGradient id="g_base" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#0b1222"/>
+              <stop offset="60%" stop-color="#1a2238"/>
+              <stop offset="100%" stop-color="#0a1226"/>
+            </linearGradient>
+
+            <!-- Vignette -->
+            <radialGradient id="g_vignette" cx="50%" cy="50%" r="65%">
+              <stop offset="0%" stop-color="rgba(0,0,0,0)" />
+              <stop offset="100%" stop-color="rgba(0,0,0,0.4)" />
+            </radialGradient>
+
+            <!-- Style for interactive states -->
+            <style>
+              [data-state="alert"] .flameWrap { filter: url(#f_hot); }
+              [data-state="alert"] .alertGlow { opacity: 0.7; }
+              [data-state="idle"]  .alertGlow { opacity: 0.2; }
+              [data-state="viewed"] .alertGlow { opacity: 0.1; }
+              .m-pulse { animation: pulse 1.5s ease infinite; }
+              @keyframes pulse { 0% { opacity: 0.7; } 50% { opacity: 1; } 100% { opacity: 0.7; } }
+            </style>
+          </defs>
+
+          <g class="m-float">
+            <!-- Subtle stage vignette -->
+            <circle cx="100" cy="100" r="92" fill="url(#g_vignette)" opacity="0.8"/>
+
+            <!-- Tech base (enhanced) -->
+            <g>
+              <path d="M56 172 L76 144 H124 L144 172 Z"
+                    fill="url(#g_base)" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/>
+              <path d="M76 144 H124"
+                    stroke="rgba(255,255,255,0.15)" stroke-width="2.5" stroke-linecap="round"/>
+              <rect x="78" y="146" width="44" height="5" rx="2.5"
+                    fill="#6366f1" class="m-pulse"/>
+              <path d="M68 166 L132 166" stroke="rgba(255,255,255,0.1)" stroke-width="2.5" stroke-linecap="round"/>
+              <!-- Base heat effect -->
+              <ellipse cx="100" cy="170" rx="30" ry="8" fill="rgba(255,60,0,0.1)" class="m-pulse"/>
+            </g>
+
+            <!-- Ambient glow field (enhanced) -->
+            <g class="flameWrap" filter="url(#f_bloom)">
+              <ellipse class="alertGlow" cx="100" cy="108" rx="56" ry="66" fill="url(#g_ambientGlow)">
+                <animate attributeName="ry" values="62;72;65" dur="2.2s" repeatCount="indefinite"/>
+                <animate attributeName="rx" values="52;60;55" dur="2.5s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="0.2;0.4;0.25" dur="3s" repeatCount="indefinite"/>
+              </ellipse>
+
+              <!-- Flame volumes (enhanced) -->
+              <g mask="url(#m_flame)" filter="url(#f_heatShimmer)">
+                <!-- Outer flame -->
+                <path fill="url(#g_fireOuter)" opacity="0.7" d="
+                  M52 184
+                  C66 150 70 128 74 108
+                  C79 82 92 58 100 30
+                  C110 58 124 82 128 108
+                  C132 128 136 150 148 184
+                  C126 174 110 170 100 164
+                  C90 170 74 174 52 184 Z">
+                  <animate attributeName="d" dur="2s" repeatCount="indefinite"
+                    values="
+                    M52 184 C66 150 70 128 74 108 C79 82 92 58 100 30 C110 58 124 82 128 108 C132 128 136 150 148 184 C126 174 110 170 100 164 C90 170 74 174 52 184 Z;
+                    M54 184 C68 152 72 130 78 110 C85 86 94 64 100 32 C108 58 122 84 124 110 C126 132 134 152 146 184 C124 174 110 170 100 164 C90 170 74 174 54 184 Z;
+                    M52 184 C66 150 70 128 74 108 C79 82 92 58 100 30 C110 58 124 82 128 108 C132 128 136 150 148 184 C126 174 110 170 100 164 C90 170 74 174 52 184 Z"/>
+                  <animate attributeName="opacity" values="0.6;0.8;0.65" dur="2.5s" repeatCount="indefinite"/>
+                </path>
+
+                <!-- Mid flame -->
+                <path fill="url(#g_fireMid)" opacity="0.8" d="
+                  M72 178
+                  C82 152 82 132 86 114
+                  C90 92 96 76 100 52
+                  C106 74 112 92 114 114
+                  C116 132 120 152 128 178
+                  C114 172 106 168 100 160
+                  C94 168 86 172 72 178 Z" filter="url(#f_heatShimmer2)">
+                  <animate attributeName="d" dur="1.6s" repeatCount="indefinite"
+                    values="
+                    M72 178 C82 152 82 132 86 114 C90 92 96 76 100 52 C106 74 112 92 114 114 C116 132 120 152 128 178 C114 172 106 168 100 160 C94 168 86 172 72 178 Z;
+                    M74 178 C84 154 86 134 90 116 C94 96 98 78 100 54 C106 76 112 94 112 116 C112 134 118 154 126 178 C112 170 106 168 100 160 C94 168 88 172 74 178 Z;
+                    M72 178 C82 152 82 132 86 114 C90 92 96 76 100 52 C106 74 112 92 114 114 C116 132 120 152 128 178 C114 172 106 168 100 160 C94 168 86 172 72 178 Z"/>
+                  <animate attributeName="opacity" values="0.7;0.9;0.75" dur="2s" repeatCount="indefinite"/>
+                </path>
+
+                <!-- Inner flame (new) -->
+                <path fill="url(#g_fireInner)" opacity="0.6" d="
+                  M88 168
+                  C92 148 94 128 96 112
+                  C98 96 102 84 100 68
+                  C104 82 108 96 106 112
+                  C108 128 110 148 104 168
+                  C100 164 96 166 88 168 Z">
+                  <animate attributeName="d" dur="1.2s" repeatCount="indefinite"
+                    values="
+                    M88 168 C92 148 94 128 96 112 C98 96 102 84 100 68 C104 82 108 96 106 112 C108 128 110 148 104 168 C100 164 96 166 88 168 Z;
+                    M90 168 C94 150 96 130 98 114 C100 98 104 86 100 70 C106 84 110 98 106 114 C108 130 110 150 102 168 C100 164 96 166 90 168 Z;
+                    M88 168 C92 148 94 128 96 112 C98 96 102 84 100 68 C104 82 108 96 106 112 C108 128 110 148 104 168 C100 164 96 166 88 168 Z"/>
+                  <animate attributeName="opacity" values="0.5;0.8;0.6" dur="1.8s" repeatCount="indefinite"/>
+                </path>
+
+                <!-- Core -->
+                <ellipse cx="100" cy="118" rx="22" ry="34" fill="url(#g_fireCore)" opacity="0.9">
+                  <animate attributeName="ry" values="30;38;32" dur="1.3s" repeatCount="indefinite"/>
+                  <animate attributeName="rx" values="20;26;22" dur="1.5s" repeatCount="indefinite"/>
+                  <animate attributeName="opacity" values="0.8;1;0.85" dur="1.2s" repeatCount="indefinite"/>
+                </ellipse>
+
+                <!-- Core streak -->
+                <path d="M92 70 C86 90 88 106 96 128"
+                      stroke="rgba(255,255,255,0.4)" stroke-width="3.5" stroke-linecap="round" opacity="0.4">
+                  <animate attributeName="opacity" values="0.2;0.5;0.3" dur="1.4s" repeatCount="indefinite"/>
+                </path>
+              </g>
+            </g>
+
+            <!-- Premium sparks (enhanced) -->
+            <g opacity="0.95">
+              <circle cx="92" cy="118" r="7" fill="url(#g_spark)">
+                <animateMotion dur="1.5s" repeatCount="indefinite"
+                  path="M0 0 C-8 -16 -12 -30 -4 -50 C2 -64 12 -80 6 -100"/>
+                <animate attributeName="opacity" values="0;1;0" dur="1.5s" repeatCount="indefinite"/>
+                <animate attributeName="r" values="7;4;2" dur="1.5s" repeatCount="indefinite"/>
+              </circle>
+              <circle cx="112" cy="128" r="5" fill="url(#g_spark)">
+                <animateMotion dur="1.9s" repeatCount="indefinite" begin="0.3s"
+                  path="M0 0 C12 -14 18 -28 10 -46 C4 -64 -4 -80 8 -102"/>
+                <animate attributeName="opacity" values="0;1;0" dur="1.9s" repeatCount="indefinite" begin="0.3s"/>
+                <animate attributeName="r" values="5;3;1" dur="1.9s" repeatCount="indefinite" begin="0.3s"/>
+              </circle>
+              <circle cx="104" cy="112" r="4" fill="url(#g_spark)">
+                <animateMotion dur="2.1s" repeatCount="indefinite" begin="0.7s"
+                  path="M0 0 C-4 -18 12 -28 4 -46 C-8 -66 -14 -84 -4 -106"/>
+                <animate attributeName="opacity" values="0;1;0" dur="2.1s" repeatCount="indefinite" begin="0.7s"/>
+                <animate attributeName="r" values="4;2;0" dur="2.1s" repeatCount="indefinite" begin="0.7s"/>
+              </circle>
+              <circle cx="86" cy="138" r="3.5" fill="url(#g_spark)">
+                <animateMotion dur="2.3s" repeatCount="indefinite" begin="1s"
+                  path="M0 0 C-16 -12 -20 -26 -12 -46 C-4 -66 8 -82 -8 -108"/>
+                <animate attributeName="opacity" values="0;1;0" dur="2.3s" repeatCount="indefinite" begin="1s"/>
+                <animate attributeName="r" values="3.5;2;0" dur="2.3s" repeatCount="indefinite" begin="1s"/>
+              </circle>
+              <!-- New embers -->
+              <circle cx="100" cy="150" r="4" fill="url(#g_ember)">
+                <animateMotion dur="3s" repeatCount="indefinite" begin="0.5s"
+                  path="M0 0 C-6 -20 4 -40 0 -60 C2 -76 -6 -90 -2 -110"/>
+                <animate attributeName="opacity" values="0;0.8;0" dur="3s" repeatCount="indefinite" begin="0.5s"/>
+                <animate attributeName="r" values="4;6;2" dur="3s" repeatCount="indefinite" begin="0.5s"/>
+              </circle>
+              <circle cx="110" cy="140" r="3" fill="url(#g_ember)">
+                <animateMotion dur="2.8s" repeatCount="indefinite" begin="1.2s"
+                  path="M0 0 C8 -16 14 -30 6 -50 C0 -70 -10 -86 2 -106"/>
+                <animate attributeName="opacity" values="0;0.7;0" dur="2.8s" repeatCount="indefinite" begin="1.2s"/>
+                <animate attributeName="r" values="3;5;1" dur="2.8s" repeatCount="indefinite" begin="1.2s"/>
+              </circle>
+            </g>
+          </g>
+        </svg>
+      </div>
+      <p class="desc">Triple-layered combustion core with heat shimmer displacement, ambient bloom, and procedural spark dynamics. Alert state intensifies thermal glow.</p>
+    </article>
+
+  </div>
+
+  <script>
+    document.querySelectorAll('.card').forEach(card => {
+      const svg = card.querySelector('.icon');
+      const buttons = card.querySelectorAll('.btn');
+      
+      buttons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          // Update button states
+          buttons.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          
+          // Update SVG state
+          svg.setAttribute('data-state', btn.dataset.state);
+        });
+      });
+    });
+  </script>
+</body>
+</html>

@@ -22,6 +22,25 @@ export function WidgetContainer({ id, title, children, className = '', onHoverIn
   const [isDragging, setIsDragging] = useState(false)
   const dragStart = useRef({ x: 0, y: 0 })
   const containerRef = useRef<HTMLDivElement>(null)
+  const [showHeadline, setShowHeadline] = useState(false)
+  const pressTimer = useRef<NodeJS.Timeout | null>(null)
+
+  const handlePointerDown = useCallback(() => {
+    if (pressTimer.current) clearTimeout(pressTimer.current)
+    pressTimer.current = setTimeout(() => {
+      setShowHeadline(true)
+    }, 2000)
+  }, [])
+
+  const handlePointerUp = useCallback(() => {
+    if (pressTimer.current) clearTimeout(pressTimer.current)
+  }, [])
+
+  const handlePointerLeave = useCallback(() => {
+    if (pressTimer.current) clearTimeout(pressTimer.current)
+    setShowHeadline(false)
+  }, [])
+
 
   const handleMouseEnter = useCallback(() => {
     setWidgetHovered(id, true)
@@ -54,6 +73,11 @@ export function WidgetContainer({ id, title, children, className = '', onHoverIn
   const handleFloat = useCallback(() => setWidgetViewMode(id, 'floating'), [id, setWidgetViewMode])
   const handleFullscreen = useCallback(() => setWidgetViewMode(id, 'fullscreen'), [id, setWidgetViewMode])
   const handleMinimize = useCallback(() => setWidgetViewMode(id, 'container'), [id, setWidgetViewMode])
+
+  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    handleFullscreen()
+  }, [handleFullscreen])
 
   // Dragging for floating mode
   const handleDragStart = useCallback((e: React.MouseEvent) => {
@@ -204,37 +228,53 @@ export function WidgetContainer({ id, title, children, className = '', onHoverIn
       style={{
         cursor: 'pointer',
         transition: 'border-color 0.2s, box-shadow 0.2s',
-        boxShadow: isHovered ? '0 0 6px rgba(0,180,220,0.1)' : 'none',
+        boxShadow: isActive ? '0 0 12px rgba(255, 211, 106, 0.6)' : isHovered ? '0 0 8px rgba(57, 255, 20, 0.2)' : 'none',
+        borderColor: isActive ? '#FFD36A' : 'rgba(57, 255, 20, 0.2)',
+        borderWidth: '1px',
       }}
       onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={(e) => { handleMouseLeave(); handlePointerLeave(); }}
       onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      whileHover={{ borderColor: 'rgba(0,180,220,0.4)' }}
+      whileHover={{ borderColor: 'rgba(57, 255, 20, 0.5)' }}
     >
-      {/* Title bar */}
-      <div className="flex items-center justify-between h-6 px-2 shrink-0" style={{ background: 'rgba(0,180,220,0.04)' }}>
-        <span className="text-[9px] tracking-[0.2em] font-bold" style={{ color: '#5a6578' }}>
-          {title}
-        </span>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={(e) => { e.stopPropagation(); handleExpand() }}
-            className="text-[#3a4553] hover:text-[#00b4dc] transition-colors"
-            title="Expand"
+      {/* Title bar (only on long press) */}
+      <AnimatePresence>
+        {showHeadline && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 24 }}
+            exit={{ opacity: 0, height: 0 }}
+            className="flex items-center justify-between px-2 shrink-0 overflow-hidden cursor-move" 
+            style={{ background: 'rgba(57, 255, 20, 0.1)' }}
+            onMouseDown={handleDragStart} // Assuming floating drag start can be reused, though it might need adjustment if we want to float from container mode
           >
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="0.5" y="0.5" width="9" height="9" stroke="currentColor" strokeWidth="1"/></svg>
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); handleFloat() }}
-            className="text-[#3a4553] hover:text-[#00b4dc] transition-colors"
-            title="Float"
-          >
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="2" y="0" width="8" height="8" stroke="currentColor" strokeWidth="1" fill="none"/><rect x="0" y="2" width="8" height="8" stroke="currentColor" strokeWidth="1" fill="rgba(8,13,20,0.9)"/></svg>
-          </button>
-        </div>
-      </div>
+            <span className="text-[9px] tracking-[0.2em] font-bold" style={{ color: '#39ff14' }}>
+              {title}
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={(e) => { e.stopPropagation(); handleExpand() }}
+                className="text-[#3a4553] hover:text-[#39ff14] transition-colors"
+                title="Expand"
+              >
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="0.5" y="0.5" width="9" height="9" stroke="currentColor" strokeWidth="1"/></svg>
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleFloat() }}
+                className="text-[#3a4553] hover:text-[#39ff14] transition-colors"
+                title="Float"
+              >
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="2" y="0" width="8" height="8" stroke="currentColor" strokeWidth="1" fill="none"/><rect x="0" y="2" width="8" height="8" stroke="currentColor" strokeWidth="1" fill="rgba(8,13,20,0.9)"/></svg>
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Content */}
-      <div className="flex-1 overflow-hidden p-2">
+      <div className={`flex-1 overflow-hidden p-2 ${!isActive ? 'opacity-70 grayscale-[50%]' : ''}`} style={{ transition: 'opacity 0.2s, filter 0.2s' }}>
         {children}
       </div>
     </motion.div>

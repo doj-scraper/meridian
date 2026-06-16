@@ -1,0 +1,945 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Ultra‑Premium Icons — Maritime Vault</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+    :root{
+      --bg0:#070A12;
+      --bg1:#0B1222;
+      --bg2:#0B1A2E;
+      --ink:#EAF0FF;
+      --muted:#9AA7C2;
+
+      --card: rgba(18, 27, 48, .52);
+      --card2: rgba(10, 16, 32, .28);
+      --stroke: rgba(193, 211, 255, .12);
+      --stroke2: rgba(255,255,255,.06);
+
+      --accentA:#6EE7FF;
+      --accentB:#A78BFA;
+      --accentC:#FF6FD8;
+
+      --ease: cubic-bezier(.2,.8,.2,1);
+      --dur: 1200ms;
+    }
+
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 700px at 20% 10%, rgba(110,231,255,.12), transparent 55%),
+        radial-gradient(900px 600px at 75% 25%, rgba(167,139,250,.12), transparent 50%),
+        radial-gradient(900px 650px at 55% 85%, rgba(255,111,216,.10), transparent 55%),
+        linear-gradient(135deg, var(--bg0), var(--bg1) 40%, var(--bg2));
+      min-height:100vh;
+      overflow-x:hidden;
+    }
+
+    .wrap{max-width:1320px;margin:0 auto;padding:28px 18px 60px}
+    header{padding:22px 0 26px;text-align:center}
+    h1{
+      font-size: clamp(2.0rem, 3.6vw, 3.25rem);
+      letter-spacing: -0.03em;
+      font-weight: 750;
+      background: linear-gradient(135deg, #D9F3FF 0%, #A5B4FC 35%, #F0ABFC 70%, #FFD6A5 100%);
+      -webkit-background-clip:text;background-clip:text;color:transparent;
+      filter: drop-shadow(0 18px 30px rgba(0,0,0,.35));
+    }
+    .sub{
+      margin: 10px auto 0;
+      max-width: 860px;
+      color: var(--muted);
+      font-weight: 350;
+      line-height: 1.55;
+      font-size: 1.02rem;
+    }
+
+    .vault{
+      margin-top: 22px;
+      display:grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 18px;
+    }
+
+    .card{
+      grid-column: span 6;
+      background:
+        radial-gradient(800px 240px at 50% 0%, rgba(255,255,255,.08), transparent 55%),
+        linear-gradient(180deg, rgba(255,255,255,.04), transparent 35%),
+        linear-gradient(180deg, var(--card), var(--card2));
+      border: 1px solid var(--stroke);
+      border-radius: 22px;
+      position: relative;
+      overflow: hidden;
+      padding: 18px 18px 16px;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      box-shadow:
+        0 22px 60px rgba(0,0,0,.42),
+        inset 0 1px 0 rgba(255,255,255,.06);
+      transition: transform .35s var(--ease), border-color .35s var(--ease);
+    }
+    .card:before{
+      content:"";
+      position:absolute; inset:-1px;
+      border-radius: 22px;
+      padding:1px;
+      background: linear-gradient(135deg, rgba(110,231,255,.22), rgba(167,139,250,.14), rgba(255,111,216,.10));
+      -webkit-mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+              mask-composite: exclude;
+      pointer-events:none;
+      opacity:.75;
+    }
+    .card:hover{transform: translateY(-6px); border-color: rgba(193,211,255,.22);}
+
+    .top{
+      display:flex; align-items:flex-start; justify-content:space-between; gap: 10px;
+      margin-bottom: 14px;
+    }
+    .title{font-weight:650;font-size:1.08rem; letter-spacing:-.01em;}
+    .kicker{margin-top:4px;font-size:.84rem;color:#7F8FB1;font-weight:420}
+
+    .controls{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end}
+    .btn{
+      padding: 9px 10px;
+      font-size: .72rem;
+      font-weight: 600;
+      letter-spacing:.02em;
+      border-radius: 10px;
+      border: 1px solid rgba(193,211,255,.18);
+      background: rgba(7,10,18,.45);
+      color: rgba(234,240,255,.86);
+      cursor:pointer;
+      transition: transform .2s var(--ease), background .2s var(--ease), border-color .2s var(--ease), color .2s var(--ease);
+      user-select:none;
+    }
+    .btn:hover{transform: translateY(-1px); border-color: rgba(193,211,255,.28); background: rgba(10,16,32,.55); color: #fff;}
+    .btn.active{
+      border-color: transparent;
+      background: linear-gradient(135deg, rgba(110,231,255,.22), rgba(167,139,250,.18), rgba(255,111,216,.14));
+      box-shadow: 0 12px 26px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.10);
+      color:#fff;
+    }
+
+    .stage{
+      position: relative;
+      height: 320px;
+      border-radius: 18px;
+      border: 1px solid rgba(193,211,255,.10);
+      background:
+        radial-gradient(400px 220px at 50% 45%, rgba(110,231,255,.10), transparent 60%),
+        radial-gradient(300px 220px at 35% 60%, rgba(167,139,250,.10), transparent 60%),
+        radial-gradient(300px 220px at 70% 55%, rgba(255,111,216,.08), transparent 60%),
+        linear-gradient(180deg, rgba(255,255,255,.04), rgba(0,0,0,.10));
+      overflow:hidden;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      margin-bottom: 12px;
+    }
+
+    .stage:after{
+      content:"";
+      position:absolute; inset:-60px;
+      background:
+        radial-gradient(circle at 20% 40%, rgba(255,255,255,.06), transparent 30%),
+        radial-gradient(circle at 80% 55%, rgba(255,255,255,.04), transparent 28%),
+        radial-gradient(circle at 55% 65%, rgba(255,255,255,.04), transparent 28%);
+      filter: blur(10px);
+      opacity:.55;
+      pointer-events:none;
+      animation: fog 10s var(--ease) infinite;
+    }
+    @keyframes fog{
+      0%,100%{transform: translate3d(0,0,0) scale(1)}
+      50%{transform: translate3d(16px,-10px,0) scale(1.02)}
+    }
+
+    .icon{
+      width: 208px;
+      height: 208px;
+      filter: drop-shadow(0 18px 34px rgba(0,0,0,.45));
+      transition: transform .35s var(--ease), filter .35s var(--ease);
+      transform-origin: 50% 60%;
+    }
+    .card:hover .icon{
+      transform: translateY(-2px) scale(1.03);
+      filter: drop-shadow(0 24px 44px rgba(0,0,0,.55));
+    }
+
+    .desc{
+      color: rgba(154,167,194,.92);
+      font-size:.88rem;
+      line-height:1.55;
+      margin-top: 8px;
+    }
+
+    /* ---------- Premium motion system (state-driven) ---------- */
+    .icon[data-state="idle"] .m-float { animation: floaty 4.8s var(--ease) infinite; }
+    .icon[data-state="idle"] .m-glint { animation: glint 6.0s var(--ease) infinite; }
+    .icon[data-state="idle"] .m-breathe { animation: breathe 3.4s var(--ease) infinite; }
+
+    .icon[data-state="alert"] .m-pulse { animation: pulse 1.25s var(--ease) infinite; }
+    .icon[data-state="alert"] .m-scan  { animation: spin 2.6s linear infinite; }
+    .icon[data-state="alert"] .m-doors { animation: doors 1.9s var(--ease) infinite; }
+    .icon[data-state="alert"] .m-blink { animation: blink 1.0s steps(2,end) infinite; }
+    .icon[data-state="alert"] .m-glow  { animation: glow 1.2s var(--ease) infinite; }
+
+    .icon[data-state="viewed"]{
+      opacity:.72;
+      filter: drop-shadow(0 14px 26px rgba(0,0,0,.40));
+    }
+    .icon[data-state="viewed"] .m-float,
+    .icon[data-state="viewed"] .m-glint,
+    .icon[data-state="viewed"] .m-breathe,
+    .icon[data-state="viewed"] .m-pulse,
+    .icon[data-state="viewed"] .m-scan,
+    .icon[data-state="viewed"] .m-doors,
+    .icon[data-state="viewed"] .m-blink,
+    .icon[data-state="viewed"] .m-glow{
+      animation:none !important;
+      opacity:.55;
+    }
+
+    @keyframes floaty{ 0%,100%{transform: translateY(0)} 50%{transform: translateY(2.2px)} }
+    @keyframes breathe{ 0%,100%{opacity:.95} 50%{opacity:.72} }
+    @keyframes glint{
+      0%{transform: translateX(-120px); opacity:0}
+      15%{opacity:.0}
+      28%{opacity:.65}
+      45%{opacity:0}
+      100%{transform: translateX(260px); opacity:0}
+    }
+    @keyframes pulse{
+      0%,100%{transform: scale(1); opacity:.95}
+      50%{transform: scale(1.06); opacity:1}
+    }
+    @keyframes spin{to{transform: rotate(360deg)}}
+    @keyframes doors{
+      0%,100%{transform: translateX(0)}
+      50%{transform: translateX(10px)}
+    }
+    @keyframes blink{ 0%,100%{opacity:1} 50%{opacity:.12} }
+    @keyframes glow{
+      0%,100%{filter: drop-shadow(0 0 6px rgba(110,231,255,.55)) drop-shadow(0 0 14px rgba(167,139,250,.35));}
+      50%{filter: drop-shadow(0 0 2px rgba(110,231,255,.25)) drop-shadow(0 0 6px rgba(167,139,250,.18));}
+    }
+
+    @media (max-width: 980px){
+      .card{grid-column: span 12}
+      .stage{height: 300px}
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      *{animation: none !important; transition:none !important}
+      .stage:after{display:none}
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Ultra‑Premium Navigation Icons</h1>
+      <p class="sub">Photoreal metal, glass, bevelled edges, and micro‑animations—presented in a “vault” gallery layout with state controls (Idle / Alert / Viewed).</p>
+    </header>
+
+    <section class="vault">
+
+      <!-- ===================== CARGO SHIP ===================== -->
+      <article class="card" data-icon="cargo-ship">
+        <div class="top">
+          <div>
+            <div class="title">Cargo Ship</div>
+            <div class="kicker">Articles & Long‑form Content</div>
+          </div>
+          <div class="controls">
+            <button class="btn active" data-state="idle">Idle</button>
+            <button class="btn" data-state="alert">Alert</button>
+            <button class="btn" data-state="viewed">Viewed</button>
+          </div>
+        </div>
+
+        <div class="stage">
+          <svg class="icon" viewBox="0 0 200 200" role="img" aria-label="Cargo ship icon" data-state="idle">
+            <defs>
+              <!-- paint + metals -->
+              <linearGradient id="cs_hullPaint" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#071A2B"/>
+                <stop offset="0.35" stop-color="#0C2A45"/>
+                <stop offset="0.7" stop-color="#153D5C"/>
+                <stop offset="1" stop-color="#0A2033"/>
+              </linearGradient>
+              <linearGradient id="cs_hullBevel" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="rgba(255,255,255,.55)"/>
+                <stop offset="0.35" stop-color="rgba(255,255,255,.12)"/>
+                <stop offset="1" stop-color="rgba(0,0,0,.55)"/>
+              </linearGradient>
+
+              <linearGradient id="cs_chrome" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="#F7FBFF"/>
+                <stop offset="0.18" stop-color="#9CB2C9"/>
+                <stop offset="0.36" stop-color="#FFFFFF"/>
+                <stop offset="0.6" stop-color="#7F93AA"/>
+                <stop offset="1" stop-color="#F3F7FF"/>
+              </linearGradient>
+
+              <linearGradient id="cs_copper" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#FFD2A1"/>
+                <stop offset="0.3" stop-color="#D79A4A"/>
+                <stop offset="0.7" stop-color="#8B5A22"/>
+                <stop offset="1" stop-color="#F7C77A"/>
+              </linearGradient>
+
+              <linearGradient id="cs_containerA" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#FFB26D"/>
+                <stop offset="0.35" stop-color="#D86B2D"/>
+                <stop offset="0.72" stop-color="#A4491F"/>
+                <stop offset="1" stop-color="#FFD3A6"/>
+              </linearGradient>
+              <linearGradient id="cs_containerB" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#D9A06B"/>
+                <stop offset="0.42" stop-color="#7A3A15"/>
+                <stop offset="1" stop-color="#F0C095"/>
+              </linearGradient>
+
+              <linearGradient id="cs_glass" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="rgba(190,244,255,.85)"/>
+                <stop offset="0.45" stop-color="rgba(90,190,255,.35)"/>
+                <stop offset="1" stop-color="rgba(20,70,110,.55)"/>
+              </linearGradient>
+
+              <filter id="cs_softShadow" x="-30%" y="-30%" width="160%" height="160%">
+                <feDropShadow dx="0" dy="7" stdDeviation="6" flood-color="rgba(0,0,0,.55)"/>
+              </filter>
+
+              <filter id="cs_innerShadow" x="-30%" y="-30%" width="160%" height="160%">
+                <feOffset dx="0" dy="1"/>
+                <feGaussianBlur stdDeviation="1.5" result="b"/>
+                <feComposite in="b" in2="SourceAlpha" operator="arithmetic" k2="-1" k3="1" result="i"/>
+                <feColorMatrix in="i" type="matrix"
+                  values="0 0 0 0 0
+                          0 0 0 0 0
+                          0 0 0 0 0
+                          0 0 0 .6 0" />
+                <feComposite in2="SourceGraphic" operator="over"/>
+              </filter>
+
+              <!-- glint overlay -->
+              <linearGradient id="cs_glintGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="rgba(255,255,255,0)"/>
+                <stop offset="0.45" stop-color="rgba(255,255,255,.62)"/>
+                <stop offset="0.55" stop-color="rgba(255,255,255,.08)"/>
+                <stop offset="1" stop-color="rgba(255,255,255,0)"/>
+              </linearGradient>
+
+              <clipPath id="cs_hullClip">
+                <path d="M22 122 Q26 141 44 151 L156 151 Q175 142 178 122 L178 110 Q162 104 100 104 Q38 104 22 110 Z"/>
+              </clipPath>
+
+              <radialGradient id="cs_beacon" cx="50%" cy="50%" r="60%">
+                <stop offset="0" stop-color="#FFFFFF"/>
+                <stop offset="0.3" stop-color="#FFEAA4"/>
+                <stop offset="0.6" stop-color="#FFC857"/>
+                <stop offset="1" stop-color="#B56A12"/>
+              </radialGradient>
+
+              <filter id="cs_glow" x="-60%" y="-60%" width="220%" height="220%">
+                <feGaussianBlur stdDeviation="3" result="b"/>
+                <feColorMatrix in="b" type="matrix"
+                  values="1 0 0 0 0
+                          0 1 0 0 0
+                          0 0 1 0 0
+                          0 0 0 14 -6" result="g"/>
+                <feComposite in="SourceGraphic" in2="g" operator="atop"/>
+              </filter>
+            </defs>
+
+            <g class="m-float" filter="url(#cs_softShadow)">
+              <!-- wake shimmer -->
+              <path d="M22 128 C40 122, 58 132, 76 127 S112 122, 128 127 S160 133, 178 126"
+                    fill="none" stroke="rgba(110,231,255,.28)" stroke-width="2" stroke-linecap="round"/>
+
+              <!-- hull -->
+              <path d="M22 122 Q26 141 44 151 L156 151 Q175 142 178 122 L178 110 Q162 104 100 104 Q38 104 22 110 Z"
+                    fill="url(#cs_hullPaint)" stroke="rgba(255,255,255,.12)" stroke-width="1.2" filter="url(#cs_innerShadow)"/>
+
+              <!-- hull bevel edge -->
+              <path d="M26 112 Q44 107 100 107 Q156 107 174 112"
+                    fill="none" stroke="url(#cs_hullBevel)" stroke-width="2.2" opacity=".85"/>
+
+              <!-- copper rubbing strip -->
+              <path d="M30 132 Q46 140 58 138 Q76 134 98 138 Q122 142 148 136 Q162 133 170 128"
+                    fill="none" stroke="url(#cs_copper)" stroke-width="2.4" stroke-linecap="round" opacity=".95"/>
+
+              <!-- containers (bevelled) -->
+              <g transform="translate(0,-2)">
+                <g>
+                  <rect x="44" y="92" width="34" height="25" rx="4" fill="url(#cs_containerA)" stroke="rgba(255,255,255,.14)" />
+                  <path d="M46 97 H76" stroke="rgba(255,255,255,.14)" stroke-width="1"/>
+                  <path d="M46 102 H76" stroke="rgba(0,0,0,.20)" stroke-width="1" opacity=".7"/>
+                  <path d="M46 107 H76" stroke="rgba(255,255,255,.10)" stroke-width="1" opacity=".6"/>
+                  <rect x="46" y="94" width="12" height="6" rx="2" fill="rgba(10,16,32,.35)" stroke="rgba(255,255,255,.10)"/>
+                </g>
+                <g>
+                  <rect x="83" y="92" width="34" height="25" rx="4" fill="url(#cs_containerB)" stroke="rgba(255,255,255,.14)" />
+                  <path d="M85 97 H115" stroke="rgba(255,255,255,.14)" stroke-width="1"/>
+                  <path d="M85 102 H115" stroke="rgba(0,0,0,.20)" stroke-width="1" opacity=".7"/>
+                  <path d="M85 107 H115" stroke="rgba(255,255,255,.10)" stroke-width="1" opacity=".6"/>
+                  <rect x="85" y="94" width="12" height="6" rx="2" fill="rgba(10,16,32,.35)" stroke="rgba(255,255,255,.10)"/>
+                </g>
+                <g>
+                  <rect x="122" y="92" width="34" height="25" rx="4" fill="url(#cs_containerA)" stroke="rgba(255,255,255,.14)" />
+                  <path d="M124 97 H154" stroke="rgba(255,255,255,.14)" stroke-width="1"/>
+                  <path d="M124 102 H154" stroke="rgba(0,0,0,.20)" stroke-width="1" opacity=".7"/>
+                  <path d="M124 107 H154" stroke="rgba(255,255,255,.10)" stroke-width="1" opacity=".6"/>
+                  <rect x="124" y="94" width="12" height="6" rx="2" fill="rgba(10,16,32,.35)" stroke="rgba(255,255,255,.10)"/>
+                </g>
+
+                <g>
+                  <rect x="56" y="72" width="30" height="20" rx="4" fill="url(#cs_containerB)" stroke="rgba(255,255,255,.12)"/>
+                  <path d="M58 76 H84" stroke="rgba(255,255,255,.12)" stroke-width="1"/>
+                  <path d="M58 80 H84" stroke="rgba(0,0,0,.20)" stroke-width="1" opacity=".7"/>
+                </g>
+                <g>
+                  <rect x="94" y="72" width="30" height="20" rx="4" fill="url(#cs_containerA)" stroke="rgba(255,255,255,.12)"/>
+                  <path d="M96 76 H122" stroke="rgba(255,255,255,.12)" stroke-width="1"/>
+                  <path d="M96 80 H122" stroke="rgba(0,0,0,.20)" stroke-width="1" opacity=".7"/>
+                </g>
+
+                <g>
+                  <rect x="73" y="56" width="30" height="16" rx="4" fill="url(#cs_containerB)" stroke="rgba(255,255,255,.12)"/>
+                  <path d="M75 60 H101" stroke="rgba(255,255,255,.12)" stroke-width="1"/>
+                </g>
+              </g>
+
+              <!-- bridge (glass + chrome) -->
+              <g>
+                <path d="M120 80 h30 q6 0 6 6 v22 q0 6-6 6 h-30z" fill="url(#cs_chrome)" opacity=".95" stroke="rgba(0,0,0,.25)"/>
+                <path d="M126 83 h18 q5 0 5 5 v10 q0 5-5 5 h-18z" fill="url(#cs_glass)" stroke="rgba(255,255,255,.18)"/>
+                <path d="M128 86 q12 7 24 0" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1" opacity=".55" class="m-glint"/>
+              </g>
+
+              <!-- smokestack -->
+              <g>
+                <path d="M102 64 h10 v28 q0 4-4 4 h-2 q-4 0-4-4z" fill="rgba(20,26,40,.85)" stroke="rgba(255,255,255,.10)"/>
+                <ellipse cx="107" cy="64" rx="7" ry="3.2" fill="rgba(30,38,60,.9)" stroke="rgba(255,255,255,.10)"/>
+                <path d="M109 58 C120 58, 120 70, 110 70" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="1"/>
+              </g>
+
+              <!-- portholes (glass) -->
+              <g>
+                <g>
+                  <circle cx="50" cy="118" r="4.6" fill="rgba(8,12,22,.45)" stroke="rgba(255,255,255,.14)"/>
+                  <circle cx="50" cy="118" r="3.4" fill="url(#cs_glass)" opacity=".95"/>
+                  <path d="M48.2 116.8 q1.8 -1.6 3.8 0" stroke="rgba(255,255,255,.55)" stroke-width=".8" fill="none" opacity=".45"/>
+                  <circle cx="50" cy="118" r="2.1" fill="url(#cs_beacon)" opacity=".0" class="m-blink m-glow" filter="url(#cs_glow)"/>
+                </g>
+                <g>
+                  <circle cx="70" cy="118" r="4.6" fill="rgba(8,12,22,.45)" stroke="rgba(255,255,255,.14)"/>
+                  <circle cx="70" cy="118" r="3.4" fill="url(#cs_glass)" opacity=".95"/>
+                  <path d="M68.2 116.8 q1.8 -1.6 3.8 0" stroke="rgba(255,255,255,.55)" stroke-width=".8" fill="none" opacity=".45"/>
+                  <circle cx="70" cy="118" r="2.1" fill="url(#cs_beacon)" opacity=".0" class="m-blink m-glow" filter="url(#cs_glow)"/>
+                </g>
+                <g opacity=".95">
+                  <circle cx="90" cy="118" r="4.2" fill="rgba(8,12,22,.40)" stroke="rgba(255,255,255,.12)"/>
+                  <circle cx="110" cy="118" r="4.2" fill="rgba(8,12,22,.40)" stroke="rgba(255,255,255,.12)"/>
+                  <circle cx="130" cy="118" r="4.2" fill="rgba(8,12,22,.40)" stroke="rgba(255,255,255,.12)"/>
+                  <circle cx="150" cy="118" r="4.2" fill="rgba(8,12,22,.40)" stroke="rgba(255,255,255,.12)"/>
+                </g>
+              </g>
+
+              <!-- anchor (polished brass) -->
+              <g>
+                <path d="M34 132 v16" stroke="url(#cs_copper)" stroke-width="2.2" stroke-linecap="round"/>
+                <path d="M27 140 h14" stroke="url(#cs_copper)" stroke-width="2.2" stroke-linecap="round"/>
+                <path d="M31.8 148 q2.2 3.6 4.4 0" stroke="url(#cs_copper)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+                <circle cx="34" cy="132" r="2.1" fill="url(#cs_chrome)" opacity=".7"/>
+              </g>
+
+              <!-- flag beacon (alert) -->
+              <g>
+                <path d="M165 72 v-18" stroke="rgba(255,255,255,.18)" stroke-width="1.6" stroke-linecap="round"/>
+                <path d="M165 54 h12 q2 0 2 2 v7 q0 2-2 2 h-12z" fill="url(#cs_beacon)" opacity=".95" class="m-pulse"/>
+                <path d="M167 56 q6 5 12 0" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="1" opacity=".38"/>
+              </g>
+
+              <!-- hull glint sweep (clipped) -->
+              <g clip-path="url(#cs_hullClip)" opacity=".55">
+                <rect x="-140" y="96" width="120" height="90" fill="url(#cs_glintGrad)" transform="skewX(-18)" class="m-glint"/>
+              </g>
+            </g>
+          </svg>
+        </div>
+
+        <p class="desc">Bevelled navy paint, copper rubbing strip, chrome bridge, and glass portholes. Alert mode turns the portholes into warm “signal” lights while a hull glint sweeps across the silhouette.</p>
+      </article>
+
+
+      <!-- ===================== RADAR STATION ===================== -->
+      <article class="card" data-icon="radar-station">
+        <div class="top">
+          <div>
+            <div class="title">Radar Station</div>
+            <div class="kicker">Dashboards & Analytics</div>
+          </div>
+          <div class="controls">
+            <button class="btn active" data-state="idle">Idle</button>
+            <button class="btn" data-state="alert">Alert</button>
+            <button class="btn" data-state="viewed">Viewed</button>
+          </div>
+        </div>
+
+        <div class="stage">
+          <svg class="icon" viewBox="0 0 200 200" role="img" aria-label="Radar station icon" data-state="idle">
+            <defs>
+              <linearGradient id="rs_chrome" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="#F7FBFF"/>
+                <stop offset="0.15" stop-color="#9FB4CA"/>
+                <stop offset="0.32" stop-color="#FFFFFF"/>
+                <stop offset="0.6" stop-color="#7D90A6"/>
+                <stop offset="1" stop-color="#F1F6FF"/>
+              </linearGradient>
+
+              <linearGradient id="rs_gunmetal" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#2D3445"/>
+                <stop offset="0.45" stop-color="#161B28"/>
+                <stop offset="1" stop-color="#3B465B"/>
+              </linearGradient>
+
+              <radialGradient id="rs_dishConcave" cx="50%" cy="30%" r="80%">
+                <stop offset="0" stop-color="#FFFFFF"/>
+                <stop offset="0.25" stop-color="#E9EEF6"/>
+                <stop offset="0.55" stop-color="#A3B5C9"/>
+                <stop offset="1" stop-color="#5B6B81"/>
+              </radialGradient>
+
+              <radialGradient id="rs_scanGlow" cx="50%" cy="50%" r="60%">
+                <stop offset="0" stop-color="rgba(110,231,255,.95)"/>
+                <stop offset="0.6" stop-color="rgba(110,231,255,.25)"/>
+                <stop offset="1" stop-color="rgba(110,231,255,0)"/>
+              </radialGradient>
+
+              <filter id="rs_shadow" x="-40%" y="-40%" width="180%" height="180%">
+                <feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="rgba(0,0,0,.55)"/>
+              </filter>
+
+              <filter id="rs_glow" x="-60%" y="-60%" width="220%" height="220%">
+                <feGaussianBlur stdDeviation="3" result="b"/>
+                <feColorMatrix in="b" type="matrix"
+                  values="1 0 0 0 0
+                          0 1 0 0 0
+                          0 0 1 0 0
+                          0 0 0 15 -6" result="g"/>
+                <feComposite in="SourceGraphic" in2="g" operator="atop"/>
+              </filter>
+
+              <linearGradient id="rs_glintGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="rgba(255,255,255,0)"/>
+                <stop offset="0.48" stop-color="rgba(255,255,255,.62)"/>
+                <stop offset="0.52" stop-color="rgba(255,255,255,.10)"/>
+                <stop offset="1" stop-color="rgba(255,255,255,0)"/>
+              </linearGradient>
+
+              <clipPath id="rs_dishClip">
+                <ellipse cx="100" cy="82" rx="52" ry="16"/>
+              </clipPath>
+
+              <radialGradient id="rs_alarm" cx="50%" cy="50%" r="60%">
+                <stop offset="0" stop-color="#FFFFFF"/>
+                <stop offset="0.25" stop-color="#FF6A7A"/>
+                <stop offset="1" stop-color="#B1082B"/>
+              </radialGradient>
+            </defs>
+
+            <g filter="url(#rs_shadow)" class="m-float">
+              <!-- base platform -->
+              <ellipse cx="100" cy="162" rx="54" ry="16" fill="url(#rs_gunmetal)" stroke="rgba(255,255,255,.10)" />
+              <ellipse cx="100" cy="160" rx="48" ry="13" fill="rgba(255,255,255,.05)" />
+              <path d="M52 158 h96 v10 q0 6-6 6 h-84 q-6 0-6-6z" fill="url(#rs_gunmetal)" stroke="rgba(0,0,0,.25)"/>
+
+              <!-- tower -->
+              <g>
+                <path d="M92 94 h16 v66 q0 8-8 8 q-8 0-8-8z" fill="url(#rs_gunmetal)" stroke="rgba(255,255,255,.10)"/>
+                <path d="M90 90 h20 v8 h-20z" fill="url(#rs_chrome)" opacity=".92" stroke="rgba(0,0,0,.25)"/>
+                <path d="M92 110 l-10 10" stroke="rgba(255,255,255,.18)" stroke-width="1.2" />
+                <path d="M108 110 l10 10" stroke="rgba(255,255,255,.18)" stroke-width="1.2" />
+                <path d="M92 132 l-10 10" stroke="rgba(255,255,255,.14)" stroke-width="1.2" />
+                <path d="M108 132 l10 10" stroke="rgba(255,255,255,.14)" stroke-width="1.2" />
+              </g>
+
+              <!-- cabin -->
+              <g>
+                <path d="M62 144 h34 q6 0 6 6 v18 h-46v-18 q0-6 6-6z" fill="rgba(10,14,24,.85)" stroke="rgba(255,255,255,.10)"/>
+                <g opacity=".95">
+                  <rect x="70" y="150" width="8" height="7" rx="2" fill="rgba(110,231,255,.22)" stroke="rgba(255,255,255,.16)"/>
+                  <rect x="82" y="150" width="8" height="7" rx="2" fill="rgba(110,231,255,.22)" stroke="rgba(255,255,255,.16)"/>
+                  <rect x="70" y="160" width="8" height="6" rx="2" fill="rgba(255,111,216,.22)" stroke="rgba(255,255,255,.14)"/>
+                  <rect x="82" y="160" width="8" height="6" rx="2" fill="rgba(255,111,216,.22)" stroke="rgba(255,255,255,.14)"/>
+                </g>
+                <circle cx="94" cy="156" r="3.2" fill="url(#rs_alarm)" class="m-pulse m-glow" filter="url(#rs_glow)"/>
+              </g>
+
+              <!-- dish assembly -->
+              <g transform-origin="100px 82px" class="m-scan">
+                <!-- rim -->
+                <ellipse cx="100" cy="82" rx="54" ry="17" fill="url(#rs_chrome)" opacity=".92" stroke="rgba(0,0,0,.22)"/>
+                <!-- concave -->
+                <ellipse cx="100" cy="80" rx="48" ry="13.5" fill="url(#rs_dishConcave)" opacity=".98" stroke="rgba(255,255,255,.12)"/>
+                <!-- grooves -->
+                <ellipse cx="100" cy="80" rx="38" ry="10.5" fill="none" stroke="rgba(255,255,255,.16)" opacity=".6"/>
+                <ellipse cx="100" cy="80" rx="28" ry="8" fill="none" stroke="rgba(0,0,0,.18)" opacity=".55"/>
+                <ellipse cx="100" cy="80" rx="18" ry="5.5" fill="none" stroke="rgba(255,255,255,.12)" opacity=".55"/>
+
+                <!-- hub + struts -->
+                <circle cx="100" cy="82" r="4.2" fill="url(#rs_gunmetal)" stroke="rgba(255,255,255,.14)"/>
+                <circle cx="100" cy="82" r="1.9" fill="rgba(255,255,255,.65)"/>
+                <path d="M100 82 H48 M100 82 H152" stroke="rgba(255,255,255,.18)" stroke-width="1.2" />
+                <path d="M100 82 V60 M100 82 V104" stroke="rgba(255,255,255,.18)" stroke-width="1.2" />
+
+                <!-- scan wedge (alert looks best; idle is subtle due to CSS) -->
+                <g clip-path="url(#rs_dishClip)" opacity=".55">
+                  <path d="M100 82 L152 82 A52 16 0 0 0 104 66 Z" fill="url(#rs_scanGlow)" class="m-breathe"/>
+                </g>
+
+                <!-- glint sweep -->
+                <g clip-path="url(#rs_dishClip)" opacity=".35">
+                  <rect x="-140" y="58" width="120" height="50" fill="url(#rs_glintGrad)" transform="skewX(-20)" class="m-glint"/>
+                </g>
+              </g>
+
+              <!-- antenna -->
+              <g>
+                <path d="M100 58 v-10" stroke="rgba(255,255,255,.20)" stroke-width="1.5" stroke-linecap="round"/>
+                <path d="M100 48 l-6 -6 M100 48 l6 -6" stroke="rgba(255,255,255,.18)" stroke-width="1.4" stroke-linecap="round"/>
+                <circle cx="100" cy="48" r="2.2" fill="url(#rs_chrome)" opacity=".9"/>
+              </g>
+            </g>
+          </svg>
+        </div>
+
+        <p class="desc">Concave chrome dish with groove detailing, scan glow wedge, and controlled alarm pulse. Alert mode accelerates the dish rotation and intensifies the scan illumination.</p>
+      </article>
+
+
+      <!-- ===================== I/O GATE ===================== -->
+      <article class="card" data-icon="io-gate">
+        <div class="top">
+          <div>
+            <div class="title">I/O Gate</div>
+            <div class="kicker">Web Tools & APIs</div>
+          </div>
+          <div class="controls">
+            <button class="btn active" data-state="idle">Idle</button>
+            <button class="btn" data-state="alert">Alert</button>
+            <button class="btn" data-state="viewed">Viewed</button>
+          </div>
+        </div>
+
+        <div class="stage">
+          <svg class="icon" viewBox="0 0 200 200" role="img" aria-label="I/O gate icon" data-state="idle">
+            <defs>
+              <linearGradient id="ig_chrome" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="#F9FCFF"/>
+                <stop offset="0.15" stop-color="#A9BED6"/>
+                <stop offset="0.32" stop-color="#FFFFFF"/>
+                <stop offset="0.62" stop-color="#7F92A8"/>
+                <stop offset="1" stop-color="#F1F6FF"/>
+              </linearGradient>
+
+              <linearGradient id="ig_brush" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="rgba(255,255,255,.26)"/>
+                <stop offset="0.5" stop-color="rgba(255,255,255,.06)"/>
+                <stop offset="1" stop-color="rgba(0,0,0,.28)"/>
+              </linearGradient>
+
+              <linearGradient id="ig_glass" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="rgba(206,252,255,.72)"/>
+                <stop offset="0.45" stop-color="rgba(110,231,255,.22)"/>
+                <stop offset="1" stop-color="rgba(18,40,75,.50)"/>
+              </linearGradient>
+
+              <linearGradient id="ig_energyC" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="rgba(110,231,255,0)"/>
+                <stop offset="0.5" stop-color="rgba(110,231,255,.95)"/>
+                <stop offset="1" stop-color="rgba(110,231,255,0)"/>
+              </linearGradient>
+              <linearGradient id="ig_energyP" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="rgba(167,139,250,0)"/>
+                <stop offset="0.5" stop-color="rgba(167,139,250,.95)"/>
+                <stop offset="1" stop-color="rgba(167,139,250,0)"/>
+              </linearGradient>
+
+              <filter id="ig_shadow" x="-40%" y="-40%" width="180%" height="180%">
+                <feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="rgba(0,0,0,.55)"/>
+              </filter>
+
+              <filter id="ig_glow" x="-60%" y="-60%" width="220%" height="220%">
+                <feGaussianBlur stdDeviation="3" result="b"/>
+                <feColorMatrix in="b" type="matrix"
+                  values="1 0 0 0 0
+                          0 1 0 0 0
+                          0 0 1 0 0
+                          0 0 0 14 -6" result="g"/>
+                <feComposite in="SourceGraphic" in2="g" operator="atop"/>
+              </filter>
+
+              <linearGradient id="ig_glintGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="rgba(255,255,255,0)"/>
+                <stop offset="0.46" stop-color="rgba(255,255,255,.62)"/>
+                <stop offset="0.54" stop-color="rgba(255,255,255,.10)"/>
+                <stop offset="1" stop-color="rgba(255,255,255,0)"/>
+              </linearGradient>
+
+              <clipPath id="ig_frameClip">
+                <rect x="54" y="56" width="92" height="90" rx="14"/>
+              </clipPath>
+            </defs>
+
+            <g filter="url(#ig_shadow)" class="m-float">
+              <!-- frame -->
+              <rect x="54" y="56" width="92" height="90" rx="14" fill="url(#ig_chrome)" opacity=".92" stroke="rgba(0,0,0,.22)"/>
+              <rect x="58" y="60" width="84" height="82" rx="12" fill="rgba(10,16,32,.55)" stroke="rgba(255,255,255,.10)"/>
+              <rect x="54" y="56" width="92" height="90" rx="14" fill="url(#ig_brush)" opacity=".7"/>
+
+              <!-- screws -->
+              <g opacity=".9">
+                <circle cx="64" cy="66" r="2.3" fill="rgba(0,0,0,.28)" stroke="rgba(255,255,255,.20)"/>
+                <circle cx="136" cy="66" r="2.3" fill="rgba(0,0,0,.28)" stroke="rgba(255,255,255,.20)"/>
+                <circle cx="64" cy="136" r="2.3" fill="rgba(0,0,0,.28)" stroke="rgba(255,255,255,.20)"/>
+                <circle cx="136" cy="136" r="2.3" fill="rgba(0,0,0,.28)" stroke="rgba(255,255,255,.20)"/>
+              </g>
+
+              <!-- doors (glass) -->
+              <g>
+                <g transform-origin="100px 100px" class="m-doors">
+                  <path d="M62 66 h38 q6 0 6 6 v64 q0 6-6 6 h-38z"
+                        fill="url(#ig_glass)" stroke="rgba(255,255,255,.16)"/>
+                  <path d="M100 66 h38 q6 0 6 6 v64 q0 6-6 6 h-38z"
+                        fill="url(#ig_glass)" stroke="rgba(255,255,255,.16)"/>
+                </g>
+
+                <!-- bevel lines -->
+                <path d="M62 66 h82" stroke="rgba(255,255,255,.20)" opacity=".45"/>
+                <path d="M62 142 h82" stroke="rgba(0,0,0,.35)" opacity=".55"/>
+
+                <!-- door highlights -->
+                <g clip-path="url(#ig_frameClip)" opacity=".55">
+                  <rect x="-140" y="56" width="120" height="100" fill="url(#ig_glintGrad)" transform="skewX(-18)" class="m-glint"/>
+                </g>
+              </g>
+
+              <!-- side control spine -->
+              <g>
+                <rect x="26" y="88" width="22" height="52" rx="8" fill="rgba(10,14,24,.9)" stroke="rgba(255,255,255,.10)"/>
+                <circle cx="33" cy="98" r="2.4" fill="rgba(110,231,255,.95)" class="m-glow" filter="url(#ig_glow)"/>
+                <circle cx="39" cy="98" r="2.4" fill="rgba(255,111,216,.95)" class="m-glow" filter="url(#ig_glow)"/>
+                <circle cx="45" cy="98" r="2.4" fill="rgba(255,214,165,.95)" class="m-glow" filter="url(#ig_glow)"/>
+                <rect x="31" y="106" width="14" height="3.2" rx="1.6" fill="rgba(110,231,255,.9)" opacity=".9"/>
+                <rect x="31" y="112" width="14" height="3.2" rx="1.6" fill="rgba(167,139,250,.9)" opacity=".9"/>
+                <rect x="31" y="118" width="14" height="3.2" rx="1.6" fill="rgba(255,111,216,.9)" opacity=".9"/>
+              </g>
+
+              <!-- energy flow (alert will “feel” stronger; viewed disables) -->
+              <g opacity=".85">
+                <path d="M14 104 C38 86, 56 122, 76 104 S116 86, 124 104 S154 122, 186 104"
+                      fill="none" stroke="url(#ig_energyC)" stroke-width="2.4" stroke-linecap="round"
+                      stroke-dasharray="6 6">
+                  <animate attributeName="stroke-dashoffset" values="12;0" dur="1.9s" repeatCount="indefinite"/>
+                </path>
+                <path d="M14 114 C38 96, 56 132, 76 114 S116 96, 124 114 S154 132, 186 114"
+                      fill="none" stroke="url(#ig_energyP)" stroke-width="2.4" stroke-linecap="round"
+                      stroke-dasharray="6 6" opacity=".9">
+                  <animate attributeName="stroke-dashoffset" values="12;0" dur="1.9s" begin=".35s" repeatCount="indefinite"/>
+                </path>
+              </g>
+
+              <!-- direction chevrons -->
+              <g stroke="rgba(110,231,255,.85)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" opacity=".9" class="m-breathe">
+                <path d="M184 104 h-10" />
+                <path d="M178 98 l6 6 l-6 6" />
+                <path d="M16 104 h10" />
+                <path d="M22 98 l-6 6 l6 6" />
+              </g>
+            </g>
+          </svg>
+        </div>
+
+        <p class="desc">Chrome frame + glass doors with a sweeping highlight. Alert mode adds a tighter door motion and brighter energy flow—designed to feel “reward-tier” without being loud.</p>
+      </article>
+
+
+      <!-- ===================== OBSERVATION DECK ===================== -->
+      <article class="card" data-icon="observation-deck">
+        <div class="top">
+          <div>
+            <div class="title">Observation Deck</div>
+            <div class="kicker">Photos & Infographics</div>
+          </div>
+          <div class="controls">
+            <button class="btn active" data-state="idle">Idle</button>
+            <button class="btn" data-state="alert">Alert</button>
+            <button class="btn" data-state="viewed">Viewed</button>
+          </div>
+        </div>
+
+        <div class="stage">
+          <svg class="icon" viewBox="0 0 200 200" role="img" aria-label="Observation deck icon" data-state="idle">
+            <defs>
+              <linearGradient id="od_steel" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#AFC0D6"/>
+                <stop offset="0.25" stop-color="#5C6B83"/>
+                <stop offset="0.55" stop-color="#232C3D"/>
+                <stop offset="1" stop-color="#C7D6EC"/>
+              </linearGradient>
+
+              <linearGradient id="od_chrome" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="#F7FBFF"/>
+                <stop offset="0.16" stop-color="#A6BBD3"/>
+                <stop offset="0.34" stop-color="#FFFFFF"/>
+                <stop offset="0.62" stop-color="#7C91A8"/>
+                <stop offset="1" stop-color="#F0F6FF"/>
+              </linearGradient>
+
+              <linearGradient id="od_copper" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#FFE0B6"/>
+                <stop offset="0.3" stop-color="#D49A4E"/>
+                <stop offset="0.72" stop-color="#7E4E1B"/>
+                <stop offset="1" stop-color="#FFD49A"/>
+              </linearGradient>
+
+              <linearGradient id="od_glass" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="rgba(214,253,255,.78)"/>
+                <stop offset="0.45" stop-color="rgba(110,231,255,.22)"/>
+                <stop offset="1" stop-color="rgba(18,40,75,.55)"/>
+              </linearGradient>
+
+              <radialGradient id="od_beacon" cx="50%" cy="50%" r="65%">
+                <stop offset="0" stop-color="#FFFFFF"/>
+                <stop offset="0.25" stop-color="#FFF1B8"/>
+                <stop offset="0.55" stop-color="#FFCD5B"/>
+                <stop offset="1" stop-color="#B96C12"/>
+              </radialGradient>
+
+              <filter id="od_shadow" x="-40%" y="-40%" width="180%" height="180%">
+                <feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="rgba(0,0,0,.55)"/>
+              </filter>
+
+              <filter id="od_glow" x="-70%" y="-70%" width="240%" height="240%">
+                <feGaussianBlur stdDeviation="4" result="b"/>
+                <feColorMatrix in="b" type="matrix"
+                  values="1 0 0 0 0
+                          0 1 0 0 0
+                          0 0 1 0 0
+                          0 0 0 16 -6" result="g"/>
+                <feComposite in="SourceGraphic" in2="g" operator="atop"/>
+              </filter>
+
+              <linearGradient id="od_glintGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="rgba(255,255,255,0)"/>
+                <stop offset="0.48" stop-color="rgba(255,255,255,.62)"/>
+                <stop offset="0.52" stop-color="rgba(255,255,255,.10)"/>
+                <stop offset="1" stop-color="rgba(255,255,255,0)"/>
+              </linearGradient>
+
+              <clipPath id="od_glassClip">
+                <path d="M62 92 Q64 68 100 62 Q136 68 138 92 Q138 118 100 126 Q62 118 62 92 Z"/>
+              </clipPath>
+            </defs>
+
+            <g filter="url(#od_shadow)" class="m-float">
+              <!-- base -->
+              <ellipse cx="100" cy="166" rx="38" ry="14" fill="rgba(15,22,38,.85)" stroke="rgba(255,255,255,.10)"/>
+              <ellipse cx="100" cy="164" rx="32" ry="11" fill="rgba(255,255,255,.05)"/>
+
+              <!-- main tower -->
+              <path d="M86 92 h28 q6 0 6 6 v62 q0 8-8 8 h-24 q-8 0-8-8 v-62 q0-6 6-6z"
+                    fill="url(#od_steel)" opacity=".92" stroke="rgba(0,0,0,.22)"/>
+
+              <!-- observation glass “capsule” -->
+              <path d="M62 92 Q64 68 100 62 Q136 68 138 92 Q138 118 100 126 Q62 118 62 92 Z"
+                    fill="url(#od_glass)" stroke="rgba(255,255,255,.18)" opacity=".98"/>
+
+              <!-- chrome rim -->
+              <path d="M64 92 Q66 74 84 70 Q100 66 116 70 Q134 74 136 92"
+                    fill="none" stroke="url(#od_chrome)" stroke-width="2.2" opacity=".95"/>
+
+              <!-- internal window mullions -->
+              <g opacity=".45">
+                <path d="M82 74 V120" stroke="rgba(255,255,255,.18)" />
+                <path d="M100 68 V124" stroke="rgba(255,255,255,.18)" />
+                <path d="M118 74 V120" stroke="rgba(255,255,255,.18)" />
+                <path d="M72 94 H128" stroke="rgba(0,0,0,.25)" />
+                <path d="M70 106 H130" stroke="rgba(255,255,255,.10)" />
+              </g>
+
+              <!-- glass caustic + glint sweep -->
+              <g clip-path="url(#od_glassClip)">
+                <path d="M64 80 C84 66, 112 66, 136 82" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="2" opacity=".35" class="m-breathe"/>
+                <rect x="-140" y="52" width="120" height="120" fill="url(#od_glintGrad)" transform="skewX(-18)" class="m-glint" opacity=".55"/>
+              </g>
+
+              <!-- top platform + rail -->
+              <g>
+                <ellipse cx="100" cy="56" rx="22" ry="6.5" fill="rgba(10,16,32,.6)" stroke="rgba(255,255,255,.12)"/>
+                <ellipse cx="100" cy="56" rx="18" ry="4.8" fill="none" stroke="rgba(255,255,255,.16)"/>
+                <path d="M78 56 v-10 M86 56 v-10 M94 56 v-10 M102 56 v-10 M110 56 v-10 M118 56 v-10"
+                      stroke="rgba(255,255,255,.16)" stroke-width="1"/>
+              </g>
+
+              <!-- beacon lens -->
+              <g transform="translate(0,0)">
+                <rect x="97" y="38" width="6" height="10" rx="2" fill="url(#od_copper)" opacity=".95" stroke="rgba(0,0,0,.22)"/>
+                <circle cx="100" cy="36" r="6.2" fill="url(#od_beacon)" class="m-pulse m-glow" filter="url(#od_glow)"/>
+                <path d="M96 34 q4 -5 8 0" fill="none" stroke="rgba(255,255,255,.70)" stroke-width="1.1" opacity=".55"/>
+              </g>
+
+              <!-- ladder (premium subtle) -->
+              <g opacity=".85">
+                <path d="M70 164 V92 M74 164 V92" stroke="rgba(255,255,255,.14)" stroke-width="1.6"/>
+                <path d="M70 156 H74 M70 146 H74 M70 136 H74 M70 126 H74 M70 116 H74 M70 106 H74 M70 96 H74"
+                      stroke="rgba(0,0,0,.22)" stroke-width="1.2" opacity=".55"/>
+              </g>
+
+              <!-- copper fasteners -->
+              <g opacity=".9">
+                <circle cx="88" cy="168" r="2.2" fill="url(#od_copper)"/>
+                <circle cx="112" cy="168" r="2.2" fill="url(#od_copper)"/>
+              </g>
+            </g>
+          </svg>
+        </div>
+
+        <p class="desc">Steel tower with a glass observation capsule, chrome rim, and a jewel‑like beacon lens. Alert mode makes the beacon feel “valuable” via controlled pulse + glow.</p>
+      </article>
+
+    </section>
+  </div>
+
+  <script>
+    // State controls (Idle / Alert / Viewed)
+    document.querySelectorAll('.card').forEach(card => {
+      const svg = card.querySelector('svg.icon');
+      const buttons = card.querySelectorAll('.btn');
+
+      const setState = (state) => {
+        svg.setAttribute('data-state', state);
+        buttons.forEach(b => b.classList.toggle('active', b.dataset.state === state));
+      };
+
+      buttons.forEach(btn => btn.addEventListener('click', () => setState(btn.dataset.state)));
+
+      // default
+      setState('idle');
+    });
+  </script>
+</body>
+</html>

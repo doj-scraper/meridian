@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Premium Elemental Vault — Definitive Edition</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;750&display=swap');
+
+    :root {
+      --bg0: #04060b;
+      --bg1: #080d1a;
+      --bg2: #0a1426;
+      --ink: #f0f4ff;
+      --muted: #8a99b8;
+      --card: rgba(15, 23, 42, 0.6);
+      --stroke: rgba(255, 255, 255, 0.08);
+      --accent-glow: rgba(110, 231, 255, 0.15);
+      --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      color: var(--ink);
+      background: 
+        radial-gradient(circle at 15% 15%, rgba(60, 120, 255, 0.08), transparent 40%),
+        radial-gradient(circle at 85% 85%, rgba(255, 80, 150, 0.05), transparent 40%),
+        var(--bg0);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+
+    header { text-align: center; margin-bottom: 50px; }
+    h1 {
+      font-size: 2.8rem;
+      font-weight: 750;
+      letter-spacing: -0.04em;
+      background: linear-gradient(135deg, #fff 30%, #a5b4fc 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .sub { color: var(--muted); margin-top: 10px; font-weight: 300; }
+
+    .vault {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+      width: 100%;
+      max-width: 1200px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--stroke);
+      border-radius: 32px;
+      padding: 24px;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 30px 60px rgba(0,0,0,0.5);
+      transition: all 0.5s var(--ease);
+      position: relative;
+    }
+    .card:hover { transform: translateY(-8px); border-color: rgba(255,255,255,0.2); }
+
+    .top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+    .title { font-weight: 600; font-size: 1.1rem; }
+    .kicker { font-size: 0.8rem; color: #6366f1; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px; }
+
+    .controls { display: flex; gap: 6px; }
+    .btn {
+      padding: 6px 12px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(0,0,0,0.3);
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn.active { background: #6366f1; color: white; border-color: #818cf8; }
+
+    .stage {
+      height: 280px;
+      background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.03), transparent 70%);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .icon { width: 180px; height: 180px; filter: drop-shadow(0 20px 40px rgba(0,0,0,0.4)); }
+
+    /* Premium Animation Classes */
+    .m-float { animation: float 6s ease-in-out infinite; }
+    @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+    
+    .m-spin { animation: spin 20s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    [data-state="alert"] .m-urgent { animation: pulse-red 0.5s ease-in-out infinite; }
+    @keyframes pulse-red { 0%, 100% { opacity: 1; filter: brightness(1); } 50% { opacity: 0.7; filter: brightness(1.5) drop-shadow(0 0 15px red); } }
+    
+    [data-state="viewed"] { opacity: 0.4; filter: grayscale(0.8); }
+
+    .desc { margin-top: 16px; font-size: 0.85rem; color: var(--muted); line-height: 1.5; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Definitive Elements</h1>
+    <p class="sub">Ultra-Premium Assets for Enterprise-Grade Interfaces</p>
+  </header>
+
+  <section class="vault">
+
+    <!-- WATER DROPLET (REFINED SILHOUETTE) -->
+    <article class="card">
+      <div class="top">
+        <div><div class="title">Hydro-Crystalline</div><div class="kicker">Liquid Module</div></div>
+        <div class="controls">
+          <button class="btn active" data-state="idle">Idle</button>
+          <button class="btn" data-state="alert">Alert</button>
+          <button class="btn" data-state="viewed">Viewed</button>
+        </div>
+      </div>
+      <div class="stage">
+        <svg class="icon" viewBox="0 0 200 200" data-state="idle">
+          <defs>
+            <linearGradient id="g_water" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#7dd3fc" />
+              <stop offset="50%" stop-color="#0ea5e9" />
+              <stop offset="100%" stop-color="#1e3a8a" />
+            </linearGradient>
+            <radialGradient id="g_highlight" cx="30%" cy="30%" r="50%">
+              <stop offset="0%" stop-color="white" stop-opacity="0.6" />
+              <stop offset="100%" stop-color="white" stop-opacity="0" />
+            </radialGradient>
+          </defs>
+          <g class="m-float">
+            <!-- Back shadow/glow -->
+            <path d="M100 20 C140 80 165 110 165 145 A65 65 0 1 1 35 145 C35 110 60 80 100 20 Z" fill="#0ea5e9" opacity="0.1" filter="blur(10px)"/>
+            <!-- Main Body -->
+            <path d="M100 25 C135 80 155 105 155 140 A55 55 0 1 1 45 140 C45 105 65 80 100 25 Z" fill="url(#g_water)" stroke="rgba(255,255,255,0.2)" stroke-width="0.5"/>
+            <!-- Refraction Layer -->
+            <path d="M100 35 C125 85 140 105 140 135 A40 40 0 1 1 60 135 C60 105 75 85 100 35 Z" fill="rgba(255,255,255,0.1)"/>
+            <!-- Specular Highlight -->
+            <ellipse cx="75" cy="110" rx="12" ry="25" fill="url(#g_highlight)" transform="rotate(25, 75, 110)"/>
+            <!-- Micro Bubbles -->
+            <circle cx="110" cy="150" r="4" fill="white" opacity="0.4">
+              <animate attributeName="cy" values="160;100" dur="3s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0;0.5;0" dur="3s" repeatCount="indefinite" />
+            </circle>
+            <circle cx="90" cy="130" r="2" fill="white" opacity="0.3">
+              <animate attributeName="cy" values="150;80" dur="4s" repeatCount="indefinite" begin="1s"/>
+            </circle>
+          </g>
+        </svg>
+      </div>
+      <p class="desc">Engineered teardrop silhouette with triple-layer refraction and subsurface scattering. Features procedural micro-buoyancy particles.</p>
+    </article>
+
+    <!-- FIRE (PLASMA REACTOR) -->
+    <article class="card">
+      <div class="top">
+        <div><div class="title">Ignis Reactor</div><div class="kicker">Thermal Output</div></div>
+        <div class="controls">
+          <button class="btn active" data-state="idle">Idle</button>
+          <button class="btn" data-state="alert">Alert</button>
+          <button class="btn" data-state="viewed">Viewed</button>
+        </div>
+      </div>
+      <div class="stage">
+        <svg class="icon" viewBox="0 0 200 200" data-state="idle">
+          <defs>
+            <filter id="f_heat">
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+            <linearGradient id="g_fire" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0%" stop-color="#7f1d1d" />
+              <stop offset="40%" stop-color="#f97316" />
+              <stop offset="80%" stop-color="#fbbf24" />
+              <stop offset="100%" stop-color="#fffbeb" />
+            </linearGradient>
+          </defs>
+          <g class="m-float">
+            <!-- Tech Base -->
+            <path d="M60 170 L75 145 H125 L140 170 Z" fill="#1e293b" stroke="#475569" />
+            <rect x="75" y="145" width="50" height="4" fill="#6366f1" class="m-urgent" />
+            
+            <!-- Flame Layers -->
+            <g filter="url(#f_heat)">
+              <!-- Outer Flame -->
+              <path d="M100 20 Q140 90 130 145 H70 Q60 90 100 20 Z" fill="url(#g_fire)" opacity="0.6">
+                <animate attributeName="d" values="M100 20 Q140 90 130 145 H70 Q60 90 100 20 Z; M100 25 Q145 85 135 145 H65 Q55 85 100 25 Z; M100 20 Q140 90 130 145 H70 Q60 90 100 20 Z" dur="2s" repeatCount="indefinite" />
+              </path>
+              <!-- Core Flame -->
+              <path d="M100 50 Q120 95 115 145 H85 Q80 95 100 50 Z" fill="#fff" opacity="0.8">
+                <animate attributeName="opacity" values="0.4;0.9;0.4" dur="1s" repeatCount="indefinite" />
+              </path>
+            </g>
+            <!-- Embers -->
+            <circle cx="100" cy="100" r="1.5" fill="#fbbf24">
+              <animateMotion path="M0 0 Q-20 -40 10 -80" dur="1.5s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="1;0" dur="1.5s" repeatCount="indefinite" />
+            </circle>
+            <circle cx="110" cy="120" r="1" fill="#fbbf24">
+              <animateMotion path="M0 0 Q20 -50 -10 -100" dur="2s" repeatCount="indefinite" begin="0.5s"/>
+              <animate attributeName="opacity" values="1;0" dur="2s" repeatCount="indefinite" />
+            </circle>
+          </g>
+        </svg>
+      </div>
+      <p class="desc">High-velocity plasma discharge held by a magnetic pylon. Utilizes triple-stage chromatic gradients and real-time heat-blur simulation.</p>
+    </article>
+
+    <!-- WIND (VORTEX AERO) -->
+    <article class="card">
+      <div class="top">
+        <div><div class="title">Zephyr Vortex</div><div class="kicker">Aero Dynamics</div></div>
+        <div class="controls">
+          <button class="btn active" data-state="idle">Idle</button>
+          <button class="btn" data-state="alert">Alert</button>
+          <button class="btn" data-state="viewed">Viewed</button>
+        </div>
+      </div>
+      <div class="stage">
+        <svg class="icon" viewBox="0 0 200 200" data-state="idle">
+          <defs>
+            <linearGradient id="g_wind" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="rgba(255,255,255,0)" />
+              <stop offset="50%" stop-color="rgba(255,255,255,0.8)" />
+              <stop offset="100%" stop-color="rgba(255,255,255,0)" />
+            </linearGradient>
+          </defs>
+          <g class="m-float">
+            <!-- Center Core -->
+            <circle cx="100" cy="100" r="12" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1" />
+            
+            <!-- Spirals -->
+            <g class="m-spin" style="transform-origin: center;">
+              <path d="M100 100 Q140 60 180 100" fill="none" stroke="url(#g_wind)" stroke-width="3" stroke-linecap="round" stroke-dasharray="10 100">
+                <animate attributeName="stroke-dashoffset" values="110; 0" dur="1.5s" repeatCount="indefinite" />
+              </path>
+              <path d="M100 100 Q60 140 20 100" fill="none" stroke="url(#g_wind)" stroke-width="3" stroke-linecap="round" stroke-dasharray="10 100">
+                <animate attributeName="stroke-dashoffset" values="110; 0" dur="1.5s" repeatCount="indefinite" />
+              </path>
+              <path d="M100 100 Q140 140 100 180" fill="none" stroke="url(#g_wind)" stroke-width="2" stroke-linecap="round" stroke-dasharray="5 80">
+                <animate attributeName="stroke-dashoffset" values="85; 0" dur="2s" repeatCount="indefinite" />
+              </path>
+              <path d="M100 100 Q60 60 100 20" fill="none" stroke="url(#g_wind)" stroke-width="2" stroke-linecap="round" stroke-dasharray="5 80">
+                <animate attributeName="stroke-dashoffset" values="85; 0" dur="2s" repeatCount="indefinite" />
+              </path>
+            </g>
+            
+            <!-- Metallic Shards -->
+            <rect x="150" y="70" width="8" height="2" fill="#fbbf24" rx="1" opacity="0.6">
+               <animateMotion path="M0 0 C-50 20 -100 -20 -150 0" dur="3s" repeatCount="indefinite" />
+            </rect>
+            <rect x="140" y="130" width="6" height="1.5" fill="#fbbf24" rx="1" opacity="0.4">
+               <animateMotion path="M0 0 C-40 -30 -80 30 -140 0" dur="2.5s" repeatCount="indefinite" begin="1s"/>
+            </rect>
+          </g>
+        </svg>
+      </div>
+      <p class="desc">Kinetic vortex simulation using logarithmic spirals. Air-flow tracers utilize oscillating stroke-dash patterns to represent varying wind pressure.</p>
+    </article>
+
+  </section>
+
+  <script>
+    document.querySelectorAll('.card').forEach(card => {
+      const svg = card.querySelector('.icon');
+      const buttons = card.querySelectorAll('.btn');
+
+      buttons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          buttons.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          svg.setAttribute('data-state', btn.dataset.state);
+        });
+      });
+    });
+  </script>
+</body>
+</html>
