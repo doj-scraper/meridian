@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CRODA // FOUNDRY_ONTOLOGY</title>
+<script src="https://cdn.jsdelivr.net/npm/elkjs@0.9.3/lib/elk.bundled.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Inter:wght@300;400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap');
+
+:root {
+  /* PNW Tactical Palette - Obsidian, Pine, Fern, Fog */
+  --bg-void: #050806;          /* Deepest shadow */
+  --bg-panel: rgba(10, 15, 12, 0.85); /* Frosted dark pine */
+  --bg-input: #0f1712;
+  
+  --border-dim: #16211a;
+  --border-mid: #213328;
+  --border-bright: #365040;
+  
+  --fern-accent: #10b981;      /* Primary actionable green */
+  --fern-dim: #064e3b;
+  --amber-warn: #d97706;       /* Chanterelle gold for warnings */
+  --slate-fog: #94a3b8;        /* Muted text */
+  --obsidian-text: #f1f5f9;    /* High contrast text */
+
+  --mono: 'Share Tech Mono', monospace;
+  --sans: 'Inter', sans-serif;
+  --condensed: 'Barlow Condensed', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: var(--bg-void);
+  color: var(--obsidian-text);
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.5;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden; /* Lock viewport */
+}
+
+/* Subtle topological grid overlay */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(16, 185, 129, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(16, 185, 129, 0.03) 1px, transparent 1px);
+  background-size: 64px 64px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── LAYOUT ── */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── TOP NAV (GOTHAM STYLE) ── */
+.global-nav {
+  height: 48px;
+  background: var(--bg-void);
+  border-bottom: 1px solid var(--border-mid);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  flex-shrink: 0;
+  z-index: 100;
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-logo {
+  width: 24px;
+  height: 24px;
+  background: var(--fern-dim);
+  border: 1px solid var(--fern-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.brand-logo::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: var(--fern-accent);
+}
+
+.brand-text {
+  font-family: var(--condensed);
+  font-size: 18px;
+  letter-spacing: 0.15em;
+  font-weight: 600;
+}
+
+.brand-text span { color: var(--fern-accent); }
+
+.nav-tabs {
+  display: flex;
+  height: 100%;
+}
+
+.nav-tab {
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--slate-fog);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border-left: 1px solid var(--border-dim);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-tab:last-child { border-right: 1px solid var(--border-dim); }
+.nav-tab:hover { color: var(--obsidian-text); background: var(--bg-input); }
+.nav-tab.active {
+  color: var(--fern-accent);
+  border-bottom: 2px solid var(--fern-accent);
+  background: linear-gradient(0deg, rgba(16,185,129,0.05) 0%, transparent 100%);
+}
+
+/* ── MAIN WORKSPACE ── */
+.workspace {
+  flex: 1;
+  position: relative;
+  display: flex;
+  overflow: hidden;
+}
+
+/* ── FLOATING PANELS ── */
+.floating-panel {
+  position: absolute;
+  top: 16px;
+  bottom: 16px;
+  width: 320px;
+  background: var(--bg-panel);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border-bright);
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+.panel-left { left: 16px; }
+.panel-right { right: 16px; }
+
+.panel-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-mid);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(0,0,0,0.2);
+}
+
+.panel-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--slate-fog);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+}
+
+.panel-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+/* Scrollbar formatting */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-bright); }
+
+/* ── SEARCH / FILTER BOX ── */
+.search-box {
+  background: var(--bg-input);
+  border: 1px solid var(--border-mid);
+  padding: 8px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--obsidian-text);
+  width: 100%;
+  margin-bottom: 16px;
+  outline: none;
+}
+.search-box:focus { border-color: var(--fern-accent); }
+
+/* ── ONTOLOGY LIST ── */
+.entity-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-dim);
+  cursor: pointer;
+}
+
+.entity-row:hover .entity-label { color: var(--fern-accent); }
+
+.entity-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.entity-icon.actor { border-color: var(--fern-accent); background: rgba(16,185,129,0.1); }
+.entity-icon.store { border-color: var(--amber-warn); background: rgba(217,119,6,0.1); }
+.entity-icon.doc { border-color: var(--slate-fog); background: rgba(148,163,184,0.1); }
+
+.entity-label {
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.entity-type {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--slate-fog);
+}
+
+/* ── PROPERTIES TABLE ── */
+.prop-group { margin-bottom: 24px; }
+.prop-group-title {
+  font-family: var(--condensed);
+  font-size: 14px;
+  color: var(--obsidian-text);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-mid);
+}
+
+.kv-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 12px;
+}
+
+.kv-key {
+  color: var(--slate-fog);
+}
+
+.kv-val {
+  font-family: var(--mono);
+  color: var(--fern-accent);
+  text-align: right;
+}
+
+.kv-val.warn { color: var(--amber-warn); }
+
+/* ── GRAPH CANVAS ── */
+.graph-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+}
+
+.graph-canvas:active { cursor: grabbing; }
+
+/* ── FLOATING TOOLBAR ── */
+.graph-tools {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-mid);
+  padding: 8px;
+  border-radius: 24px !important;
+  z-index: 50;
+  backdrop-filter: blur(4px);
+}
+
+.tool-btn {
+  background: transparent;
+  border: none;
+  color: var(--slate-fog);
+  font-family: var(--mono);
+  font-size: 14px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50% !important;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.tool-btn:hover {
+  background: var(--border-dim);
+  color: var(--obsidian-text);
+}
+
+/* Mobile Responsive */
+@media (max-width: 1024px) {
+  .floating-panel { width: 280px; }
+}
+@media (max-width: 768px) {
+  .panel-left { display: none; } /* Hide ontology list on mobile */
+  .panel-right { left: 16px; bottom: 80px; top: auto; height: 40vh; }
+}
+</style>
+</head>
+<body>
+
+<div class="app-container">
+  
+  <nav class="global-nav">
+    <div class="nav-brand">
+      <div class="brand-logo"></div>
+      <div class="brand-text">CRODA <span>//</span> FOUNDRY</div>
+    </div>
+    <div class="nav-tabs">
+      <div class="nav-tab active">Ontology Graph</div>
+      <div class="nav-tab">Telemetry Map</div>
+      <div class="nav-tab">State Timeline</div>
+    </div>
+  </nav>
+
+  <div class="workspace">
+    
+    <aside class="floating-panel panel-left">
+      <div class="panel-header">
+        <span class="panel-title">Entity Explorer</span>
+      </div>
+      <div class="panel-content">
+        <input type="text" class="search-box" placeholder="Filter by entity ID or type...">
+        
+        <div class="entity-row">
+          <div class="entity-icon actor"></div>
+          <span class="entity-label">Signal Extractor</span>
+          <span class="entity-type">ACTOR</span>
+        </div>
+        <div class="entity-row">
+          <div class="entity-icon actor"></div>
+          <span class="entity-label">Evidence Retrieval</span>
+          <span class="entity-type">ACTOR</span>
+        </div>
+        <div class="entity-row">
+          <div class="entity-icon actor"></div>
+          <span class="entity-label">Topology Analyzer</span>
+          <span class="entity-type">ACTOR</span>
+        </div>
+        <div class="entity-row">
+          <div class="entity-icon store"></div>
+          <span class="entity-label">Domain Knowledge</span>
+          <span class="entity-type">STORE</span>
+        </div>
+        <div class="entity-row">
+          <div class="entity-icon doc"></div>
+          <span class="entity-label">Assessment Spec</span>
+          <span class="entity-type">DOC</span>
+        </div>
+      </div>
+    </aside>
+
+    <main class="graph-canvas" id="graph-container">
+      </main>
+
+    <div class="graph-tools">
+      <button class="tool-btn" title="Zoom In">+</button>
+      <button class="tool-btn" title="Zoom Out">-</button>
+      <button class="tool-btn" title="Fit to Screen">⛶</button>
+      <button class="tool-btn" title="Filter Links">⧖</button>
+    </div>
+
+    <aside class="floating-panel panel-right">
+      <div class="panel-header">
+        <span class="panel-title">Selected Object</span>
+      </div>
+      <div class="panel-content">
+        <div class="prop-group">
+          <h3 class="prop-group-title">Assessment Machine</h3>
+          <div class="kv-row"><span class="kv-key">ID</span><span class="kv-val">sys-arch-core</span></div>
+          <div class="kv-row"><span class="kv-key">Class</span><span class="kv-val">Orchestrator</span></div>
+          <div class="kv-row"><span class="kv-key">Engine</span><span class="kv-val">XState v5</span></div>
+          <div class="kv-row"><span class="kv-key">Status</span><span class="kv-val">LIVE_NOMINAL</span></div>
+        </div>
+
+        <div class="prop-group">
+          <h3 class="prop-group-title">Telemetry</h3>
+          <div class="kv-row"><span class="kv-key">MTTD</span><span class="kv-val">&lt; 50ms</span></div>
+          <div class="kv-row"><span class="kv-key">MTTR</span><span class="kv-val">&lt; 100ms</span></div>
+          <div class="kv-row"><span class="kv-key">Fault Tolerance</span><span class="kv-val">95.75%</span></div>
+          <div class="kv-row"><span class="kv-key">Chaos Injection</span><span class="kv-val warn">10% Active</span></div>
+        </div>
+        
+        <div class="prop-group">
+          <h3 class="prop-group-title">Connected Links</h3>
+          <div class="entity-row" style="padding:4px 0; border:none;">
+             <span class="entity-label" style="font-size:11px; color:var(--slate-fog)">↳ Spawns: Signal Extractor</span>
+          </div>
+          <div class="entity-row" style="padding:4px 0; border:none;">
+             <span class="entity-label" style="font-size:11px; color:var(--slate-fog)">↳ Spawns: Evidence Retrieval</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+</div>
+
+<script>
+// ─── ELK DIAGRAM RENDERER (PALANTIR ONTOLOGY STYLE) ──────────────────────────
+function renderPalantirGraph() {
+  const container = document.getElementById('graph-container');
+  const elk = new ELK();
+  
+  // Graph Data modeled as an interconnected Entity Graph
+  const graph = {
+    id: "root",
+    layoutOptions: {
+      "elk.algorithm": "force", // Force-directed looks more organic/exploratory like Palantir
+      "elk.spacing.nodeNode": "60",
+      "elk.force.temperature": "0.5"
+    },
+    children: [
+      { id:"User", width:48, height:48, labels:[{text:"User Input"}], type: "doc" },
+      { id:"Machine", width:64, height:64, labels:[{text:"Assessor"}], type: "core" },
+      { id:"Ext", width:48, height:48, labels:[{text:"Extractor"}], type: "actor" },
+      { id:"Ret", width:48, height:48, labels:[{text:"Retrieval"}], type: "actor" },
+      { id:"Ana", width:48, height:48, labels:[{text:"Topology"}], type: "actor" },
+      { id:"Sco", width:48, height:48, labels:[{text:"Scoring"}], type: "actor" },
+      { id:"KB", width:48, height:48, labels:[{text:"Domain KB"}], type: "store" },
+      { id:"Index", width:48, height:48, labels:[{text:"Ev. Index"}], type: "store" },
+      { id:"Graph", width:48, height:48, labels:[{text:"Sys Graph"}], type: "store" },
+      { id:"Rules", width:48, height:48, labels:[{text:"Rules Eng"}], type: "store" }
+    ],
+    edges: [
+      { id:"e1", sources:["User"], targets:["Machine"] },
+      { id:"e2", sources:["Machine"], targets:["Ext"] },
+      { id:"e3", sources:["Machine"], targets:["Ret"] },
+      { id:"e4", sources:["Machine"], targets:["Ana"] },
+      { id:"e5", sources:["Machine"], targets:["Sco"] },
+      { id:"e6", sources:["Ext"], targets:["KB"] },
+      { id:"e7", sources:["Ret"], targets:["Index"] },
+      { id:"e8", sources:["Ana"], targets:["Graph"] },
+      { id:"e9", sources:["Sco"], targets:["Rules"] },
+      { id:"e10", sources:["Index"], targets:["Ana"] }, // Cross-links
+      { id:"e11", sources:["Graph"], targets:["Sco"] }
+    ]
+  };
+
+  const svgNS = 'http://www.w3.org/2000/svg';
+
+  elk.layout(graph).then(g => {
+    let maxX = 0, maxY = 0;
+    const pad = 100;
+    
+    (g.children || []).forEach(n => {
+      maxX = Math.max(maxX, (n.x || 0) + (n.width || 0));
+      maxY = Math.max(maxY, (n.y || 0) + (n.height || 0));
+    });
+
+    const W = maxX + pad * 2;
+    const H = maxY + pad * 2;
+
+    const svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    // Center it in the absolute container
+    svg.setAttribute('style', 'width:80%; height:80%; max-width:1200px; display:block; margin:auto; filter: drop-shadow(0 0 20px rgba(16,185,129,0.05));');
+
+    // Draw Edges (Straight sharp lines)
+    (g.edges || []).forEach(edge => {
+      const sec = edge.sections?.[0];
+      if (!sec) return;
+      
+      const path = document.createElementNS(svgNS, 'path');
+      const sx = sec.startPoint.x + pad;
+      const sy = sec.startPoint.y + pad;
+      const ex = sec.endPoint.x + pad;
+      const ey = sec.endPoint.y + pad;
+      
+      path.setAttribute('d', `M ${sx} ${sy} L ${ex} ${ey}`);
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', '#213328'); // border-mid
+      path.setAttribute('stroke-width', '2');
+      svg.appendChild(path);
+    });
+
+    // Draw Nodes (Circular Entity styles)
+    (g.children || []).forEach(node => {
+      const nx = (node.x || 0) + pad;
+      const ny = (node.y || 0) + pad;
+      const nw = node.width || 48;
+      const nh = node.height || 48;
+      const r = nw / 2;
+      const cx = nx + r;
+      const cy = ny + r;
+      
+      const g_el = document.createElementNS(svgNS, 'g');
+      g_el.style.cursor = 'pointer';
+      
+      // Hover effect via CSS classes
+      g_el.addEventListener('mouseenter', () => {
+        circle.setAttribute('stroke', '#10b981'); // fern-accent
+        circle.setAttribute('fill', 'rgba(16,185,129,0.1)');
+        text.setAttribute('fill', '#f1f5f9');
+      });
+      g_el.addEventListener('mouseleave', () => {
+        circle.setAttribute('stroke', strokeColor);
+        circle.setAttribute('fill', fillColor);
+        text.setAttribute('fill', '#94a3b8');
+      });
+
+      let strokeColor = '#365040';
+      let fillColor = '#050806';
+      
+      if(node.type === 'core') { strokeColor = '#10b981'; fillColor = 'rgba(16,185,129,0.05)'; }
+      if(node.type === 'store') { strokeColor = '#d97706'; fillColor = 'rgba(217,119,6,0.05)'; }
+
+      const circle = document.createElementNS(svgNS, 'circle');
+      circle.setAttribute('cx', cx);
+      circle.setAttribute('cy', cy);
+      circle.setAttribute('r', r);
+      circle.setAttribute('fill', fillColor);
+      circle.setAttribute('stroke', strokeColor);
+      circle.setAttribute('stroke-width', node.type === 'core' ? '3' : '2');
+      circle.style.transition = 'all 0.2s ease';
+      
+      // Node Text
+      const text = document.createElementNS(svgNS, 'text');
+      text.setAttribute('x', cx);
+      text.setAttribute('y', cy + r + 16);
+      text.setAttribute('fill', '#94a3b8');
+      text.setAttribute('font-family', '"Inter", sans-serif');
+      text.setAttribute('font-size', '11');
+      text.setAttribute('text-anchor', 'middle');
+      text.style.transition = 'all 0.2s ease';
+      text.textContent = node.labels?.[0]?.text || '';
+
+      g_el.appendChild(circle);
+      g_el.appendChild(text);
+      svg.appendChild(g_el);
+    });
+
+    container.innerHTML = '';
+    container.appendChild(svg);
+  }).catch(err => {
+    container.innerHTML = `<span style="color:#d97706; font-family:monospace">LAYOUT ERROR: ${err.message}</span>`;
+  });
+}
+
+// Init graph
+setTimeout(renderPalantirGraph, 100);
+</script>
+</body>
+</html>

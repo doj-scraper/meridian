@@ -1,0 +1,1702 @@
+Nuclei Reference Manual
+
+Table of Contents
+
+1. Overview
+   1.1 Template Clustering
+   1.2 When to Use Nuclei
+2. Installation & Quick Start
+   2.1 Installation
+   2.2 Basic Commands
+   2.3 Typical Workflow with Other Tools
+3. Template Basics
+   3.1 Variable Placeholders
+   3.2 HTTP Request Fields (Common)
+   3.3 Simple Matcher Example
+   3.4 Full Working Template (Exposed .htpasswd)
+4. Template Filtering (Running Selective Scans)
+   4.1 Automatic Selection (-as)
+   4.2 Only New Templates (-nt)
+   4.3 Specific Templates by Filename (-t)
+   4.4 Specific Templates by Folder (-t)
+   4.5 Tags Filtering (-tags)
+   4.6 Severity Filtering (-s)
+   4.7 Summary Table of Filtering Options
+5. Rate Limiting & Optimizations
+   5.1 Rate Limiting (-rl, -rlm)
+   5.2 Concurrency (-c)
+   5.3 Timeout (-timeout)
+   5.4 Retries (-retries)
+   5.5 Max Host Errors (-mhe)
+   5.6 Complete Optimization Example
+6. Resuming Scans
+   6.1 How Resume Files Work
+   6.2 Resuming a Scan
+   6.3 Manual Resume File Management
+   6.4 Example Workflow
+7. Custom Headers & Template Variables
+   7.1 Request Headers (-H)
+   7.2 Template Variables (-V)
+   7.3 Environment Variables (-ev)
+   7.4 Client Certificates (-cc, -ck, -ca)
+   7.5 Summary of Variable Injection Methods
+   7.6 Limitations of Default Mode
+8. Debugging
+   8.1 Validate Syntax (-validate)
+   8.2 Verbose Output (-verbose or -v)
+   8.3 Debug Mode (-debug)
+   8.4 Proxy Through Burp/ZAP (-p)
+   8.5 Debugging Checklist
+9. Writing Custom Templates (Basic)
+   9.1 Minimum Viable Template
+   9.2 Request Methods & Bodies
+   9.3 Matcher Types
+   9.4 Combining Multiple Matchers
+   9.5 Simple Fuzzing Example
+   9.6 Using Extractors to Capture Data
+   9.7 Template Design Best Practices
+   9.8 Common Mistakes & Fixes
+10. Advanced Features
+    10.1 DSL Helper Functions
+    10.1.1 String & Comparison Functions
+    10.1.2 Encoding & Crypto Functions
+    10.1.3 JSON & Data Parsing
+    10.1.4 Logical Operators
+    10.2 Out-of-Band (OOB) Interactions with Interactsh
+    10.2.1 How It Works
+    10.2.2 Basic OOB Template Example
+    10.2.3 Matcher Parts for OOB
+    10.2.4 Running OOB Tests
+    10.3 Headless Mode
+    10.3.1 Basic Requirements
+    10.3.2 Supported Actions
+    10.3.3 Selector Types
+    10.3.4 Simple Headless Template
+    10.3.5 Script Action & Named Output
+    10.3.6 Important: Always Use -headless
+    10.4 Advanced Fuzzing Techniques
+    10.4.1 Unsafe Requests (Request Smuggling)
+    10.4.2 HTTP Pipelining
+    10.4.3 Connection Pooling (Multi-threaded)
+    10.4.4 Race Condition Testing
+11. Non-HTTP Modes
+    11.1 Network Mode
+    11.1.1 Template Structure
+    11.1.2 Key Fields
+    11.1.3 Multi-Step Interactions
+    11.1.4 TLS Example
+    11.2 DNS Mode
+    11.2.1 Template Structure
+    11.2.2 Key Fields
+    11.2.3 Running DNS Templates
+    11.3 File Mode
+    11.3.1 Template Structure
+    11.3.2 Key Fields
+    11.3.3 Running File Mode
+12. Workflows
+    12.1 Generic (Unconditional) Workflows
+    12.2 Conditional Workflows
+    12.2.1 Simple Condition (Any Finding)
+    12.2.2 Matcher-Based Conditions
+    12.2.3 Chaining Multiple Conditions
+    12.3 Running Workflows
+    12.4 Workflow Best Practices
+13. Integration with Other Tools
+    13.1 Burp Suite Integration
+    13.1.1 Proxy Traffic Through Burp
+    13.1.2 Export Burp Scope to Nuclei
+    13.1.3 Send Single Request from Burp to Nuclei
+    13.2 ZAP Integration
+    13.2.1 Using ZAP as a Proxy
+    13.2.2 Automated ZAP + Nuclei Pipeline
+    13.3 GitHub Actions CI/CD
+    13.3.1 Example Workflow File
+    13.3.2 Advanced: Self-Hosted Runner for Headless Scans
+    13.3.3 Security Best Practices
+14. ProjectDiscovery Cloud Platform (PDCP)
+    14.1 Key Features
+    14.2 Connecting Local Nuclei to PDCP
+    14.3 When to Use PDCP
+15. Updates (Nuclei v3+)
+    15.1 JavaScript Protocol Support
+    15.2 Security Hardening
+    15.3 Performance Improvements
+    15.4 Deprecated Features
+    15.5 Upgrading from v2 to v3
+16. Appendices
+    16.1 Quick Command Reference
+    16.2 Common Template Variables
+    16.3 Template Skeleton – HTTP Mode
+    16.4 Template Skeleton – Headless Mode
+    16.5 Template Skeleton – Network Mode
+    16.6 Nuclei Exit Codes
+    16.7 Where to Get Help
+
+---
+
+1. Overview
+
+Nuclei is a fast, customizable vulnerability scanner that uses YAML templates to define what to send to a target and how to analyze the response. It supports multiple protocols:
+
+· HTTP/HTTPS – web applications, APIs
+· DNS – domain records, subdomain enumeration
+· TCP/TLS (Network) – raw socket communication
+· File – local filesystem scanning
+· Headless – browser automation (Chrome via CDP)
+· JavaScript – custom code execution (Nuclei v3+)
+
+1.1 Template Clustering
+
+Nuclei optimizes network traffic by grouping identical requests from different templates. Example: If 5 templates all request /login.php, Nuclei sends one request and lets all templates process the same response. This reduces bandwidth and speeds up scans.
+
+1.2 When to Use Nuclei
+
+· Bug bounty hunting (automated detection of known vulnerabilities)
+· Continuous integration (CI/CD) pipelines
+· Reconnaissance (tech detection, exposed files, misconfigurations)
+· Fuzzing (parameter injection, header manipulation)
+
+---
+
+2. Installation & Quick Start
+
+2.1 Installation
+
+Using Go (recommended):
+
+```bash
+go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
+```
+
+Using GitHub releases:
+Download binary from releases
+
+Template installation (required):
+
+```bash
+nuclei -update-templates
+```
+
+Templates are stored in ~/nuclei-templates by default.
+
+2.2 Basic Commands
+
+Command Description
+nuclei -u https://example.com Scan single web target (default templates)
+nuclei -u example.com:8080 Scan non-HTTP service (e.g., raw TCP)
+nuclei -l targets.txt Scan multiple targets (one per line)
+nuclei -t ~/nuclei-templates/technologies/ Scan only specific folder
+nuclei -tags cve,high Run templates with given tags
+
+2.3 Typical Workflow with Other Tools
+
+```bash
+subfinder -d target.com -silent | httpx | nuclei -t technologies/tech-detect.yaml
+```
+
+· subfinder – passive subdomain enumeration
+· httpx – probe live hosts and gather metadata
+· nuclei – scan only the live hosts
+
+---
+
+3. Template Basics
+
+A Nuclei template is a YAML file with the following core sections:
+
+```yaml
+id: unique-name
+
+info:
+  name: Human-readable title
+  author: yourname
+  severity: info|low|medium|high|critical
+  description: What this template checks
+  tags: keyword1,keyword2
+
+# Protocol-specific block (http, dns, network, file, headless, javascript)
+http:
+  - method: GET
+    path: ["{{BaseURL}}/admin"]
+    matchers:
+      - type: word
+        words: ["Dashboard"]
+```
+
+3.1 Variable Placeholders
+
+Variable Meaning Example Value
+{{BaseURL}} Scheme + hostname https://example.com
+{{Hostname}} Host + port (if specified) example.com:443
+{{Host}} Host without port example.com
+{{Path}} URL path (empty by default) /api/v1
+{{FQDN}} Fully qualified domain name (DNS mode) mail.example.com
+{{interactsh-url}} Out-of‑band interaction URL abc123.oast.fun
+
+3.2 HTTP Request Fields (Common)
+
+Field Required Description
+method Yes GET, POST, PUT, DELETE, etc.
+path Yes List of paths (supports variables)
+headers No Key-value pairs (e.g., X-Custom: 1)
+body No POST request body
+redirects No true or false (default false)
+
+3.3 Simple Matcher Example
+
+```yaml
+matchers:
+  - type: word
+    words:
+      - "root:"
+      - "nobody:"
+    condition: or
+```
+
+Triggers if any of the words appear in the response.
+
+3.4 Full Working Template (Exposed .htpasswd)
+
+```yaml
+id: htpasswd-exposure
+
+info:
+  name: Detect exposed .htpasswd file
+  author: security-researcher
+  severity: info
+  tags: config,exposure
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/.htpasswd"
+    matchers:
+      - type: word
+        words:
+          - ":{SHA}"
+          - ":$apr1$"
+          - ":$2y$"
+        condition: or
+      - type: status
+        status:
+          - 200
+    matchers-condition: and   # both conditions must match
+```
+
+---
+
+4. Template Filtering (Running Selective Scans)
+
+Nuclei provides multiple ways to filter which templates run. This is critical to avoid “shotgun” scanning of all 4000+ templates.
+
+4.1 Automatic Selection (-as)
+
+Fingerprints the target’s technology stack (e.g., WordPress, Jira, PHP) and runs only templates tagged with those technologies.
+
+```bash
+nuclei -u https://example.com -as
+```
+
+4.2 Only New Templates (-nt)
+
+Uses only templates added since the last nuclei -update-templates.
+
+```bash
+nuclei -u https://example.com -nt
+```
+
+4.3 Specific Templates by Filename (-t)
+
+Run a single file or a list of files (one per line in a text file).
+
+```bash
+# Single template
+nuclei -u https://example.com -t cves/CVE-2024-12345.yaml
+
+# Multiple files
+nuclei -u https://example.com -t file1.yaml -t file2.yaml
+
+# List file (each line = template path)
+nuclei -u https://example.com -t mylist.txt
+```
+
+4.4 Specific Templates by Folder (-t)
+
+Run all templates inside a subfolder (recursive).
+
+```bash
+# Run all templates in cves/2024/
+nuclei -u https://example.com -t cves/2024/
+
+# From a list of folders
+nuclei -u https://example.com -t categories.txt
+```
+
+4.5 Tags Filtering (-tags)
+
+Run templates that contain one or more tags. Use commas for multiple tags (OR logic).
+
+```bash
+nuclei -u https://jira.target.com -tags jira,cve,exposure
+```
+
+4.6 Severity Filtering (-s)
+
+Run only templates with the specified severity levels.
+
+```bash
+nuclei -u https://example.com -s critical,high,medium
+```
+
+4.7 Summary Table of Filtering Options
+
+Option Description Example
+-as Auto-select based on tech stack nuclei -as
+-nt Only new templates nuclei -nt
+-t <file/folder> Specific template(s) -t cves/2024/
+-tags <list> Comma-separated tags -tags wordpress,plugin
+-s <levels> Severity levels -s critical,high
+
+---
+
+5. Rate Limiting & Optimizations
+
+To avoid overwhelming targets or being blocked, Nuclei lets you control request rates, concurrency, timeouts, and retries.
+
+5.1 Rate Limiting (-rl, -rlm)
+
+Limits the number of requests sent per second (default 150). Use -rlm for requests per minute.
+
+```bash
+# 3 requests per second, 2 concurrent templates
+nuclei -u https://example.com -rl 3 -c 2
+
+# 60 requests per minute
+nuclei -u https://example.com -rlm 60 -c 2
+```
+
+5.2 Concurrency (-c)
+
+Number of templates running simultaneously (default 25). Lower values reduce load on both the scanner and target.
+
+5.3 Timeout (-timeout)
+
+Maximum seconds to wait for a connection (default 5). Reduce to speed up scans on many hosts; increase for slow targets.
+
+```bash
+nuclei -l hosts.txt -timeout 2
+```
+
+5.4 Retries (-retries)
+
+Number of times to retry a failed request (default 0). Useful for unreliable networks.
+
+```bash
+nuclei -l hosts.txt -retries 3
+```
+
+5.5 Max Host Errors (-mhe)
+
+Abandon scanning a host after this many errors (default 30). Lower to skip problematic hosts faster.
+
+```bash
+nuclei -l hosts.txt -mhe 5
+```
+
+5.6 Complete Optimization Example
+
+```bash
+nuclei -l targets.txt -rl 10 -c 5 -timeout 3 -retries 1 -mhe 5
+```
+
+This configuration:
+
+· Sends max 10 requests/second
+· Runs 5 templates concurrently
+· Waits 3 seconds per connection
+· Retries failed requests once
+· Stops scanning a host after 5 errors
+
+---
+
+6. Resuming Scans
+
+If a scan is interrupted (e.g., network issue, Ctrl+C), Nuclei can resume from where it left off without restarting.
+
+6.1 How Resume Files Work
+
+When you interrupt a scan with Ctrl+C, Nuclei automatically:
+
+1. Creates a resume file (e.g., resume-20250215-143022.cfg)
+2. Prints the file path to console output
+3. Saves the current state (which requests were completed, which remain)
+
+6.2 Resuming a Scan
+
+Use the -resume flag with the path to the resume file:
+
+```bash
+nuclei -l targets.txt -resume /path/to/resume-file.cfg
+```
+
+Important: You must use the same target list (or single target) as the original scan. The resume file contains no target information, only scan state.
+
+6.3 Manual Resume File Management
+
+· Resume files are safe to delete after the scan completes successfully.
+· You can resume a scan multiple times (e.g., after multiple interruptions).
+· Resume files are not compatible across different Nuclei versions; update templates before resuming old scans.
+
+6.4 Example Workflow
+
+```bash
+# Start a long scan
+nuclei -l 10000-hosts.txt -t ~/nuclei-templates/ -o results.txt
+
+# Press Ctrl+C after 30 minutes
+# Nuclei outputs: "[INF] Created resume file: resume-20250215-143022.cfg"
+
+# Later, resume
+nuclei -l 10000-hosts.txt -resume resume-20250215-143022.cfg -o results-continued.txt
+```
+
+---
+
+7. Custom Headers & Template Variables
+
+Many targets require authentication or custom parameters. Nuclei provides several ways to pass this data.
+
+7.1 Request Headers (-H)
+
+Add one or more HTTP headers to all requests made by Nuclei.
+
+```bash
+nuclei -u https://api.target.com -H "Authorization: Bearer token123" -H "X-API-Version: 2"
+```
+
+Common use cases:
+
+· Session cookies: -H "Cookie: sessionid=abc123"
+· API keys: -H "X-API-Key: sk_live_..."
+· Custom user-agents: -H "User-Agent: Nuclei/3.0"
+
+7.2 Template Variables (-V)
+
+Pass key-value pairs that templates can use via {{variable}} syntax. Useful for credentials or dynamic values.
+
+```bash
+nuclei -u https://example.com -V username=admin -V password=P@ssw0rd
+```
+
+Inside a template:
+
+```yaml
+http:
+  - method: POST
+    body: "username={{username}}&password={{password}}"
+```
+
+7.3 Environment Variables (-ev)
+
+Pass environment variables from your shell into templates. Useful for storing secrets outside command line.
+
+```bash
+export API_KEY="sk_test_xxxxx"
+nuclei -u https://api.example.com -ev API_KEY
+```
+
+Template reference:
+
+```yaml
+http:
+  - method: GET
+    headers:
+      Authorization: "Bearer {{API_KEY}}"
+```
+
+7.4 Client Certificates (-cc, -ck, -ca)
+
+For services requiring mTLS (mutual TLS authentication).
+
+Flag Description
+-cc PEM-encoded client certificate file
+-ck PEM-encoded private key file
+-ca Certificate Authority (CA) bundle file (optional)
+
+```bash
+nuclei -u https://secure.target.com -cc client.pem -ck client-key.pem -ca ca-bundle.pem
+```
+
+7.5 Summary of Variable Injection Methods
+
+Method Scope Example
+-H All HTTP requests -H "Cookie: value"
+-V Specific templates (via {{var}}) -V user=admin
+-ev Environment variables -ev API_KEY
+-cc TLS client auth -cc cert.pem
+
+7.6 Limitations of Default Mode
+
+While easy mode works out of the box, it often produces the same findings as everyone else. For unique, high-value bugs, you need custom templates (covered in Section 9).
+
+---
+
+8. Debugging
+
+When developing custom templates, you will inevitably make syntax errors or logical mistakes. Nuclei provides several debugging features to help.
+
+8.1 Validate Syntax (-validate)
+
+Checks template syntax without running any requests. Always run this first on new templates.
+
+```bash
+nuclei -t my-template.yaml -validate
+```
+
+Example output (success):
+
+```
+[INF] [my-template] Validated successfully
+```
+
+Example output (error):
+
+```
+[ERR] [my-template] YAML error: line 24: field 'matchers' not found in type
+```
+
+8.2 Verbose Output (-verbose or -v)
+
+Prints additional information about template execution, including which templates are running and why some are skipped.
+
+```bash
+nuclei -u https://example.com -t my-template.yaml -verbose
+```
+
+8.3 Debug Mode (-debug)
+
+Prints every request and response made by Nuclei. Extremely useful for:
+
+· Seeing exactly what data is sent
+· Verifying variable interpolation ({{BaseURL}}, {{fuzz}}, etc.)
+· Checking matcher logic against actual responses
+
+```bash
+nuclei -u https://example.com -t my-template.yaml -debug
+```
+
+Sample debug output:
+
+```
+[DBG] Request: GET / HTTP/1.1
+Host: example.com
+User-Agent: nuclei/3.0
+
+[DBG] Response: HTTP/1.1 200 OK
+Content-Length: 1250
+...
+```
+
+8.4 Proxy Through Burp/ZAP (-p)
+
+Inspect requests and responses using an intercepting proxy instead of console output.
+
+```bash
+# Run ZAP or Burp on port 8080, then:
+nuclei -u https://example.com -t my-template.yaml -p http://127.0.0.1:8080
+```
+
+All traffic will go through the proxy, allowing you to modify, replay, or analyze in the proxy UI.
+
+8.5 Debugging Checklist
+
+Problem Debugging Step
+Template won't load -validate
+No matches when expected -debug and examine response
+Variable not interpolated -debug and check raw request
+False positives Use -verbose to see which matcher triggered
+Authentication issues -p to proxy and verify headers/cookies
+
+---
+
+9. Writing Custom Templates (Basic)
+
+Custom templates are the key to finding unique vulnerabilities. This section covers the essential structure for HTTP templates.
+
+9.1 Minimum Viable Template
+
+Every template needs:
+
+1. A unique id
+2. info block (name, author, severity)
+3. requests block (what to send)
+4. matchers block (how to analyze response)
+
+```yaml
+id: my-first-template
+
+info:
+  name: Detect admin panel
+  author: yourname
+  severity: info
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/admin"
+    matchers:
+      - type: word
+        words:
+          - "Dashboard"
+          - "Administration"
+```
+
+9.2 Request Methods & Bodies
+
+GET request (no body):
+
+```yaml
+method: GET
+path: ["{{BaseURL}}/api/health"]
+```
+
+POST request with URL-encoded body:
+
+```yaml
+method: POST
+path: ["{{BaseURL}}/login"]
+body: "username=admin&password=admin"
+headers:
+  Content-Type: "application/x-www-form-urlencoded"
+```
+
+POST with JSON body:
+
+```yaml
+method: POST
+path: ["{{BaseURL}}/api/order"]
+body: '{"amount":100,"currency":"USD"}'
+headers:
+  Content-Type: "application/json"
+```
+
+9.3 Matcher Types
+
+Type What it checks Example
+word Response body or header for string(s) words: ["root:"]
+regex Pattern matching regex: ["[0-9]{1,3}\.[0-9]{1,3}"]
+status HTTP status code(s) status: [200, 302]
+dsl Expression language dsl: ["len(body) > 100"]
+
+9.4 Combining Multiple Matchers
+
+Use matchers-condition to define logic:
+
+```yaml
+matchers-condition: and   # or "or"
+matchers:
+  - type: status
+    status: [200]
+  - type: word
+    words: ["password"]
+    part: body
+```
+
+9.5 Simple Fuzzing Example
+
+Fuzzing is sending many payloads into a single injection point.
+
+```yaml
+id: debug-header-fuzz
+
+info:
+  name: Fuzz x-*-debug headers
+  severity: info
+
+http:
+  - raw:
+      - |
+        GET / HTTP/1.1
+        Host: {{Hostname}}
+        X-{{fuzz}}-debug: 1
+
+    payloads:
+      fuzz:
+        - php
+        - asp
+        - python
+        - ruby
+
+    attack: batteringram   # single payload list
+
+    matchers:
+      - type: dsl
+        dsl:
+          - "len(body) > 1000"   # anomaly detection
+```
+
+9.6 Using Extractors to Capture Data
+
+Extractors pull values from responses for later use in the same template.
+
+```yaml
+extractors:
+  - type: regex
+    name: csrf_token
+    regex:
+      - 'name="csrf_token" value="([a-f0-9]{32})"'
+    internal: true   # don't print, just store
+
+# Later in same template (after another request):
+body: "action=delete&csrf={{csrf_token}}"
+```
+
+9.7 Template Design Best Practices
+
+1. Start simple – Get a working word matcher before adding DSL.
+2. Validate early – Run -validate after every few lines.
+3. Test on a lab target before pointing at bug bounty programs.
+4. Use -debug to verify request/response flow.
+5. Avoid brute-force – Use rate limiting (-rl) to be gentle.
+
+9.8 Common Mistakes & Fixes
+
+Mistake Symptom Fix
+Missing matchers-condition All matchers must match (default AND) Explicitly set or if needed
+Wrong variable case {{baseurl}} instead of {{BaseURL}} Use exact case
+No Content-Type header POST body misinterpreted Add headers: block
+Regex too greedy Extractor captures wrong data Use non-greedy (.*?) or specific character classes
+
+---
+
+10. Advanced Features
+
+This section covers powerful techniques that go beyond basic request/response matching.
+
+10.1 DSL Helper Functions
+
+The Domain Specific Language (DSL) allows complex expressions in matchers and extractors. Run nuclei -list-dsl-function to see all available functions.
+
+10.1.1 String & Comparison Functions
+
+Function Description Example
+contains(a,b) True if b is in a contains(body, "admin")
+len(a) Length of a (string, array, object) len(body) > 500
+regex(pattern, a) True if pattern matches regex("\d{3}-\d{3}", body)
+starts_with(a,b) / ends_with(a,b) Prefix / suffix check starts_with(path, "/api")
+tolower(a) / toupper(a) Case conversion contains(tolower(body), "error")
+
+Example matcher using DSL:
+
+```yaml
+matchers:
+  - type: dsl
+    dsl:
+      - "contains(body, 'csrf_token') && len(body) < 5000"
+      - "status_code == 200"
+    condition: and
+```
+
+10.1.2 Encoding & Crypto Functions
+
+Function Description
+base64(a) / base64_decode(a) Base64 encoding/decoding
+md5(a), sha1(a), sha256(a) Hash functions
+hex_encode(a) / hex_decode(a) Hex conversion
+
+Use case: Matching hashed secrets
+
+```yaml
+dsl:
+  - "contains(body, md5('password123'))"
+```
+
+10.1.3 JSON & Data Parsing
+
+Function Description
+jq(query, json) Query JSON using jq syntax
+json_decode(a) Parse JSON string to object
+generate_jwt(claims, key) Create JWT token for testing
+
+Example: Extracting from JSON API response
+
+```yaml
+extractors:
+  - type: dsl
+    dsl:
+      - "jq('.data.userId', body)"
+    name: user_id
+```
+
+10.1.4 Logical Operators
+
+Combine DSL expressions with:
+
+· && (and)
+· || (or)
+· ! (not)
+· Parentheses for grouping
+
+```yaml
+dsl:
+  - "(contains(body, 'error') || contains(body, 'exception')) && !contains(body, 'rate limit')"
+```
+
+10.2 Out-of-Band (OOB) Interactions with Interactsh
+
+Many vulnerabilities (RCE, SSRF, SQL injection) are best confirmed by causing the target to connect to an external system you control. Nuclei integrates with Interactsh (ProjectDiscovery’s OOB interaction server).
+
+10.2.1 How It Works
+
+1. Template includes {{interactsh-url}} in a payload.
+2. Nuclei generates a unique subdomain (e.g., abc123.oast.fun).
+3. If the target makes a DNS lookup or HTTP request to that domain, Interactsh records it.
+4. Nuclei checks for the interaction and reports success.
+
+10.2.2 Basic OOB Template Example
+
+```yaml
+id: cmd-injection-oob
+
+info:
+  name: Command injection via ping
+  severity: critical
+
+http:
+  - method: POST
+    path: ["{{BaseURL}}/ping"]
+    body: "ip=8.8.8.8; nslookup {{interactsh-url}}"
+    headers:
+      Content-Type: "application/x-www-form-urlencoded"
+
+    matchers:
+      - type: word
+        part: interactsh_protocol   # Special part for OOB
+        words:
+          - "dns"   # Expecting DNS interaction
+```
+
+10.2.3 Matcher Parts for OOB
+
+part value What it checks
+interactsh_protocol Protocol used by target (dns, http, smtp)
+interactsh_request Full request details
+interactsh_response Response from Interactsh server
+
+Example matcher for HTTP callback:
+
+```yaml
+matchers:
+  - type: word
+    part: interactsh_protocol
+    words:
+      - "http"
+```
+
+10.2.4 Running OOB Tests
+
+Interactsh works out of the box (no configuration). For custom servers, set:
+
+```bash
+nuclei -interactsh-server https://your-server.com -interactsh-auth token
+```
+
+10.3 Headless Mode
+
+Headless mode drives a real browser (Chrome/Chromium) to test client-side logic, XSS, DOM vulnerabilities, and complex workflows.
+
+10.3.1 Basic Requirements
+
+· Install Chromium or Chrome
+· Run Nuclei with -headless flag
+· Templates go under headless: field (not http:)
+
+10.3.2 Supported Actions
+
+Action Description
+navigate Go to a URL
+click Click an element (by selector)
+text Type text into an input field
+script Execute JavaScript (can be named for later matching)
+waitload Wait for page to load completely
+wait Wait a fixed number of seconds
+
+10.3.3 Selector Types
+
+Specify which element to interact with using:
+
+Selector type Example
+xpath /html/body/form/input[1]
+css #username or .btn-submit
+regex .button. (matches text content)
+
+10.3.4 Simple Headless Template
+
+```yaml
+id: login-form-test
+
+headless:
+  - steps:
+      - action: navigate
+        args:
+          url: "{{BaseURL}}/login"
+      - action: waitload
+      - action: text
+        args:
+          by: css
+          value: "admin"
+          selector: "#username"
+      - action: text
+        args:
+          by: css
+          value: "wrongpassword"
+          selector: "#password"
+      - action: click
+        args:
+          by: css
+          selector: "button[type=submit]"
+      - action: waitload
+
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "Invalid credentials"
+```
+
+10.3.5 Script Action & Named Output
+
+Use JavaScript to extract state or detect XSS.
+
+```yaml
+headless:
+  - steps:
+      - action: navigate
+        args:
+          url: "{{BaseURL}}"
+      - action: script
+        name: pageTitle        # This name becomes available in matchers
+        args:
+          code: "return document.title;"
+      - action: script
+        name: alerts
+        args:
+          hook: true
+          code: |
+            window.alert = function(msg) {
+              window.alerts = window.alerts || [];
+              window.alerts.push(msg);
+            };
+
+    matchers:
+      - type: word
+        part: pageTitle
+        words:
+          - "Dashboard"
+      - type: dsl
+        dsl:
+          - "len(alerts) > 0"
+```
+
+10.3.6 Important: Always Use -headless
+
+Without the -headless flag, Nuclei will parse but not execute headless templates, resulting in zero findings.
+
+```bash
+nuclei -u https://example.com -t headless/xss.yaml -headless
+```
+
+10.4 Advanced Fuzzing Techniques
+
+These features are for specialized scenarios like request smuggling, race conditions, and high-performance fuzzing.
+
+10.4.1 Unsafe Requests (Request Smuggling)
+
+Use unsafe: true to send malformed or raw HTTP requests without normalization. Required for HTTP request smuggling tests.
+
+```yaml
+http:
+  - raw:
+      - |+
+        POST / HTTP/1.1
+        Host: {{Hostname}}
+        Transfer-Encoding: chunked
+        Content-Length: 4
+
+        0
+
+        GET /admin HTTP/1.1
+        Host: {{Hostname}}
+
+    unsafe: true   # Enables rawhttp client
+    matchers:
+      - type: word
+        words: ["admin panel"]
+```
+
+10.4.2 HTTP Pipelining
+
+Sends multiple requests over the same connection without waiting for responses. Significantly faster but requires server support.
+
+```yaml
+http:
+  - raw:
+      - |
+        GET /{{path}} HTTP/1.1
+        Host: {{Hostname}}
+    payloads:
+      path: paths.txt
+    attack: batteringram
+    unsafe: true
+    pipeline: true
+    pipeline-concurrent-connections: 40
+    pipeline-requests-per-connection: 25000
+```
+
+10.4.3 Connection Pooling (Multi-threaded)
+
+Reuse the same TCP connection across multiple threads. Set threads: <int>.
+
+```yaml
+http:
+  - raw:
+      - |
+        GET /protected HTTP/1.1
+        Host: {{Hostname}}
+        Authorization: Basic {{base64('admin:§password§')}}
+    payloads:
+      password: passwords.txt
+    threads: 40   # 40 concurrent threads on same connection
+    matchers:
+      - type: status
+        status: [200]
+```
+
+10.4.4 Race Condition Testing
+
+Send many identical requests nearly simultaneously to trigger concurrency bugs (e.g., coupon overuse, balance overflow).
+
+```yaml
+http:
+  - raw:
+      - |
+        POST /apply-coupon HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+
+        {"code":"DISCOUNT100"}
+    race: true
+    race_count: 20   # Send 20 copies of this request
+    matchers:
+      - type: status
+        status: [200]
+```
+
+Interpreting race results: If more than the expected number (e.g., coupon limit = 5) return 200 OK, the application is likely vulnerable.
+
+---
+
+11. Non-HTTP Modes
+
+Nuclei supports network (TCP/TLS), DNS, and file system scanning through dedicated template fields.
+
+11.1 Network Mode
+
+Use for raw TCP services (SSH, FTP, custom protocols, IoT devices).
+
+11.1.1 Template Structure
+
+```yaml
+id: service-fingerprint
+
+info:
+  name: Detect custom service
+  severity: info
+
+network:
+  - inputs:
+      - data: "{{hex_decode('9c05f72b9e4b967b')}}"
+    host:
+      - "{{Host}}:6101"
+    read-size: 14
+    matchers:
+      - type: word
+        words:
+          - "{{hex_decode('e515e23230fff7')}}"
+```
+
+11.1.2 Key Fields
+
+Field Required Description
+inputs Yes List of data to send (can be multiple for interactive protocols)
+host Yes Target host and optional port (use {{Host}} for user-supplied)
+read-size No Bytes to read from response (default 1024)
+tls No Set to true for TLS (use tls:// in host)
+
+11.1.3 Multi-Step Interactions
+
+For protocols that require send→receive→send (e.g., FTP, SMTP):
+
+```yaml
+network:
+  - inputs:
+      - data: "USER anonymous\r\n"
+        read: 256
+      - data: "PASS anonymous@\r\n"
+        read: 256
+      - data: "HELP\r\n"
+```
+
+11.1.4 TLS Example
+
+```yaml
+network:
+  - host:
+      - "tls://{{Hostname}}:443"
+    inputs:
+      - data: "GET / HTTP/1.1\r\nHost: {{Hostname}}\r\n\r\n"
+    read-size: 512
+```
+
+11.2 DNS Mode
+
+Send and analyze DNS queries.
+
+11.2.1 Template Structure
+
+```yaml
+id: dns-cname-chain
+
+info:
+  name: CNAME chain detection
+  severity: info
+
+dns:
+  - name: "{{FQDN}}"
+    type: A
+    class: inet
+    recursion: true
+    retries: 3
+    matchers:
+      - type: word
+        words:
+          - "IN\tCNAME"
+          - "IN\tA"
+        condition: and
+```
+
+11.2.2 Key Fields
+
+Field Description Default
+name Domain to query (use {{FQDN}}) Required
+type Record type (A, AAAA, TXT, MX, CNAME, NS, PTR) A
+class Class (inet, chaos, hesiod) inet
+recursion Ask resolver to do full recursion true
+retries Number of retries on failure 3
+
+11.2.3 Running DNS Templates
+
+```bash
+nuclei -u example.com -t dns/subdomain-takeover.yaml
+```
+
+The {{FQDN}} variable becomes example.com.
+
+11.3 File Mode
+
+Scan local filesystem for secrets, patterns, or exposed information.
+
+11.3.1 Template Structure
+
+```yaml
+id: google-api-key
+
+info:
+  name: Google API Key in files
+  severity: info
+
+file:
+  - extensions:
+      - all
+      - txt
+      - json
+    denylist:
+      - test        # skip .test files
+      - temp
+    extractors:
+      - type: regex
+        name: api_key
+        regex:
+          - "AIza[0-9A-Za-z\\-_]{35}"
+```
+
+11.3.2 Key Fields
+
+Field Description
+extensions List of file extensions to scan (use all for everything)
+denylist Extensions to exclude
+extractors Regex or word extractors
+matchers Optional matchers (word/regex only)
+
+11.3.3 Running File Mode
+
+```bash
+nuclei -u /path/to/project/ -t file/secret-finder.yaml
+```
+
+Note: File mode works on the local machine running Nuclei. Do not use on targets you don’t own.
+
+---
+
+12. Workflows
+
+Workflows allow you to chain multiple templates with conditional logic, creating efficient, repeatable scanning strategies.
+
+12.1 Generic (Unconditional) Workflows
+
+Run a fixed sequence of templates regardless of findings.
+
+```yaml
+id: generic-recon-workflow
+
+info:
+  name: Basic recon workflow
+  author: researcher
+  severity: info
+
+workflows:
+  - template: technologies/tech-detect.yaml
+  - template: files/git-config.yaml
+  - template: exposures/.env-file.yaml
+  - tags: cve,high,wordpress   # can also use tags
+```
+
+Save as .yaml and run:
+
+```bash
+nuclei -u https://example.com -w workflow.yaml
+```
+
+12.2 Conditional Workflows
+
+Run subtemplates only if a previous template found something.
+
+12.2.1 Simple Condition (Any Finding)
+
+```yaml
+workflows:
+  - template: technologies/jira-detect.yaml
+    subtemplates:
+      - tags: jira               # run all templates with "jira" tag
+      - template: exploits/jira/ # run all templates in this folder
+```
+
+If jira-detect.yaml has any match, the subtemplates execute.
+
+12.2.2 Matcher-Based Conditions
+
+Run subtemplates only when a specific string appears in the output.
+
+```yaml
+workflows:
+  - template: technologies/tech-detect.yaml
+    matchers:
+      - name: wordpress          # arbitrary name for this condition
+        subtemplates:
+          - template: cves/CVE-2024-12345.yaml
+          - template: files/wp-config-exposure.yaml
+```
+
+The matcher looks for the string wordpress in the output of tech-detect.yaml.
+
+12.2.3 Chaining Multiple Conditions
+
+```yaml
+workflows:
+  - template: technologies/tech-detect.yaml
+    matchers:
+      - name: wordpress
+        subtemplates:
+          - template: technologies/wordpress-version.yaml
+            subtemplates:          # nested condition
+              - template: cves/CVE-2024-9999.yaml   # runs only if version match
+```
+
+12.3 Running Workflows
+
+Command Description
+nuclei -u target -w workflow.yaml Run workflow file
+nuclei -u target -w workflows/ Run all workflows in folder
+nuclei -l targets.txt -w custom-workflow.yaml Workflow on multiple targets
+
+12.4 Workflow Best Practices
+
+· Keep workflows focused (e.g., one per technology).
+· Use -validate on workflows before running.
+· Avoid deeply nested conditions (hard to debug).
+· Combine with -as (auto‑select) for even smarter scans.
+
+---
+
+13. Integration with Other Tools
+
+Nuclei is designed to fit into larger security pipelines.
+
+13.1 Burp Suite Integration
+
+13.1.1 Proxy Traffic Through Burp
+
+```bash
+nuclei -u https://target.com -proxy http://127.0.0.1:8080
+```
+
+Allows you to view/modify requests in Burp.
+
+13.1.2 Export Burp Scope to Nuclei
+
+1. In Burp, select targets in Target → Site map.
+2. Right‑click → Copy URLs.
+3. Save to burp_urls.txt.
+4. Run:
+   ```bash
+   nuclei -l burp_urls.txt -t custom/
+   ```
+
+13.1.3 Send Single Request from Burp to Nuclei
+
+Use Burp Extender or a simple script:
+
+```python
+# Save as send_to_nuclei.py
+import sys, subprocess
+request = sys.stdin.read()
+with open("temp_request.txt", "w") as f:
+    f.write(request)
+subprocess.run(["nuclei", "-request", "temp_request.txt", "-t", "my-template.yaml"])
+```
+
+In Burp, right‑click a request → Extensions → Run this script.
+
+13.2 ZAP Integration
+
+13.2.1 Using ZAP as a Proxy
+
+Same as Burp: -proxy http://127.0.0.1:8080
+
+13.2.2 Automated ZAP + Nuclei Pipeline
+
+The zap-nuclei-pipeline.sh script (provided earlier) does:
+
+1. Starts ZAP daemon (on port 8080)
+2. Spiders the target via ZAP API
+3. Exports discovered URLs
+4. Feeds them into Nuclei
+
+Run ZAP daemon:
+
+```bash
+zap.sh -daemon -port 8080 -host 127.0.0.1 -config api.disablekey=true
+```
+
+Then run pipeline:
+
+```bash
+./zap-nuclei-pipeline.sh target.com
+```
+
+13.3 GitHub Actions CI/CD
+
+Automate scans on schedule or push events.
+
+13.3.1 Example Workflow File (.github/workflows/nuclei-scan.yml)
+
+```yaml
+name: Daily Nuclei Scan
+
+on:
+  schedule:
+    - cron: '0 3 * * *'   # 3 AM UTC daily
+  workflow_dispatch:       # manual trigger
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout templates
+        uses: actions/checkout@v4
+        with:
+          repository: projectdiscovery/nuclei-templates
+          path: templates
+
+      - name: Install Nuclei
+        run: |
+          go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
+
+      - name: Run scan
+        run: |
+          nuclei -u https://example.com -t templates/ -o results.txt
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuclei-results
+          path: results.txt
+```
+
+13.3.2 Advanced: Self‑Hosted Runner for Headless Scans
+
+For headless templates, you need a runner with Chrome installed. Use a self‑hosted runner:
+
+```yaml
+jobs:
+  headless-scan:
+    runs-on: self-hosted
+    steps:
+      - name: Run headless template
+        run: |
+          nuclei -u https://example.com -t headless/xss.yaml -headless
+```
+
+13.3.3 Security Best Practices
+
+· Use private repositories for workflows targeting your own assets or authorized programs.
+· Store API keys as GitHub Secrets (${{ secrets.API_KEY }}).
+· Never hardcode credentials in workflow files.
+
+---
+
+14. ProjectDiscovery Cloud Platform (PDCP)
+
+PDCP is an enterprise product that extends Nuclei with cloud‑based features.
+
+14.1 Key Features
+
+Feature Description
+Continuous monitoring Scheduled scans across your external attack surface
+Template editor Web‑based IDE for creating/testing templates
+Collaboration Share templates and findings with teams
+Integration Connect existing Nuclei scans to PDCP
+
+14.2 Connecting Local Nuclei to PDCP
+
+1. Obtain an API token from PDCP.
+2. Run Nuclei with:
+   ```bash
+   nuclei -u target.com -pdcp -pdcp-token YOUR_TOKEN
+   ```
+3. Results appear in the PDCP dashboard.
+
+14.3 When to Use PDCP
+
+· Enterprise teams needing role‑based access and audit logs.
+· Continuous scanning across many assets.
+· Managed template library with version control.
+
+For individual bug bounty hunters, the open‑source Nuclei with local templates remains the primary tool.
+
+---
+
+15. Updates (Nuclei v3+)
+
+Nuclei has evolved significantly. Key additions in v3.x:
+
+15.1 JavaScript Protocol Support
+
+Run JavaScript code directly in templates (not just headless).
+
+```yaml
+id: js-example
+
+javascript:
+  - code: |
+      const resp = await fetch('https://api.example.com/data');
+      const json = await resp.json();
+      return json.secret;
+    extractors:
+      - type: regex
+        name: secret
+        regex: ["[A-Z0-9]{20}"]
+```
+
+Run with:
+
+```bash
+nuclei -u https://example.com -t js/ -js
+```
+
+15.2 Security Hardening
+
+· -allow-local-file-access must now be explicitly set for templates that read local files.
+· Expression evaluation tightened to prevent template‑author code injection.
+
+15.3 Performance Improvements
+
+· Faster template clustering (reduced memory usage).
+· Improved headless mode stability.
+
+15.4 Deprecated Features
+
+· -stats replaced by -stats-json and -metrics.
+· Old -template-cond removed (use workflows instead).
+
+15.5 Upgrading from v2 to v3
+
+```bash
+# Remove old version
+rm $(which nuclei)
+
+# Install v3
+go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
+
+# Update templates
+nuclei -update-templates
+```
+
+Check the official migration guide for breaking changes.
+
+---
+
+16. Appendices
+
+16.1 Quick Command Reference
+
+Task Command
+Basic scan nuclei -u https://target.com
+Scan with specific template nuclei -u target -t cve.yaml
+Filter by severity nuclei -u target -s critical,high
+Resume scan nuclei -l targets.txt -resume file.cfg
+Validate template nuclei -t my.yaml -validate
+Debug mode nuclei -u target -t my.yaml -debug
+Workflow nuclei -u target -w workflow.yaml
+Headless mode nuclei -u target -t headless/ -headless
+
+16.2 Common Template Variables
+
+Variable Protocol Example Value
+{{BaseURL}} HTTP https://example.com
+{{Hostname}} HTTP, Network example.com:443
+{{Host}} Network 10.0.0.1
+{{Path}} HTTP /api/v1
+{{FQDN}} DNS mail.example.com
+{{interactsh-url}} All OOB abc123.oast.fun
+{{randstr}} All Random string (e.g., aB3dE9)
+{{rand_int}} All Random integer
+
+16.3 Template Skeleton – HTTP Mode
+
+```yaml
+id: template-id
+
+info:
+  name: Template Name
+  author: yourname
+  severity: info|low|medium|high|critical
+  description: What this checks
+  tags: keyword1,keyword2
+
+http:
+  - method: GET|POST|PUT|DELETE
+    path:
+      - "{{BaseURL}}/path"
+    headers:
+      Custom-Header: value
+    body: "param=value"   # POST only
+    redirects: true
+    max-redirects: 3
+
+    matchers:
+      - type: word|status|regex|dsl
+        part: body|header
+        words:
+          - "string1"
+          - "string2"
+        condition: or|and
+```
+
+16.4 Template Skeleton – Headless Mode
+
+```yaml
+id: headless-example
+
+info:
+  name: Headless Test
+  severity: info
+
+headless:
+  - steps:
+      - action: navigate
+        args:
+          url: "{{BaseURL}}"
+      - action: waitload
+      - action: script
+        name: page_data
+        args:
+          code: "return document.title;"
+
+    matchers:
+      - type: word
+        part: page_data
+        words:
+          - "Expected Title"
+```
+
+16.5 Template Skeleton – Network Mode
+
+```yaml
+id: network-example
+
+info:
+  name: TCP Service Detection
+  severity: info
+
+network:
+  - inputs:
+      - data: "PING\r\n"
+        read: 128
+    host:
+      - "{{Host}}:1234"
+    matchers:
+      - type: word
+        words:
+          - "PONG"
+```
+
+16.6 Nuclei Exit Codes
+
+Code Meaning
+0 Success, no findings
+1 Error (invalid template, network issue, etc.)
+2 Findings detected (vulnerabilities matched)
+
+Use in scripts:
+
+```bash
+if nuclei -u target -t cve.yaml -silent; then
+  echo "No critical findings"
+else
+  echo "Vulnerabilities found"
+fi
+```
+
+16.7 Where to Get Help
+
+Resource URL
+Official documentation https://docs.projectdiscovery.io/nuclei
+Template guide https://nuclei.projectdiscovery.io/templating-guide/
+Community templates https://github.com/projectdiscovery/nuclei-templates
+Discord support https://discord.gg/projectdiscovery
+GitHub issues https://github.com/projectdiscovery/nuclei/issues
+
+---
+
+Conclusion
+
+Nuclei transforms vulnerability scanning from a shotgun approach into a precise, efficient, and extensible process. With custom templates, workflows, and integrations, you can:
+
+· Automate recon and detection pipelines.
+· Find unique bugs that automated scanners miss.
+· Scale from a single host to thousands.
+
+This manual covers the essentials. Mastery comes from writing your own templates, analyzing real targets (in‑scope only), and iterating based on results. Start with the community templates, then modify and extend them for your own hunting.
+
+Remember: Always stay within authorized scope. Good hunting, Master.
