@@ -1,11 +1,11 @@
 {
-  "name": "nextjs_tailwind_shadcn_ts",
+  "name": "meridian-runtime",
   "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
     "build": "prisma generate && next build",
-    "start": "NODE_ENV=production node .next/standalone/server.js",
+    "start": "NODE_ENV=production node .next/standalone/server.js 2>/dev/null || NODE_ENV=production node .next/standalone/Desktop/meridian/server.js",
     "vercel-build": "prisma generate && next build",
     "lint": "eslint .",
     "test": "vitest run",
