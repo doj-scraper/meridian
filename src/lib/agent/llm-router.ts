@@ -58,6 +58,13 @@ const DEFAULT_PROVIDERS: Provider[] = [
     enabled: false,
     priority: 3,
     costPerMillion: { input: 5, output: 15 }
+  },
+  {
+    id: 'openrouter',
+    name: 'OpenRouter',
+    enabled: false,
+    priority: 4,
+    costPerMillion: { input: 2, output: 8 }
   }
 ];
 
@@ -219,7 +226,8 @@ function calculateReward(result: ProviderResponse): number {
 export async function routeAndExecute(
   prompt: string,
   taskContext: TaskContext,
-  executeCall: (providerId: string, prompt: string) => Promise<ProviderResponse>
+  executeCall: (providerId: string, prompt: string, messages?: any[]) => Promise<ProviderResponse>,
+  messages?: any[]
 ): Promise<ProviderResponse> {
   const startTime = Date.now();
   
@@ -229,7 +237,7 @@ export async function routeAndExecute(
     console.log(`[Router] Selected ${provider.id} via ${method}`);
     
     // Execute
-    const result = await executeCall(provider.id, prompt);
+    const result = await executeCall(provider.id, prompt, messages);
     result.latency = Date.now() - startTime;
     
     // Update learning
