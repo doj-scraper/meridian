@@ -10,7 +10,7 @@ import { useMeridianStore } from '@/store/meridian-store'
 
 const STATUS_COLORS: Record<string, string> = {
   complete: '#00ff88',
-  active: '#00b4dc',
+  active: '#a855f7',
   pending: '#5a6578',
   blocked: '#ff3344',
   paused: '#ffa500',
@@ -73,7 +73,7 @@ export function WorkflowDesignWidget() {
           <motion.span
             className="text-[10px] font-bold truncate"
             style={{ color: '#c8d0dc' }}
-            whileHover={{ color: '#00b4dc' }}
+            whileHover={{ color: '#a855f7' }}
           >
             {activeWorkflow.name}
           </motion.span>
@@ -92,7 +92,7 @@ export function WorkflowDesignWidget() {
         </div>
 
         {/* Progress bar */}
-        <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: 'rgba(0,180,220,0.1)' }}>
+        <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: 'rgba(168, 85, 247,0.1)' }}>
           <motion.div
             className="h-full rounded-full"
             style={{ background: STATUS_COLORS[activeWorkflow.status] || '#5a6578' }}
@@ -127,11 +127,11 @@ export function WorkflowDesignWidget() {
               <motion.div
                 key={phase.id}
                 className="flex flex-col gap-0.5 rounded px-1.5 py-1"
-                style={{ background: 'rgba(0,180,220,0.03)', borderLeft: `2px solid ${STATUS_COLORS[phase.status] || '#5a6578'}` }}
+                style={{ background: 'rgba(168, 85, 247,0.03)', borderLeft: `2px solid ${STATUS_COLORS[phase.status] || '#5a6578'}` }}
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: idx * 0.05, duration: 0.2 }}
-                whileHover={{ background: 'rgba(0,180,220,0.06)' }}
+                whileHover={{ background: 'rgba(168, 85, 247,0.06)' }}
               >
                 <div className="flex items-center gap-1.5">
                   <StatusDot status={phase.status} />
@@ -159,7 +159,7 @@ export function WorkflowDesignWidget() {
                     </span>
                   )}
                   {activeInPhase > 0 && (
-                    <span className="text-[7px] ml-1" style={{ color: '#00b4dc' }}>
+                    <span className="text-[7px] ml-1" style={{ color: '#a855f7' }}>
                       {activeInPhase}RUN
                     </span>
                   )}

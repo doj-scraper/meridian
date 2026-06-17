@@ -8,7 +8,7 @@ import type { FileItem } from '@/store/meridian-store'
 const TYPE_COLORS: Record<string, string> = {
   folder: '#ffa500',
   file: '#5a6578',
-  image: '#00b4dc',
+  image: '#a855f7',
 }
 
 function FileIcon({ type }: { type: FileItem['type'] }) {
@@ -68,7 +68,7 @@ export function FileExplorerWidget() {
             </span>
           )}
           {imageCount > 0 && (
-            <span className="text-[7px]" style={{ color: '#00b4dc' }}>
+            <span className="text-[7px]" style={{ color: '#a855f7' }}>
               {imageCount}IMG
             </span>
           )}
@@ -85,7 +85,7 @@ export function FileExplorerWidget() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: idx * 0.03, duration: 0.15 }}
               whileHover={{
-                background: 'rgba(0,180,220,0.06)',
+                background: 'rgba(168, 85, 247,0.06)',
               }}
             >
               <FileIcon type={file.type} />

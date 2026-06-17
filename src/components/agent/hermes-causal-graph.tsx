@@ -145,7 +145,7 @@ export function HermesCausalGraph() {
         id: node.id,
         type: "causalEvent",
         position: node.position,
-        data: node,
+        data: node as any,
         selected: node.id === selectedEventId,
       })),
     [causalNodes, selectedEventId]
@@ -252,7 +252,7 @@ export function HermesCausalGraph() {
             borderRadius: 0,
           }}
           nodeColor={(node) => {
-            const data = node.data as CausalNodeView;
+            const data = node.data as unknown as CausalNodeView;
             return tierColorMap[data?.tier] ?? "#8a94a3";
           }}
         />

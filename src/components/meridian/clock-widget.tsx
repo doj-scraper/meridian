@@ -26,14 +26,14 @@ export function ClockWidget() {
   return (
     <WidgetContainer id="clock" title="CLOCK" onHoverInfo="System time - all timestamps reference this clock">
       <div className="flex flex-col items-center justify-center h-full">
-        <svg viewBox="0 0 100 100" className="w-full max-w-[120px]" style={{ filter: 'drop-shadow(0 0 4px rgba(0,180,220,0.1))' }}>
+        <svg viewBox="0 0 100 100" className="w-full max-w-[120px]" style={{ filter: 'drop-shadow(0 0 4px rgba(168, 85, 247,0.1))' }}>
           {/* Outer ring */}
           <circle
             cx={cx}
             cy={cy}
             r={r}
             fill="none"
-            stroke="rgba(0,180,220,0.2)"
+            stroke="rgba(168, 85, 247,0.2)"
             strokeWidth="0.8"
           />
 
@@ -43,7 +43,7 @@ export function ClockWidget() {
             cy={cy}
             r={r - 3}
             fill="none"
-            stroke="rgba(0,180,220,0.08)"
+            stroke="rgba(168, 85, 247,0.08)"
             strokeWidth="0.3"
           />
 
@@ -60,7 +60,7 @@ export function ClockWidget() {
                 y1={cy + Math.sin(angle) * innerR}
                 x2={cx + Math.cos(angle) * outerR}
                 y2={cy + Math.sin(angle) * outerR}
-                stroke={isMain ? 'rgba(0,180,220,0.5)' : 'rgba(0,180,220,0.2)'}
+                stroke={isMain ? 'rgba(168, 85, 247,0.5)' : 'rgba(168, 85, 247,0.2)'}
                 strokeWidth={isMain ? '1.2' : '0.6'}
               />
             )
@@ -79,7 +79,7 @@ export function ClockWidget() {
                 y1={cy + Math.sin(angle) * innerR}
                 x2={cx + Math.cos(angle) * outerR}
                 y2={cy + Math.sin(angle) * outerR}
-                stroke="rgba(0,180,220,0.1)"
+                stroke="rgba(168, 85, 247,0.1)"
                 strokeWidth="0.3"
               />
             )
@@ -113,13 +113,13 @@ export function ClockWidget() {
             y1={cy - Math.sin((secondAngle - 90) * (Math.PI / 180)) * 8}
             x2={cx + Math.cos((secondAngle - 90) * (Math.PI / 180)) * 36}
             y2={cy + Math.sin((secondAngle - 90) * (Math.PI / 180)) * 36}
-            stroke="#00b4dc"
+            stroke="#a855f7"
             strokeWidth="0.6"
             strokeLinecap="round"
           />
 
           {/* Center dot */}
-          <circle cx={cx} cy={cy} r="2" fill="rgba(0,180,220,0.8)" />
+          <circle cx={cx} cy={cy} r="2" fill="rgba(168, 85, 247,0.8)" />
           <circle cx={cx} cy={cy} r="1" fill="rgba(8,13,20,0.9)" />
         </svg>
 

@@ -24,6 +24,7 @@ export type AgentInfo = {
   reflectionMaxIter: number;
   reflectionCriteria: string;
   teamId: string | null;
+  status?: string;
   createdAt: string;
   updatedAt: string;
 };

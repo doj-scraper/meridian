@@ -58,7 +58,7 @@ export function executeQuery(
     case HQAOperator.SIMULATE:
       return executeSimulate(query, filteredEvents);
     default:
-      throw new Error(`Unknown HQA operator: ${String(query.operator)}`);
+      throw new Error(`Unknown HQA operator: ${String((query as any).operator)}`);
   }
 }
 

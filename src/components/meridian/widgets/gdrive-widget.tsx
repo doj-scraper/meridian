@@ -85,7 +85,7 @@ export function GDriveWidget() {
               <span className="text-[9px] font-mono tracking-[0.2em]" style={{ color: '#5a6578' }}>
                 LAST SYNC
               </span>
-              <span className="text-[10px] font-mono" style={{ color: '#00b4dc' }}>
+              <span className="text-[10px] font-mono" style={{ color: '#a855f7' }}>
                 {gdrive.lastSync}
               </span>
             </div>
@@ -93,7 +93,7 @@ export function GDriveWidget() {
             {/* Sync activity indicator */}
             <div
               className="flex items-center gap-1.5 mt-1 px-1.5 py-[3px] rounded"
-              style={{ background: 'rgba(0,180,220,0.04)', border: '1px solid rgba(0,180,220,0.08)' }}
+              style={{ background: 'rgba(168, 85, 247,0.04)', border: '1px solid rgba(168, 85, 247,0.08)' }}
             >
               <motion.div
                 className="w-[4px] h-[4px] rounded-full"

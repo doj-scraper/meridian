@@ -8,11 +8,11 @@ const LEVEL_COLORS: Record<string, string> = {
   info: '#5a6578',
   warn: '#ffa500',
   error: '#ff3344',
-  event: '#00b4dc',
+  event: '#a855f7',
   run_start: '#00ff88',
-  step_start: '#00b4dc',
+  step_start: '#a855f7',
   llm_call: '#ffa500',
-  tool_execution: '#00b4dc',
+  tool_execution: '#a855f7',
   run_complete: '#00ff88',
 }
 
@@ -87,7 +87,7 @@ export function TimelineWidget() {
         {/* Divider */}
         <div
           className="h-px w-full mb-1"
-          style={{ background: 'rgba(0,180,220,0.1)' }}
+          style={{ background: 'rgba(168, 85, 247,0.1)' }}
         />
 
         {/* Timeline entries */}
@@ -99,7 +99,7 @@ export function TimelineWidget() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.04, duration: 0.2 }}
               className="flex items-center gap-1.5 px-1 py-[3px] cursor-pointer group"
-              whileHover={{ background: 'rgba(0,180,220,0.04)' }}
+              whileHover={{ background: 'rgba(168, 85, 247,0.04)' }}
             >
               {/* Timeline spine */}
               <div className="flex flex-col items-center shrink-0">
@@ -121,7 +121,7 @@ export function TimelineWidget() {
                   <div
                     className="w-px flex-1 mt-0.5"
                     style={{
-                      background: 'rgba(0,180,220,0.08)',
+                      background: 'rgba(168, 85, 247,0.08)',
                       minHeight: '8px',
                     }}
                   />

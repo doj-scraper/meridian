@@ -20,9 +20,9 @@ function ResourceIcon({ type }: { type: 'file' | 'image' }) {
   if (type === 'image') {
     return (
       <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-        <rect x="0.5" y="1" width="9" height="7" stroke="#00b4dc" strokeWidth="0.8" fill="none" />
-        <circle cx="3" cy="3.5" r="1" fill="#00b4dc" opacity="0.5" />
-        <path d="M1 7L3.5 4.5L5.5 6L7 4L9 7" stroke="#00b4dc" strokeWidth="0.6" fill="none" />
+        <rect x="0.5" y="1" width="9" height="7" stroke="#a855f7" strokeWidth="0.8" fill="none" />
+        <circle cx="3" cy="3.5" r="1" fill="#a855f7" opacity="0.5" />
+        <path d="M1 7L3.5 4.5L5.5 6L7 4L9 7" stroke="#a855f7" strokeWidth="0.6" fill="none" />
       </svg>
     )
   }
@@ -61,7 +61,7 @@ export function CanvasWidget() {
           <span className="text-[9px] font-mono tracking-[0.2em]" style={{ color: '#5a6578' }}>
             RESOURCES
           </span>
-          <span className="text-[10px] font-mono font-bold" style={{ color: '#00b4dc' }}>
+          <span className="text-[10px] font-mono font-bold" style={{ color: '#a855f7' }}>
             {resources.length}
           </span>
         </div>
@@ -73,12 +73,12 @@ export function CanvasWidget() {
               <motion.div
                 key={`${res.name}-${i}`}
                 className="flex items-center gap-1.5 px-1.5 py-[3px] rounded group"
-                style={{ background: 'rgba(0,180,220,0.03)', border: '1px solid rgba(0,180,220,0.06)' }}
+                style={{ background: 'rgba(168, 85, 247,0.03)', border: '1px solid rgba(168, 85, 247,0.06)' }}
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 8, height: 0 }}
                 transition={{ duration: 0.2 }}
-                whileHover={{ borderColor: 'rgba(0,180,220,0.2)' }}
+                whileHover={{ borderColor: 'rgba(168, 85, 247,0.2)' }}
               >
                 <ResourceIcon type={res.type} />
                 <span
@@ -105,19 +105,19 @@ export function CanvasWidget() {
         <motion.button
           className="w-full py-1 text-[9px] font-mono font-bold tracking-[0.15em] rounded border flex items-center justify-center gap-1"
           style={{
-            color: '#00b4dc',
-            borderColor: 'rgba(0,180,220,0.2)',
-            background: 'rgba(0,180,220,0.04)',
+            color: '#a855f7',
+            borderColor: 'rgba(168, 85, 247,0.2)',
+            background: 'rgba(168, 85, 247,0.04)',
           }}
           onClick={handleAddResource}
           whileHover={{
-            borderColor: 'rgba(0,180,220,0.5)',
-            background: 'rgba(0,180,220,0.1)',
+            borderColor: 'rgba(168, 85, 247,0.5)',
+            background: 'rgba(168, 85, 247,0.1)',
           }}
           whileTap={{ scale: 0.97 }}
         >
           <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-            <path d="M4 0V8M0 4H8" stroke="#00b4dc" strokeWidth="1" />
+            <path d="M4 0V8M0 4H8" stroke="#a855f7" strokeWidth="1" />
           </svg>
           ADD RESOURCE
         </motion.button>

@@ -134,7 +134,7 @@ export function createErrorResponse(error: ApiError, path?: string): NextRespons
  * Create a validation error response from Zod validation error.
  */
 export function createValidationErrorResponse(zodError: ZodError, path?: string): NextResponse<ApiErrorResponse> {
-  const formattedErrors = zodError.errors.map((err) => ({
+  const formattedErrors = zodError.issues.map((err) => ({
     field: err.path.join("."),
     message: err.message,
   }));
@@ -227,7 +227,7 @@ export async function validateRequestBody<T>(
     return schema.parse(body);
   } catch (error) {
     if (error instanceof ZodError) {
-      throw new ValidationError("Request validation failed", error.errors);
+      throw new ValidationError("Request validation failed", error.issues);
     }
     throw error;
   }

@@ -18,9 +18,10 @@ import type {
   EventPredicate,
   FoldAccumulator,
   DiffPoint,
+  HQAResult,
 } from "./types";
 import { HQAOperator } from "./types";
-import { executeQuery, type HQAResult } from "./executor";
+import { executeQuery } from "./executor";
 
 // ═══════════════════════════════════════════════════════════════
 // Query Builder

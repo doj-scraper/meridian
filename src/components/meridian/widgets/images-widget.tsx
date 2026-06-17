@@ -44,7 +44,7 @@ export function ImagesWidget() {
           <span className="text-[8px] tracking-[0.15em] font-bold" style={{ color: '#5a6578' }}>
             {images.length} ITEMS
           </span>
-          <span className="text-[7px]" style={{ color: '#00b4dc' }}>
+          <span className="text-[7px]" style={{ color: '#a855f7' }}>
             IMAGE
           </span>
         </div>
@@ -57,19 +57,19 @@ export function ImagesWidget() {
               className="relative rounded overflow-hidden flex flex-col items-center justify-center"
               style={{
                 background: IMAGE_GRADIENTS[idx % IMAGE_GRADIENTS.length],
-                border: '1px solid rgba(0,180,220,0.12)',
+                border: '1px solid rgba(168, 85, 247,0.12)',
                 minHeight: 0,
               }}
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: idx * 0.06, duration: 0.2 }}
               whileHover={{
-                borderColor: 'rgba(0,180,220,0.4)',
-                boxShadow: '0 0 6px rgba(0,180,220,0.1)',
+                borderColor: 'rgba(168, 85, 247,0.4)',
+                boxShadow: '0 0 6px rgba(168, 85, 247,0.1)',
               }}
             >
               {/* Placeholder icon */}
-              <svg width="16" height="16" viewBox="0 0 16 16" style={{ color: '#00b4dc', opacity: 0.4 }}>
+              <svg width="16" height="16" viewBox="0 0 16 16" style={{ color: '#a855f7', opacity: 0.4 }}>
                 <rect x="1" y="1" width="14" height="14" rx="1.5" fill="none" stroke="currentColor" strokeWidth="0.8" />
                 <circle cx="5.5" cy="5.5" r="1.5" fill="currentColor" opacity="0.6" />
                 <path d="M2 11l3-3 2 2 3-4 4 5H2z" fill="currentColor" opacity="0.3" />
@@ -93,8 +93,8 @@ export function ImagesWidget() {
               key={`empty-${idx}`}
               className="rounded flex items-center justify-center"
               style={{
-                background: 'rgba(0,180,220,0.02)',
-                border: '1px dashed rgba(0,180,220,0.08)',
+                background: 'rgba(168, 85, 247,0.02)',
+                border: '1px dashed rgba(168, 85, 247,0.08)',
                 minHeight: 0,
               }}
             >

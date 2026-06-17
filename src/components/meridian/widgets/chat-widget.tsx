@@ -6,7 +6,7 @@ import { useMeridianStore } from '@/store/meridian-store'
 import type { ChatMessage } from '@/store/meridian-store'
 
 const ROLE_COLORS: Record<string, string> = {
-  user: '#00b4dc',
+  user: '#a855f7',
   assistant: '#c8d0dc',
   system: '#3a4553',
 }
@@ -69,7 +69,7 @@ export function ChatWidget() {
           <span className="text-[8px] tracking-[0.15em] font-bold" style={{ color: '#5a6578' }}>
             {chatMessages.length} MSGS
           </span>
-          <span className="text-[7px]" style={{ color: '#00b4dc' }}>
+          <span className="text-[7px]" style={{ color: '#a855f7' }}>
             {userCount}USR
           </span>
           <span className="text-[7px]" style={{ color: '#c8d0dc' }}>
@@ -93,7 +93,7 @@ export function ChatWidget() {
                 initial={{ opacity: 0, y: 3 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.04, duration: 0.15 }}
-                whileHover={{ background: 'rgba(0,180,220,0.04)' }}
+                whileHover={{ background: 'rgba(168, 85, 247,0.04)' }}
               >
                 <RoleIndicator role={msg.role} />
                 <div className="flex flex-col gap-0 min-w-0 flex-1">
@@ -126,24 +126,24 @@ export function ChatWidget() {
         <motion.button
           className="w-full h-5 rounded flex items-center justify-center gap-1.5"
           style={{
-            background: 'rgba(0,180,220,0.08)',
-            border: '1px solid rgba(0,180,220,0.2)',
+            background: 'rgba(168, 85, 247,0.08)',
+            border: '1px solid rgba(168, 85, 247,0.2)',
           }}
           onClick={(e) => {
             e.stopPropagation()
             setChatOpen(true)
           }}
           whileHover={{
-            background: 'rgba(0,180,220,0.15)',
-            borderColor: 'rgba(0,180,220,0.4)',
+            background: 'rgba(168, 85, 247,0.15)',
+            borderColor: 'rgba(168, 85, 247,0.4)',
           }}
           whileTap={{ scale: 0.98 }}
         >
-          <span className="text-[8px] tracking-[0.2em] font-bold" style={{ color: '#00b4dc' }}>
+          <span className="text-[8px] tracking-[0.2em] font-bold" style={{ color: '#a855f7' }}>
             OPEN
           </span>
           <svg width="8" height="8" viewBox="0 0 8 8">
-            <path d="M2 6l4-4M6 2v4H2" stroke="#00b4dc" strokeWidth="0.8" fill="none" />
+            <path d="M2 6l4-4M6 2v4H2" stroke="#a855f7" strokeWidth="0.8" fill="none" />
           </svg>
         </motion.button>
       </div>

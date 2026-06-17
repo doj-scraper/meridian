@@ -32,7 +32,7 @@ export function WorkflowReplayWidget() {
         <div className="flex items-baseline justify-between">
           <span
             className="text-[11px] font-mono font-bold tracking-[0.1em]"
-            style={{ color: '#00b4dc' }}
+            style={{ color: '#a855f7' }}
           >
             {currentStep}/{totalSteps}
           </span>
@@ -82,10 +82,10 @@ export function WorkflowReplayWidget() {
                       background: isCompleted
                         ? '#00ff88'
                         : isCurrent
-                          ? '#00b4dc'
+                          ? '#a855f7'
                           : 'rgba(42,52,65,0.8)',
                       boxShadow: isCurrent
-                        ? '0 0 6px rgba(0,180,220,0.6)'
+                        ? '0 0 6px rgba(168, 85, 247,0.6)'
                         : isCompleted
                           ? '0 0 4px rgba(0,255,136,0.3)'
                           : 'none',
@@ -95,7 +95,7 @@ export function WorkflowReplayWidget() {
                     className="text-[7px] font-mono mt-[3px] leading-none"
                     style={{
                       color: isCurrent
-                        ? '#00b4dc'
+                        ? '#a855f7'
                         : isCompleted
                           ? '#00ff88'
                           : isPending
@@ -128,7 +128,7 @@ export function WorkflowReplayWidget() {
             <span
               className="text-[10px] font-mono font-bold"
               style={{
-                color: currentStep < totalSteps ? '#00b4dc' : '#00ff88',
+                color: currentStep < totalSteps ? '#a855f7' : '#00ff88',
               }}
             >
               {currentStep < totalSteps ? 'RUNNING' : 'COMPLETE'}
@@ -142,11 +142,11 @@ export function WorkflowReplayWidget() {
             className="px-2 py-1 text-[9px] font-mono tracking-[0.15em] font-bold border rounded"
             style={{
               color: currentStep > 1 ? '#5a6578' : '#2a3441',
-              borderColor: currentStep > 1 ? 'rgba(0,180,220,0.15)' : 'rgba(42,52,65,0.3)',
+              borderColor: currentStep > 1 ? 'rgba(168, 85, 247,0.15)' : 'rgba(42,52,65,0.3)',
               background: 'transparent',
             }}
             onClick={handleBack}
-            whileHover={currentStep > 1 ? { borderColor: 'rgba(0,180,220,0.4)', color: '#00b4dc' } : {}}
+            whileHover={currentStep > 1 ? { borderColor: 'rgba(168, 85, 247,0.4)', color: '#a855f7' } : {}}
             whileTap={currentStep > 1 ? { scale: 0.95 } : {}}
             disabled={currentStep <= 1}
           >
@@ -156,12 +156,12 @@ export function WorkflowReplayWidget() {
           <motion.button
             className="px-3 py-1 text-[9px] font-mono tracking-[0.15em] font-bold border rounded"
             style={{
-              color: '#00b4dc',
-              borderColor: 'rgba(0,180,220,0.3)',
-              background: 'rgba(0,180,220,0.06)',
+              color: '#a855f7',
+              borderColor: 'rgba(168, 85, 247,0.3)',
+              background: 'rgba(168, 85, 247,0.06)',
             }}
             onClick={handlePlay}
-            whileHover={{ borderColor: 'rgba(0,180,220,0.6)', background: 'rgba(0,180,220,0.12)' }}
+            whileHover={{ borderColor: 'rgba(168, 85, 247,0.6)', background: 'rgba(168, 85, 247,0.12)' }}
             whileTap={{ scale: 0.95 }}
           >
             PLAY
@@ -171,11 +171,11 @@ export function WorkflowReplayWidget() {
             className="px-2 py-1 text-[9px] font-mono tracking-[0.15em] font-bold border rounded"
             style={{
               color: currentStep < totalSteps ? '#5a6578' : '#2a3441',
-              borderColor: currentStep < totalSteps ? 'rgba(0,180,220,0.15)' : 'rgba(42,52,65,0.3)',
+              borderColor: currentStep < totalSteps ? 'rgba(168, 85, 247,0.15)' : 'rgba(42,52,65,0.3)',
               background: 'transparent',
             }}
             onClick={handleForward}
-            whileHover={currentStep < totalSteps ? { borderColor: 'rgba(0,180,220,0.4)', color: '#00b4dc' } : {}}
+            whileHover={currentStep < totalSteps ? { borderColor: 'rgba(168, 85, 247,0.4)', color: '#a855f7' } : {}}
             whileTap={currentStep < totalSteps ? { scale: 0.95 } : {}}
             disabled={currentStep >= totalSteps}
           >

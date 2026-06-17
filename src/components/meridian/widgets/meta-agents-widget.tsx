@@ -6,7 +6,7 @@ import { useMeridianStore } from '@/store/meridian-store'
 import type { MetaAgent } from '@/store/meridian-store'
 
 const ROLE_COLORS: Record<string, string> = {
-  evaluator: '#00b4dc',
+  evaluator: '#a855f7',
   challenger: '#ff6b35',
   synthesizer: '#00ff88',
 }
@@ -30,7 +30,7 @@ function truncateText(text: string, maxLen: number): string {
 
 function AlignmentBar({ value, color }: { value: number; color: string }) {
   return (
-    <div className="w-full h-[3px] rounded-full overflow-hidden" style={{ background: 'rgba(0,180,220,0.08)' }}>
+    <div className="w-full h-[3px] rounded-full overflow-hidden" style={{ background: 'rgba(168, 85, 247,0.08)' }}>
       <motion.div
         className="h-full rounded-full"
         style={{
@@ -119,13 +119,13 @@ export function MetaAgentsWidget() {
                 key={agent.id}
                 className="flex flex-col gap-1 px-1.5 py-1 rounded"
                 style={{
-                  background: 'rgba(0,180,220,0.03)',
+                  background: 'rgba(168, 85, 247,0.03)',
                   borderLeft: `2px solid ${roleColor}`,
                 }}
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.06, duration: 0.2 }}
-                whileHover={{ background: 'rgba(0,180,220,0.06)' }}
+                whileHover={{ background: 'rgba(168, 85, 247,0.06)' }}
               >
                 {/* Agent header */}
                 <div className="flex items-center gap-1.5">

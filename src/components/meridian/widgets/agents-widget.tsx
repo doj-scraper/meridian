@@ -46,7 +46,7 @@ export function AgentsWidget() {
         {/* Divider */}
         <div
           className="h-px w-full mb-1.5"
-          style={{ background: 'rgba(0,180,220,0.1)' }}
+          style={{ background: 'rgba(168, 85, 247,0.1)' }}
         />
 
         {/* Agent list */}
@@ -59,7 +59,7 @@ export function AgentsWidget() {
               transition={{ delay: i * 0.03, duration: 0.2 }}
               className="flex items-center gap-2 px-1 py-0.5 rounded-sm group cursor-pointer"
               style={{ background: 'transparent' }}
-              whileHover={{ background: 'rgba(0,180,220,0.04)' }}
+              whileHover={{ background: 'rgba(168, 85, 247,0.04)' }}
             >
               {/* Status dot */}
               <div className="relative flex items-center justify-center shrink-0">

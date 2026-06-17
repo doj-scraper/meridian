@@ -75,8 +75,8 @@ export function ChatPanel() {
             width: 340,
             height: 420,
             background: 'rgba(8,13,20,0.97)',
-            border: '1px solid rgba(0,180,220,0.25)',
-            boxShadow: '0 0 20px rgba(0,0,0,0.5), 0 0 8px rgba(0,180,220,0.08)',
+            border: '1px solid rgba(168, 85, 247,0.25)',
+            boxShadow: '0 0 20px rgba(0,0,0,0.5), 0 0 8px rgba(168, 85, 247,0.08)',
           }}
           initial={{ opacity: 0, y: 20, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -86,7 +86,7 @@ export function ChatPanel() {
           {/* Header */}
           <div
             className="flex items-center justify-between h-7 px-3 shrink-0"
-            style={{ background: 'rgba(0,180,220,0.06)', borderBottom: '1px solid rgba(0,180,220,0.15)' }}
+            style={{ background: 'rgba(168, 85, 247,0.06)', borderBottom: '1px solid rgba(168, 85, 247,0.15)' }}
           >
             <span className="text-[9px] font-mono font-bold tracking-[0.2em]" style={{ color: '#5a6578' }}>
               COMMUNICATIONS
@@ -106,7 +106,7 @@ export function ChatPanel() {
           <div
             ref={scrollRef}
             className="flex-1 overflow-y-auto p-3 flex flex-col gap-2"
-            style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(0,180,220,0.15) transparent' }}
+            style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(168, 85, 247,0.15) transparent' }}
           >
             {chatMessages.map((msg) => (
               <motion.div
@@ -123,7 +123,7 @@ export function ChatPanel() {
                     style={{
                       color:
                         msg.role === 'user'
-                          ? '#00b4dc'
+                          ? '#a855f7'
                           : msg.role === 'assistant'
                             ? '#c8d0dc'
                             : '#3a4553',
@@ -135,9 +135,9 @@ export function ChatPanel() {
                     <span
                       className="text-[7px] font-mono tracking-[0.1em] px-1 rounded"
                       style={{
-                        color: '#00b4dc',
-                        background: 'rgba(0,180,220,0.08)',
-                        border: '1px solid rgba(0,180,220,0.12)',
+                        color: '#a855f7',
+                        background: 'rgba(168, 85, 247,0.08)',
+                        border: '1px solid rgba(168, 85, 247,0.12)',
                       }}
                     >
                       {msg.agentName}
@@ -155,8 +155,8 @@ export function ChatPanel() {
                     msg.role === 'user'
                       ? {
                           color: '#c8d0dc',
-                          background: 'rgba(0,180,220,0.08)',
-                          borderLeft: '2px solid rgba(0,180,220,0.4)',
+                          background: 'rgba(168, 85, 247,0.08)',
+                          borderLeft: '2px solid rgba(168, 85, 247,0.4)',
                         }
                       : msg.role === 'assistant'
                         ? {
@@ -180,7 +180,7 @@ export function ChatPanel() {
           {/* Input area */}
           <div
             className="flex items-center gap-2 px-3 py-2 shrink-0"
-            style={{ borderTop: '1px solid rgba(0,180,220,0.1)' }}
+            style={{ borderTop: '1px solid rgba(168, 85, 247,0.1)' }}
           >
             <input
               ref={inputRef}
@@ -192,24 +192,24 @@ export function ChatPanel() {
               className="flex-1 text-[10px] font-mono bg-transparent outline-none placeholder:opacity-30"
               style={{
                 color: '#c8d0dc',
-                caretColor: '#00b4dc',
+                caretColor: '#a855f7',
               }}
             />
             <motion.button
               className="px-2 py-1 text-[8px] font-mono font-bold tracking-[0.15em] rounded border shrink-0"
               style={{
-                color: inputValue.trim() ? '#00b4dc' : '#2a3441',
+                color: inputValue.trim() ? '#a855f7' : '#2a3441',
                 borderColor: inputValue.trim()
-                  ? 'rgba(0,180,220,0.3)'
+                  ? 'rgba(168, 85, 247,0.3)'
                   : 'rgba(42,52,65,0.3)',
                 background: inputValue.trim()
-                  ? 'rgba(0,180,220,0.06)'
+                  ? 'rgba(168, 85, 247,0.06)'
                   : 'transparent',
               }}
               onClick={handleSend}
               whileHover={
                 inputValue.trim()
-                  ? { borderColor: 'rgba(0,180,220,0.6)', background: 'rgba(0,180,220,0.12)' }
+                  ? { borderColor: 'rgba(168, 85, 247,0.6)', background: 'rgba(168, 85, 247,0.12)' }
                   : {}
               }
               whileTap={inputValue.trim() ? { scale: 0.95 } : {}}

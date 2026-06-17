@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     // Create an AgentRun record
     const run = await db.agentRun.create({
       data: {
-        agentId: firstAgent.id,
+        agentId: firstAgent.id as string,
         status: "running",
       },
     });

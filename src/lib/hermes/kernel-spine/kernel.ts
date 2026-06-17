@@ -179,7 +179,7 @@ export class HermesKernel {
         }
 
         // If the run completed during the transition, stop the loop
-        if (ctx.status === "completed") {
+        if ((ctx.status as RunStatus) === "completed") {
           break;
         }
 
@@ -352,7 +352,7 @@ export class HermesKernel {
     const start = Date.now();
 
     try {
-      switch (proposal.actionType) {
+      switch (proposal.actionType as any) {
         case "finish": {
           const finishAction = proposal.action as { result: string };
           return {

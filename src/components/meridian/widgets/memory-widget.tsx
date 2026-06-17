@@ -15,7 +15,7 @@ interface MemorySegment {
 export function MemoryWidget() {
   const { agents } = useAgentStore()
   const [segments, setSegments] = useState<MemorySegment[]>([
-    { label: 'SHORT-TERM', entries: 0, sizeMb: 0, color: '#00b4dc' },
+    { label: 'SHORT-TERM', entries: 0, sizeMb: 0, color: '#a855f7' },
     { label: 'LONG-TERM', entries: 0, sizeMb: 0, color: '#ffa500' },
     { label: 'ARTIFACTS', entries: 0, sizeMb: 0, color: '#00ff88' },
   ])
@@ -53,7 +53,7 @@ export function MemoryWidget() {
             label: 'SHORT-TERM',
             entries: sessionData.entries?.length || 0,
             sizeMb: estimateSize(sessionData.entries || []),
-            color: '#00b4dc',
+            color: '#a855f7',
           },
           {
             label: 'LONG-TERM',
@@ -97,7 +97,7 @@ export function MemoryWidget() {
           </span>
           <span
             className="text-[9px] tracking-[0.1em]"
-            style={{ color: '#00b4dc' }}
+            style={{ color: '#a855f7' }}
           >
             {TOTAL_SIZE}MB
           </span>
@@ -106,7 +106,7 @@ export function MemoryWidget() {
         {/* Divider */}
         <div
           className="h-px w-full mb-1.5"
-          style={{ background: 'rgba(0,180,220,0.1)' }}
+          style={{ background: 'rgba(168, 85, 247,0.1)' }}
         />
 
         {/* Memory segments */}
@@ -120,7 +120,7 @@ export function MemoryWidget() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.05, duration: 0.2 }}
                 className="px-1 py-0.5 rounded-sm cursor-pointer"
-                whileHover={{ background: 'rgba(0,180,220,0.04)' }}
+                whileHover={{ background: 'rgba(168, 85, 247,0.04)' }}
               >
                 {/* Label row */}
                 <div className="flex items-center justify-between mb-1">
@@ -151,7 +151,7 @@ export function MemoryWidget() {
                 {/* Bar visualization */}
                 <div
                   className="h-1.5 w-full rounded-full overflow-hidden"
-                  style={{ background: 'rgba(0,180,220,0.06)' }}
+                  style={{ background: 'rgba(168, 85, 247,0.06)' }}
                 >
                   <motion.div
                     className="h-full rounded-full"
@@ -167,7 +167,7 @@ export function MemoryWidget() {
         </div>
 
         {/* Bottom summary bar */}
-        <div className="mt-1.5 pt-1" style={{ borderTop: '1px solid rgba(0,180,220,0.1)' }}>
+        <div className="mt-1.5 pt-1" style={{ borderTop: '1px solid rgba(168, 85, 247,0.1)' }}>
           <div className="flex items-center gap-1.5 px-1">
             {segments.map((seg) => (
               <div key={seg.label} className="flex items-center gap-0.5">

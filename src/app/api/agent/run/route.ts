@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
 
     // Get the agent config
     let agent;
-    let runGoal = goal;
+    let runGoal = (goal || agent?.goal || "") as string;
 
     if (agentId) {
       agent = await db.agent.findUnique({ where: { id: agentId } });

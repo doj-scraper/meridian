@@ -33,11 +33,11 @@ export function MenuBar() {
       className="flex items-center h-8 shrink-0 border-b select-none"
       style={{
         background: 'rgba(6,9,14,0.95)',
-        borderColor: 'rgba(0,180,220,0.12)',
+        borderColor: 'rgba(168,85,247,0.12)',
       }}
     >
       {/* Logo */}
-      <div className="flex items-center px-3 h-full border-r" style={{ borderColor: 'rgba(57, 255, 20, 0.12)' }}>
+      <div className="flex items-center px-3 h-full border-r" style={{ borderColor: 'rgba(168, 85, 247, 0.12)' }}>
         <svg viewBox="0 0 200 200" width="20" height="20" className="mr-2" role="img" aria-label="Volcano icon">
           <defs>
             <linearGradient id="v_rock_menu" x1="0" y1="0" x2="1" y2="1">
@@ -59,10 +59,7 @@ export function MenuBar() {
           </g>
         </svg>
         <span className="text-[11px] tracking-[0.3em] font-bold" style={{ color: '#E11D48' }}>
-          MERIDIAN
-        </span>
-        <span className="text-[9px] tracking-[0.15em] ml-1.5" style={{ color: '#FF3D4D' }}>
-          RUNTIME
+          MERIDIAN RUNTIME
         </span>
       </div>
 
@@ -73,8 +70,8 @@ export function MenuBar() {
             <button
               className="h-full px-3 text-[11px] tracking-[0.1em] transition-colors"
               style={{
-                color: activeMenu === menu ? '#00b4dc' : '#5a6578',
-                background: activeMenu === menu ? 'rgba(0,180,220,0.06)' : 'transparent',
+                color: activeMenu === menu ? '#a855f7' : '#5a6578',
+                background: activeMenu === menu ? 'rgba(168,85,247,0.06)' : 'transparent',
               }}
               onClick={() => setActiveMenu(menu)}
               onMouseEnter={() => { if (activeMenu) setActiveMenu(menu) }}
@@ -88,13 +85,13 @@ export function MenuBar() {
                 className="absolute top-full left-0 min-w-[200px] z-50 border"
                 style={{
                   background: 'rgba(8,13,20,0.98)',
-                  borderColor: 'rgba(0,180,220,0.2)',
+                  borderColor: 'rgba(168,85,247,0.2)',
                   boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
                 }}
               >
                 {items.map((item, idx) =>
                   item === '---' ? (
-                    <div key={idx} className="h-px my-1" style={{ background: 'rgba(0,180,220,0.1)' }} />
+                    <div key={idx} className="h-px my-1" style={{ background: 'rgba(168,85,247,0.1)' }} />
                   ) : (
                     <button
                       key={idx}
@@ -102,7 +99,7 @@ export function MenuBar() {
                       style={{ color: '#8a94a3' }}
                       onMouseEnter={(e) => {
                         ;(e.target as HTMLElement).style.color = '#c8d0dc'
-                        ;(e.target as HTMLElement).style.background = 'rgba(0,180,220,0.08)'
+                        ;(e.target as HTMLElement).style.background = 'rgba(168,85,247,0.08)'
                       }}
                       onMouseLeave={(e) => {
                         ;(e.target as HTMLElement).style.color = '#8a94a3'
@@ -131,9 +128,9 @@ export function MenuBar() {
           <div className="w-1.5 h-1.5" style={{ background: '#00ff88', boxShadow: '0 0 4px #00ff88' }} />
           <span className="text-[9px] tracking-[0.15em]" style={{ color: '#3a4553' }}>KERNEL</span>
         </div>
-        <div className="h-3 w-px" style={{ background: 'rgba(0,180,220,0.12)' }} />
+        <div className="h-3 w-px" style={{ background: 'rgba(168,85,247,0.12)' }} />
         <span className="text-[9px] tracking-[0.1em]" style={{ color: '#3a4553' }}>3.2 evt/s</span>
-        <div className="h-3 w-px" style={{ background: 'rgba(0,180,220,0.12)' }} />
+        <div className="h-3 w-px" style={{ background: 'rgba(168,85,247,0.12)' }} />
         <span className="text-[9px] tracking-[0.1em]" style={{ color: '#ffa500' }}>$2.41/hr</span>
       </div>
     </div>

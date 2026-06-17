@@ -26,6 +26,7 @@ export * from "./test-harness";
 
 // ── Event DSL (Phase 1.0) ──
 export * from "./event-dsl";
+export { HermesEventTier } from "./event-dsl";
 
 // ── Causal Core Lock (Phase 1.1) ──
 export * from "./causal-core-lock";

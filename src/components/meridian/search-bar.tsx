@@ -15,6 +15,7 @@ export function SearchBar() {
       if (!inputValue.trim()) return
 
       addChatMessage({
+        id: `user-${Date.now()}`,
         role: 'user',
         content: inputValue.trim(),
         timestamp: Date.now(),
@@ -23,6 +24,7 @@ export function SearchBar() {
       // Simulate assistant response
       setTimeout(() => {
         addChatMessage({
+          id: `assistant-${Date.now()}`,
           role: 'assistant',
           content: `Acknowledged. Processing query: "${inputValue.trim()}". The kernel spine is currently processing 3.2 events per second across 6 active agents. Recommend reviewing the Meta Agent evaluation panel for workflow alignment status.`,
           timestamp: Date.now(),
@@ -40,7 +42,7 @@ export function SearchBar() {
       className="flex items-center h-9 shrink-0 border-b px-3 gap-2"
       style={{
         background: 'rgba(6,9,14,0.95)',
-        borderColor: 'rgba(0,180,220,0.12)',
+        borderColor: 'rgba(168, 85, 247,0.12)',
       }}
     >
       {/* Search/Chat icon */}
@@ -69,8 +71,8 @@ export function SearchBar() {
           <div className="w-1 h-1" style={{ background: '#00ff88' }} />
           <span className="text-[9px] tracking-[0.1em]" style={{ color: '#00ff88' }}>6 ACTIVE</span>
         </div>
-        <div className="flex items-center gap-1 px-2 py-0.5" style={{ background: 'rgba(0,180,220,0.06)', border: '1px solid rgba(0,180,220,0.15)' }}>
-          <span className="text-[9px] tracking-[0.1em]" style={{ color: '#00b4dc' }}>14 AGENTS</span>
+        <div className="flex items-center gap-1 px-2 py-0.5" style={{ background: 'rgba(168, 85, 247,0.06)', border: '1px solid rgba(168, 85, 247,0.15)' }}>
+          <span className="text-[9px] tracking-[0.1em]" style={{ color: '#a855f7' }}>14 AGENTS</span>
         </div>
         <div className="flex items-center gap-1 px-2 py-0.5" style={{ background: 'rgba(255,165,0,0.06)', border: '1px solid rgba(255,165,0,0.15)' }}>
           <span className="text-[9px] tracking-[0.1em]" style={{ color: '#ffa500' }}>3 WORKFLOWS</span>
@@ -82,9 +84,9 @@ export function SearchBar() {
         onClick={() => setChatOpen(!chatOpen)}
         className="text-[9px] tracking-[0.1em] px-2 py-0.5 transition-colors"
         style={{
-          color: chatOpen ? '#00b4dc' : '#3a4553',
-          border: chatOpen ? '1px solid rgba(0,180,220,0.3)' : '1px solid rgba(0,180,220,0.1)',
-          background: chatOpen ? 'rgba(0,180,220,0.06)' : 'transparent',
+          color: chatOpen ? '#a855f7' : '#3a4553',
+          border: chatOpen ? '1px solid rgba(168, 85, 247,0.3)' : '1px solid rgba(168, 85, 247,0.1)',
+          background: chatOpen ? 'rgba(168, 85, 247,0.06)' : 'transparent',
         }}
       >
         COMM

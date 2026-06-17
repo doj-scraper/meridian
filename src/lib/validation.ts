@@ -113,7 +113,7 @@ export const TemplateInstantiateSchema = z.object({
   templateId: z.string().cuid(),
   name: z.string().min(1, { message: "Name is required" }).max(100),
   goal: z.string().min(1, { message: "Goal is required" }).max(1000),
-  overrides: z.record(z.any()).optional(),
+  overrides: z.record(z.string(), z.any()).optional(),
 });
 
 // Policy Schemas
@@ -169,7 +169,7 @@ export const TriggerCreateSchema = z.object({
   webhookUrl: z.string().url().optional(),
   eventType: z.string().optional(),
   enabled: z.boolean().default(true),
-  config: z.record(z.any()).optional(),
+  config: z.record(z.string(), z.any()).optional(),
 });
 
 export const TriggerUpdateSchema = z.object({
@@ -180,7 +180,7 @@ export const TriggerUpdateSchema = z.object({
   webhookUrl: z.string().url().optional(),
   eventType: z.string().optional(),
   enabled: z.boolean().optional(),
-  config: z.record(z.any()).optional(),
+  config: z.record(z.string(), z.any()).optional(),
 });
 
 export const TriggerExecuteSchema = z.object({
@@ -194,7 +194,7 @@ export const TaskNodeSchema = z.object({
   agentId: z.string().cuid().optional(),
   condition: z.string().optional(),
   position: z.object({ x: z.number(), y: z.number() }),
-  data: z.record(z.any()).optional(),
+  data: z.record(z.string(), z.any()).optional(),
 });
 
 export const TaskEdgeSchema = z.object({

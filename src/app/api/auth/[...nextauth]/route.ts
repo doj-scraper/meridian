@@ -15,8 +15,18 @@ const handler = NextAuth({
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        // Simple credential validation for admin access
-        if (credentials?.username === 'admin' && credentials?.password === 'admin') {
+        const expectedUsername = process.env.ADMIN_USERNAME || 'admin';
+        const expectedPassword = process.env.ADMIN_PASSWORD || 'admin';
+
+        if (
+          expectedUsername === 'admin' && 
+          expectedPassword === 'admin' && 
+          process.env.NODE_ENV === 'production'
+        ) {
+          console.warn("[WARNING] Running in production with default admin credentials!");
+        }
+
+        if (credentials?.username === expectedUsername && credentials?.password === expectedPassword) {
           return { id: '1', name: 'Admin', email: 'admin@meridian.local' };
         }
         return null;

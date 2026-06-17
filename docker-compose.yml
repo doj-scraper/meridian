@@ -7,23 +7,14 @@ services:
       - "3000:3000"
     environment:
       - DATABASE_URL=file:./db/custom.db
-      - Z_AI_API_KEY=${Z_AI_API_KEY}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
       - NEXTAUTH_URL=http://localhost:3000
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY}
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
     volumes:
       - ./db:/app/db
     restart: unless-stopped
 
-  postgres:  # Optional: PostgreSQL migration
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: meridian
-      POSTGRES_PASSWORD: meridian
-      POSTGRES_DB: meridian
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-volumes:
-  postgres_data:

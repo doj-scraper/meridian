@@ -40,7 +40,7 @@ export function GlobeModule() {
       style={{ background: 'rgba(6,9,14,0.65)' }}
     >
       {/* Globe title */}
-      <div className="flex items-center h-7 px-3 shrink-0 border-b" style={{ background: 'rgba(0,180,220,0.04)', borderColor: 'rgba(0,180,220,0.12)' }}>
+      <div className="flex items-center h-7 px-3 shrink-0 border-b" style={{ background: 'rgba(168, 85, 247,0.04)', borderColor: 'rgba(168, 85, 247,0.12)' }}>
         <span className="text-[9px] tracking-[0.2em] font-bold" style={{ color: '#5a6578' }}>
           OPERATIONAL SPHERE
         </span>
@@ -61,7 +61,7 @@ export function GlobeModule() {
         {/* Pre-action zone (left) */}
         <div className="flex-1 flex flex-col items-center justify-center gap-2 p-3 relative">
           <div className="absolute top-2 left-3">
-            <span className="text-[8px] tracking-[0.3em] font-bold" style={{ color: 'rgba(0,180,220,0.4)' }}>
+            <span className="text-[8px] tracking-[0.3em] font-bold" style={{ color: 'rgba(168, 85, 247,0.4)' }}>
               PRE-ACTION
             </span>
           </div>
@@ -72,12 +72,12 @@ export function GlobeModule() {
               className="w-full flex items-center gap-2 px-2 py-1.5 transition-colors text-left"
               style={{
                 background: selectedGlobeItem === item.id
-                  ? 'rgba(0,180,220,0.08)'
+                  ? 'rgba(168, 85, 247,0.08)'
                   : hoveredItem === item.id
-                    ? 'rgba(0,180,220,0.04)'
+                    ? 'rgba(168, 85, 247,0.04)'
                     : 'transparent',
                 borderLeft: selectedGlobeItem === item.id
-                  ? '2px solid #00b4dc'
+                  ? '2px solid #a855f7'
                   : '2px solid transparent',
               }}
               onMouseEnter={() => setHoveredItem(item.id)}
@@ -187,7 +187,7 @@ export function GlobeModule() {
                 className="absolute bottom-2 left-1/2 -translate-x-1/2 px-3 py-1.5 border"
                 style={{
                   background: 'rgba(8,13,20,0.95)',
-                  borderColor: 'rgba(0,180,220,0.2)',
+                  borderColor: 'rgba(168, 85, 247,0.2)',
                   maxWidth: '80%',
                 }}
               >
@@ -199,15 +199,15 @@ export function GlobeModule() {
       </div>
 
       {/* Globe footer - active items summary */}
-      <div className="flex items-center h-6 px-3 border-t shrink-0" style={{ borderColor: 'rgba(0,180,220,0.1)' }}>
+      <div className="flex items-center h-6 px-3 border-t shrink-0" style={{ borderColor: 'rgba(168, 85, 247,0.1)' }}>
         <span className="text-[8px] tracking-[0.1em]" style={{ color: '#2a3441' }}>
           PRE: {preItems.filter((i) => i.status === 'active').length}/{preItems.length} active
         </span>
-        <div className="mx-3 h-2 w-px" style={{ background: 'rgba(0,180,220,0.1)' }} />
+        <div className="mx-3 h-2 w-px" style={{ background: 'rgba(168, 85, 247,0.1)' }} />
         <span className="text-[8px] tracking-[0.1em]" style={{ color: '#2a3441' }}>
           POST: {postItems.filter((i) => i.status === 'active').length}/{postItems.length} active
         </span>
-        <div className="mx-3 h-2 w-px" style={{ background: 'rgba(0,180,220,0.1)' }} />
+        <div className="mx-3 h-2 w-px" style={{ background: 'rgba(168, 85, 247,0.1)' }} />
         <span className="text-[8px] tracking-[0.1em]" style={{ color: '#3a4553' }}>
           {selectedGlobeItem ? globeItems.find((g) => g.id === selectedGlobeItem)?.label : 'NO SELECTION'}
         </span>

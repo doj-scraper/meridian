@@ -130,7 +130,7 @@ export function AARWidget() {
 
           <div
             className="w-[1px] h-5"
-            style={{ background: 'rgba(0,180,220,0.1)' }}
+            style={{ background: 'rgba(168, 85, 247,0.1)' }}
           />
 
           <div className="flex flex-col items-center gap-[1px] flex-1">
@@ -144,7 +144,7 @@ export function AARWidget() {
 
           <div
             className="w-[1px] h-5"
-            style={{ background: 'rgba(0,180,220,0.1)' }}
+            style={{ background: 'rgba(168, 85, 247,0.1)' }}
           />
 
           <div className="flex flex-col items-center gap-[1px] flex-1">

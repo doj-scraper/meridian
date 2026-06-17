@@ -101,7 +101,7 @@ export function ExpensesWidget() {
         {/* Business justification */}
         <div
           className="px-2 py-1 rounded"
-          style={{ background: 'rgba(0,180,220,0.04)', border: '1px solid rgba(0,180,220,0.08)' }}
+          style={{ background: 'rgba(168, 85, 247,0.04)', border: '1px solid rgba(168, 85, 247,0.08)' }}
         >
           <span className="text-[8px] font-mono leading-[1.4]" style={{ color: '#5a6578' }}>
             INVESTMENT: <span style={{ color: '#c8d0dc' }}>${totalInvestment.toFixed(2)}</span>

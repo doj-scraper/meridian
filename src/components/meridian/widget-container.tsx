@@ -110,22 +110,22 @@ export function WidgetContainer({ id, title, children, className = '', onHoverIn
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-50"
-          style={{ background: 'rgba(3,5,8,0.98)', border: '1px solid rgba(0,180,220,0.4)' }}
+          style={{ background: 'rgba(3,5,8,0.98)', border: '1px solid rgba(168,85,247,0.4)' }}
           onClick={handleClick}
         >
           {/* Title bar */}
           <div
             className="flex items-center justify-between h-8 px-3 border-b"
-            style={{ background: 'rgba(0,180,220,0.06)', borderColor: 'rgba(0,180,220,0.15)' }}
+            style={{ background: 'rgba(168,85,247,0.06)', borderColor: 'rgba(168,85,247,0.15)' }}
           >
             <span className="text-[10px] tracking-[0.2em] font-bold" style={{ color: '#5a6578' }}>
               {title}
             </span>
             <div className="flex items-center gap-2">
-              <button onClick={handleMinimize} className="text-[#5a6578] hover:text-[#00b4dc] transition-colors text-xs px-1">
+              <button onClick={handleMinimize} className="text-[#5a6578] hover:text-[#a855f7] transition-colors text-xs px-1">
                 MINIMIZE
               </button>
-              <button onClick={handleFloat} className="text-[#5a6578] hover:text-[#00b4dc] transition-colors text-xs px-1">
+              <button onClick={handleFloat} className="text-[#5a6578] hover:text-[#a855f7] transition-colors text-xs px-1">
                 FLOAT
               </button>
             </div>
@@ -153,25 +153,25 @@ export function WidgetContainer({ id, title, children, className = '', onHoverIn
             width: 420,
             height: 340,
             background: 'rgba(8,13,20,0.96)',
-            border: isActive ? '1px solid rgba(0,180,220,0.6)' : '1px solid rgba(0,180,220,0.3)',
-            boxShadow: isActive ? '0 0 12px rgba(0,180,220,0.15)' : '0 0 6px rgba(0,0,0,0.5)',
+            border: isActive ? '1px solid rgba(168,85,247,0.6)' : '1px solid rgba(168,85,247,0.3)',
+            boxShadow: isActive ? '0 0 12px rgba(168,85,247,0.15)' : '0 0 6px rgba(0,0,0,0.5)',
           }}
           onClick={handleClick}
         >
           {/* Draggable title bar */}
           <div
             className="flex items-center justify-between h-7 px-3 cursor-move border-b"
-            style={{ background: 'rgba(0,180,220,0.06)', borderColor: 'rgba(0,180,220,0.15)' }}
+            style={{ background: 'rgba(168,85,247,0.06)', borderColor: 'rgba(168,85,247,0.15)' }}
             onMouseDown={handleDragStart}
           >
             <span className="text-[10px] tracking-[0.2em] font-bold" style={{ color: '#5a6578' }}>
               {title}
             </span>
             <div className="flex items-center gap-2">
-              <button onClick={handleMinimize} className="text-[#5a6578] hover:text-[#00b4dc] transition-colors">
+              <button onClick={handleMinimize} className="text-[#5a6578] hover:text-[#a855f7] transition-colors">
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect y="9" width="12" height="2" fill="currentColor"/></svg>
               </button>
-              <button onClick={handleFullscreen} className="text-[#5a6578] hover:text-[#00b4dc] transition-colors">
+              <button onClick={handleFullscreen} className="text-[#5a6578] hover:text-[#a855f7] transition-colors">
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1" y="1" width="10" height="10" stroke="currentColor" strokeWidth="1.5" fill="none"/></svg>
               </button>
               <button onClick={handleMinimize} className="text-[#5a6578] hover:text-[#ff3344] transition-colors">
@@ -198,16 +198,16 @@ export function WidgetContainer({ id, title, children, className = '', onHoverIn
           className="absolute inset-0 z-30"
           style={{
             background: 'rgba(8,13,20,0.96)',
-            border: '1px solid rgba(0,180,220,0.35)',
+            border: '1px solid rgba(168,85,247,0.35)',
           }}
           onClick={handleClick}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >
-          <div className="flex items-center justify-between h-8 px-3 border-b" style={{ borderColor: 'rgba(0,180,220,0.15)' }}>
+          <div className="flex items-center justify-between h-8 px-3 border-b" style={{ borderColor: 'rgba(168,85,247,0.15)' }}>
             <span className="text-[10px] tracking-[0.2em] font-bold" style={{ color: '#5a6578' }}>{title}</span>
             <div className="flex items-center gap-2">
-              <button onClick={handleMinimize} className="text-[#5a6578] hover:text-[#00b4dc] transition-colors text-xs">
+              <button onClick={handleMinimize} className="text-[#5a6578] hover:text-[#a855f7] transition-colors text-xs">
                 MINIMIZE
               </button>
             </div>
@@ -228,8 +228,8 @@ export function WidgetContainer({ id, title, children, className = '', onHoverIn
       style={{
         cursor: 'pointer',
         transition: 'border-color 0.2s, box-shadow 0.2s',
-        boxShadow: isActive ? '0 0 12px rgba(255, 211, 106, 0.6)' : isHovered ? '0 0 8px rgba(57, 255, 20, 0.2)' : 'none',
-        borderColor: isActive ? '#FFD36A' : 'rgba(57, 255, 20, 0.2)',
+        boxShadow: isActive ? '0 0 12px rgba(168, 85, 247, 0.5)' : isHovered ? '0 0 8px rgba(168, 85, 247, 0.2)' : 'none',
+        borderColor: isActive ? 'rgba(168, 85, 247, 0.6)' : 'rgba(168, 85, 247, 0.15)',
         borderWidth: '1px',
       }}
       onClick={handleClick}
@@ -238,7 +238,7 @@ export function WidgetContainer({ id, title, children, className = '', onHoverIn
       onPointerUp={handlePointerUp}
       onPointerLeave={(e) => { handleMouseLeave(); handlePointerLeave(); }}
       onMouseEnter={handleMouseEnter}
-      whileHover={{ borderColor: 'rgba(57, 255, 20, 0.5)' }}
+      whileHover={{ borderColor: 'rgba(168, 85, 247, 0.45)' }}
     >
       {/* Title bar (only on long press) */}
       <AnimatePresence>
@@ -248,23 +248,23 @@ export function WidgetContainer({ id, title, children, className = '', onHoverIn
             animate={{ opacity: 1, height: 24 }}
             exit={{ opacity: 0, height: 0 }}
             className="flex items-center justify-between px-2 shrink-0 overflow-hidden cursor-move" 
-            style={{ background: 'rgba(57, 255, 20, 0.1)' }}
+            style={{ background: 'rgba(168, 85, 247, 0.1)' }}
             onMouseDown={handleDragStart} // Assuming floating drag start can be reused, though it might need adjustment if we want to float from container mode
           >
-            <span className="text-[9px] tracking-[0.2em] font-bold" style={{ color: '#39ff14' }}>
+            <span className="text-[9px] tracking-[0.2em] font-bold" style={{ color: '#a855f7' }}>
               {title}
             </span>
             <div className="flex items-center gap-1">
               <button
                 onClick={(e) => { e.stopPropagation(); handleExpand() }}
-                className="text-[#3a4553] hover:text-[#39ff14] transition-colors"
+                className="text-[#3a4553] hover:text-[#a855f7] transition-colors"
                 title="Expand"
               >
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="0.5" y="0.5" width="9" height="9" stroke="currentColor" strokeWidth="1"/></svg>
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); handleFloat() }}
-                className="text-[#3a4553] hover:text-[#39ff14] transition-colors"
+                className="text-[#3a4553] hover:text-[#a855f7] transition-colors"
                 title="Float"
               >
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="2" y="0" width="8" height="8" stroke="currentColor" strokeWidth="1" fill="none"/><rect x="0" y="2" width="8" height="8" stroke="currentColor" strokeWidth="1" fill="rgba(8,13,20,0.9)"/></svg>
@@ -274,7 +274,7 @@ export function WidgetContainer({ id, title, children, className = '', onHoverIn
         )}
       </AnimatePresence>
       {/* Content */}
-      <div className={`flex-1 overflow-hidden p-2 ${!isActive ? 'opacity-70 grayscale-[50%]' : ''}`} style={{ transition: 'opacity 0.2s, filter 0.2s' }}>
+      <div className="flex-1 overflow-hidden p-2" style={{ transition: 'opacity 0.2s, filter 0.2s' }}>
         {children}
       </div>
     </motion.div>

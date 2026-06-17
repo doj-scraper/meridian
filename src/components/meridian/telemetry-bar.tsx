@@ -42,7 +42,7 @@ export function TelemetryBar() {
     info: '#5a6578',
     warn: '#ffa500',
     error: '#ff3344',
-    event: '#00b4dc',
+    event: '#a855f7',
   }
 
   return (
@@ -50,11 +50,11 @@ export function TelemetryBar() {
       className="flex items-stretch h-7 shrink-0 border-t"
       style={{
         background: 'rgba(4,6,10,0.95)',
-        borderColor: 'rgba(0,180,220,0.1)',
+        borderColor: 'rgba(168,85,247,0.1)',
       }}
     >
       {/* Label */}
-      <div className="flex items-center px-2 border-r shrink-0" style={{ borderColor: 'rgba(0,180,220,0.1)' }}>
+      <div className="flex items-center px-2 border-r shrink-0" style={{ borderColor: 'rgba(168,85,247,0.1)' }}>
         <div
           className="w-1.5 h-1.5 mr-1.5"
           style={{
@@ -65,6 +65,11 @@ export function TelemetryBar() {
         <span className="text-[8px] tracking-[0.2em] font-bold" style={{ color: '#3a4553' }}>
           TELEMETRY
         </span>
+      </div>
+
+      {/* System Status */}
+      <div className="flex items-center px-2 border-r shrink-0" style={{ borderColor: 'rgba(168, 85, 247, 0.1)' }}>
+        <span className="text-[8px] tracking-[0.15em] font-bold" style={{ color: '#00ff88' }}>READY</span>
       </div>
 
       {/* Scrolling entries */}
@@ -90,7 +95,7 @@ export function TelemetryBar() {
       <button
         onClick={() => setTelemetryPaused(!telemetryPaused)}
         className="flex items-center px-2 border-l shrink-0 transition-colors"
-        style={{ borderColor: 'rgba(0,180,220,0.1)' }}
+        style={{ borderColor: 'rgba(168,85,247,0.1)' }}
       >
         <span className="text-[8px] tracking-[0.1em]" style={{ color: telemetryPaused ? '#ffa500' : '#3a4553' }}>
           {telemetryPaused ? 'PAUSED' : 'LIVE'}
@@ -98,7 +103,7 @@ export function TelemetryBar() {
       </button>
 
       {/* About Section - Blue Tree Logo */}
-      <div className="flex items-center px-2 border-l shrink-0" style={{ borderColor: 'rgba(57, 255, 20, 0.1)' }} title="Blue Tree Organization">
+      <div className="flex items-center px-2 border-l shrink-0" style={{ borderColor: 'rgba(168, 85, 247, 0.1)' }} title="Blue Tree Organization">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="16" height="16" role="img" aria-label="Blue Tree">
           <rect x="56" y="64" width="8" height="28" rx="2" fill="#7a5a3b"/>
           <circle cx="60" cy="40" r="24" fill="#60a5fa" opacity="0.95"/>

@@ -39,7 +39,7 @@ export interface MetaAgent {
 export interface WorkflowPhase {
   id: string
   name: string
-  status: 'pending' | 'active' | 'complete' | 'blocked'
+  status: 'pending' | 'active' | 'complete' | 'blocked' | 'paused'
   tasks: WorkflowTask[]
 }
 

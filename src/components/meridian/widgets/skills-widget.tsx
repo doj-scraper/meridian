@@ -50,7 +50,7 @@ export function SkillsWidget() {
         {/* Divider */}
         <div
           className="h-px w-full mb-1.5"
-          style={{ background: 'rgba(0,180,220,0.1)' }}
+          style={{ background: 'rgba(168, 85, 247,0.1)' }}
         />
 
         {/* Skill list */}
@@ -64,7 +64,7 @@ export function SkillsWidget() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.03, duration: 0.2 }}
                 className="flex flex-col gap-0.5 px-1 py-0.5 rounded-sm cursor-pointer"
-                whileHover={{ background: 'rgba(0,180,220,0.04)' }}
+                whileHover={{ background: 'rgba(168, 85, 247,0.04)' }}
               >
                 {/* Skill row: name + call count */}
                 <div className="flex items-center gap-1.5">
@@ -104,7 +104,7 @@ export function SkillsWidget() {
                       width: `${barWidth}%`,
                       background:
                         skill.status === 'active'
-                          ? 'rgba(0,180,220,0.4)'
+                          ? 'rgba(168, 85, 247,0.4)'
                           : 'rgba(90,101,120,0.25)',
                       maxWidth: 'calc(100% - 2px)',
                     }}

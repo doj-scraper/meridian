@@ -48,7 +48,7 @@ export function NetworkWidget() {
         {/* Divider */}
         <div
           className="h-px w-full mb-1.5"
-          style={{ background: 'rgba(0,180,220,0.1)' }}
+          style={{ background: 'rgba(168, 85, 247,0.1)' }}
         />
 
         {/* Peer list */}
@@ -60,7 +60,7 @@ export function NetworkWidget() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.03, duration: 0.2 }}
               className="flex items-center gap-2 px-1 py-0.5 rounded-sm cursor-pointer"
-              whileHover={{ background: 'rgba(0,180,220,0.04)' }}
+              whileHover={{ background: 'rgba(168, 85, 247,0.04)' }}
             >
               {/* Status dot */}
               <div
